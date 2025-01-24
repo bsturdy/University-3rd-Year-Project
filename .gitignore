@@ -1,0 +1,49 @@
+
+# Ignore build artifacts and temporary files
+build/
+*.elf
+*.bin
+*.hex
+*.map
+*.o
+*.a
+
+# Ignore Visual Studio Code specific files
+.vscode/
+
+# Ignore Espressif ESP-IDF specific files
+*.log
+*.pyc
+*.pyo
+__pycache__/
+*.project
+*.cproject
+*.launches/
+*.cmake
+CMakeCache.txt
+*.cmake.sh
+components/
+partitions.csv
+partition_table/
+
+# Ignore Windows system files
+Thumbs.db
+Desktop.ini
+
+# Ignore debugging files
+*.tmp
+*.bak
+*.swp
+*.log
+
+# Ignore IDE backups
+*.class
+*.DS_Store
+.idea/
+
+# Optional: Ignore test result artifacts
+/tests/results/
+
+# Ignore any personal notes or temporary files
+*.notes
+*.todo
