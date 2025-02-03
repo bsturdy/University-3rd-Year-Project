@@ -6,14 +6,20 @@
 //    Timer Class                                              //
 //=============================================================// 
 
-#define CyclicTimerGroup    TIMER_GROUP_0
-#define CyclicTimerIndex    TIMER_0
-#define TimeoutTimerGroup   TIMER_GROUP_1
-#define TimeoutTimerIndex   TIMER_0
+#define CyclicTimerGroup        TIMER_GROUP_0
+#define CyclicTimerIndex        TIMER_0
+#define WatchdogTimerGroup      TIMER_GROUP_1
+#define WatchdogTimerIndex      TIMER_0
+
+const int TimerClass::StackSize;
+StackType_t TimerClass::StaticTaskStack[StackSize];
+StaticTask_t TimerClass::StaticTaskTCB;
 
 TimerClass* ClassInstance;
 static TaskHandle_t DeterministicTaskHandle = NULL;
-static BaseType_t xHigherPriorityTaskWoken;
+static TaskHandle_t WatchdogTaskHandle = NULL;
+static BaseType_t xHigherPriorityTaskWoken1;
+static BaseType_t xHigherPriorityTaskWoken2;
 static const char *TAG = "Timer Class";
 
 
@@ -32,41 +38,96 @@ TimerClass::~TimerClass()
     ;
 }
 
-void TimerClass::DeterministicTask(void *pvParameters) 
+void TimerClass::CyclicTask(void* pvParameters) 
 {
     while (true) 
     {
         ulTaskNotifyTake(pdTRUE, portMAX_DELAY);
-        ClassInstance->TaskCounter++;
-        // ======== START USER CODE ======== //
 
-        if (ClassInstance->UserTask) 
+        if (ClassInstance->AreTimersInitated)
         {
-            ClassInstance->UserTask(NULL); // Call the user-defined task directly
+
+            // ======== START USER CODE ======== //
+
+            if (ClassInstance->UserTask) 
+            {
+                ESP_ERROR_CHECK(timer_set_counter_value(WatchdogTimerGroup, WatchdogTimerIndex, 0));
+                ESP_ERROR_CHECK(timer_start(WatchdogTimerGroup, WatchdogTimerIndex));
+
+                ClassInstance->CyclicTaskCounter++;
+                
+                ClassInstance->UserTask(NULL);
+
+                ESP_ERROR_CHECK(timer_pause(WatchdogTimerGroup, WatchdogTimerIndex));
+            }
+
+            // ======== END USER CODE ======== //
+
         }
-        
-        // ======== END USER CODE ======== //
     }
 }
 
-bool IRAM_ATTR TimerClass::CyclicTimerISR(void* arg) 
+void TimerClass::WatchdogTask(void* pvParameters)
 {
-    // Timer Interrupt Logic (Cyclic Timer)
-    ClassInstance->IsrCounter++;
-    
-    // Notify task (deterministic task)
-    xHigherPriorityTaskWoken = pdTRUE;
+    while(true)
+    {
+        ulTaskNotifyTake(pdTRUE, portMAX_DELAY);
 
-    vTaskNotifyGiveFromISR(DeterministicTaskHandle, &xHigherPriorityTaskWoken);
+        if (ClassInstance->AreTimersInitated)
+        {
+            ClassInstance->WatchdogTaskCounter++;
+
+            timer_pause(WatchdogTimerGroup, WatchdogTimerIndex);
+
+            vTaskSuspend(DeterministicTaskHandle);
+
+            if (DeterministicTaskHandle != NULL) 
+            {
+                vTaskDelete(DeterministicTaskHandle);
+                DeterministicTaskHandle = NULL; // Clear the handle
+            }
+
+            DeterministicTaskHandle = xTaskCreateStatic
+            (
+                CyclicTask,                // Task function
+                "Deterministic Task",      // Task name
+                StackSize,                 // Stack depth
+                NULL,                      // Parameters to pass
+                configMAX_PRIORITIES - 2,  // Highest priority
+                StaticTaskStack,           // Preallocated stack memory
+                &StaticTaskTCB             // Preallocated TCB memory
+            );
+
+            timer_set_counter_value(WatchdogTimerGroup, WatchdogTimerIndex, 0);
+
+            if (ClassInstance->IsWatchdogEnabled)
+            {
+                timer_set_alarm(WatchdogTimerGroup, WatchdogTimerIndex, TIMER_ALARM_EN);
+            }
+            
+        }
+    }
+}
+
+bool IRAM_ATTR TimerClass::CyclicISR(void* arg) 
+{
+    ClassInstance->CyclicIsrCounter++;
     
-    portYIELD_FROM_ISR();  
+    xHigherPriorityTaskWoken1 = pdFALSE;
+    vTaskNotifyGiveFromISR(DeterministicTaskHandle, &xHigherPriorityTaskWoken1);
     
+    portYIELD_FROM_ISR(xHigherPriorityTaskWoken1);  
     return true;
 }
 
-bool IRAM_ATTR TimerClass::TimeoutTimerISR(void* arg) 
-{
-    portYIELD_FROM_ISR(); 
+bool IRAM_ATTR TimerClass::WatchdogISR(void* arg) 
+{ 
+    ClassInstance->WatchdogISRCounter++;
+
+    xHigherPriorityTaskWoken2 = pdTRUE;
+    vTaskNotifyGiveFromISR(WatchdogTaskHandle, &xHigherPriorityTaskWoken2);
+
+    portYIELD_FROM_ISR(xHigherPriorityTaskWoken2); 
     return true;
 }
 
@@ -76,14 +137,16 @@ bool IRAM_ATTR TimerClass::TimeoutTimerISR(void* arg)
 //    Setup Functions                                          //
 //=============================================================// 
 
-bool TimerClass::SetupTimer(float CycleTimeInMs, uint16_t Prescalar)
+void TimerClass::SetupTimer(float CycleTimeInMs, float WatchdogTime, uint16_t Prescalar)
 {
     printf("\n");
     ESP_LOGI(TAG, "SetupTimer Executed!");
 
-    ClassInstance->CycleTimeMs = CycleTimeInMs;
+    ClassInstance->CycleTimeMs = CycleTimeInMs; /// 5;
+    ClassInstance->MaxExecutionTimeMs = WatchdogTime;
     ClassInstance->Prescalar = Prescalar;
 
+    // If no task to link with ISR to, block process
     while(DeterministicTaskHandle == NULL)
     {
         vTaskDelay(100);
@@ -101,22 +164,22 @@ bool TimerClass::SetupTimer(float CycleTimeInMs, uint16_t Prescalar)
         //.intr_type = 
     };
 
-    // Start timer
+    // init timer
     timer_init(CyclicTimerGroup, CyclicTimerIndex, &CyclicConfig);
     // Set alarm up
     timer_set_alarm_value(CyclicTimerGroup, CyclicTimerIndex, ((80000000/ClassInstance->Prescalar) * (ClassInstance->CycleTimeMs/1000)));
     // Enable interrupt on timer
     timer_enable_intr(CyclicTimerGroup, CyclicTimerIndex);
     // Link ISR callback for timer
-    timer_isr_callback_add(CyclicTimerGroup, CyclicTimerIndex, CyclicTimerISR, NULL, 0);
+    timer_isr_callback_add(CyclicTimerGroup, CyclicTimerIndex, CyclicISR, NULL, 0);
     // Enable timer
     timer_start(CyclicTimerGroup, CyclicTimerIndex);
     // Enable alarm
     timer_set_alarm(CyclicTimerGroup, CyclicTimerIndex, TIMER_ALARM_EN);
 
 
-    /*// Configure timeout timer
-    timer_config_t TimeoutConfig = 
+    // Configure timeout timer
+    timer_config_t WatchdogConfig = 
     {
         .alarm_en = TIMER_ALARM_EN,
         .counter_en = TIMER_PAUSE,
@@ -127,26 +190,63 @@ bool TimerClass::SetupTimer(float CycleTimeInMs, uint16_t Prescalar)
         //.intr_type =        
     };
 
-    // Start timer
-    timer_init(TimeoutTimerGroup, TimeoutTimerIndex, &TimeoutConfig);
+    // init timer
+    timer_init(WatchdogTimerGroup, WatchdogTimerIndex, &WatchdogConfig);
     // Set alarm value
-    timer_set_alarm_value(TimeoutTimerGroup, TimeoutTimerIndex, (ClassInstance->MaxExecutionTimeMs * 1000));
+    timer_set_alarm_value(WatchdogTimerGroup, WatchdogTimerIndex, ((80000000/ClassInstance->Prescalar) * (ClassInstance->MaxExecutionTimeMs/1000)));
     // Enable interrupt on timer 
-    timer_enable_intr(TimeoutTimerGroup, TimeoutTimerIndex);
+    timer_enable_intr(WatchdogTimerGroup, WatchdogTimerIndex);
     // Link ISR callback for timer
-    timer_isr_callback_add(TimeoutTimerGroup, TimeoutTimerIndex, TimeoutTimerISR, NULL, 0);*/
+    timer_isr_callback_add(WatchdogTimerGroup, WatchdogTimerIndex, WatchdogISR, NULL, 0);
+
+    AreTimersInitated = true;
 
     ESP_LOGI(TAG, "SetupTimer Successful!");
     printf("\n");
-
-    return true;
 }   
 
-void TimerClass::SetupDeterministicTask(void (*TaskToRun)(void*), uint32_t StackDepth)
+void TimerClass::SetupDeterministicTask(void (*TaskToRun)(void*))
 {
+    printf("\n");
+    ESP_LOGI(TAG, "SetupDeterministicTask Executed!");
+
     UserTask = TaskToRun;
 
-    xTaskCreate(DeterministicTask, "Deterministic Task", 2048, NULL, configMAX_PRIORITIES - 1, &DeterministicTaskHandle);
+
+    // Create the task using static memory
+    DeterministicTaskHandle = xTaskCreateStatic
+    (
+        CyclicTask,         // Task function
+        "Deterministic Task",      // Task name
+        StackSize,                 // Stack depth
+        NULL,                      // Parameters to pass
+        configMAX_PRIORITIES - 2,  // Highest priority
+        StaticTaskStack,           // Preallocated stack memory
+        &StaticTaskTCB             // Preallocated TCB memory
+    );
+
+    xTaskCreate
+    (
+        WatchdogTask,
+        "Watchdog Task",
+        512,
+        NULL,
+        configMAX_PRIORITIES - 1,
+        &WatchdogTaskHandle
+    );
+
+    // Check if the task was successfully created
+    if (DeterministicTaskHandle == NULL) 
+    {
+        ESP_LOGI(TAG, "Fucked it Det");
+    }
+    if (WatchdogTaskHandle == NULL)
+    {
+        ESP_LOGI(TAG, "Fucked it wdog");
+    }
+
+    ESP_LOGI(TAG, "SetupDeterministicTask Successful!");
+    printf("\n");
 }
 
 
@@ -155,17 +255,36 @@ void TimerClass::SetupDeterministicTask(void (*TaskToRun)(void*), uint32_t Stack
 //    Get / Set                                                //
 //=============================================================// 
 
-uint64_t TimerClass::GetIsrCounter()
+uint64_t TimerClass::GetCyclicIsrCounter()
 {
-    return IsrCounter;
+    return CyclicIsrCounter;
 }
 
-uint64_t TimerClass::GetTaskCounter()
+uint64_t TimerClass::GetCyclicTaskCounter()
 {
-    return TaskCounter;
+    return CyclicTaskCounter;
+}
+
+uint64_t TimerClass::GetWatchdogIsrCounter()
+{
+    return WatchdogISRCounter;
+}
+
+uint64_t TimerClass::GetWatchdogTaskCounter()
+{
+    return WatchdogTaskCounter;
 }
 
 uint64_t TimerClass::GetTimerFrequency()
 {
     return 80000000/Prescalar;
+}
+
+void TimerClass::SetWatchdogOnOff(bool IsWatchdogEnabled)
+{
+    ClassInstance->IsWatchdogEnabled = IsWatchdogEnabled;
+    if (ClassInstance->IsWatchdogEnabled)
+    {
+        timer_set_alarm(WatchdogTimerGroup, WatchdogTimerIndex, TIMER_ALARM_EN);
+    }
 }
