@@ -17,7 +17,7 @@ WifiClass WifiAp;
 // Hardware Timer
 TimerClass Timer;
 float CycleTime = 0.25;
-float WatchdogTime = 0.01;
+float WatchdogTime = 0.2;
 uint16_t Prescalar = 2;
 
 uint64_t CyclicIsr = 0;
@@ -30,7 +30,7 @@ uint64_t WatchdogIsrPrev = 0;
 uint64_t WatchdogTaskPrev = 0;
 uint64_t MainCounter = 0;
 
-static uint64_t FibIn = 500;
+static uint64_t FibIn = 1350;
 static uint64_t FibOut;
 
 uint64_t Fibonacci(uint64_t n) {
@@ -74,17 +74,7 @@ void Main(void* pvParameters)
 
         MainCounter++;
 
-        printf("%llu", FibOut);
         vTaskDelay(1000 / portTICK_PERIOD_MS);
-
-        if (MainCounter == 5)
-        {
-            Timer.SetWatchdogOnOff(false);
-        }
-        if (MainCounter == 10)
-        {
-            Timer.SetWatchdogOnOff(true);
-        }
     }
 }
 
@@ -99,9 +89,7 @@ extern "C" void app_main()
 {
     //WifiAp.SetupWifiAP();
 
-    Timer.SetupDeterministicTask(DeterministicTask);
-
-    Timer.SetupTimer(CycleTime, WatchdogTime, Prescalar);
+    Timer.SetupCyclicTask(DeterministicTask, CycleTime, WatchdogTime, 2);
 
     xTaskCreate(Main, "Main Task", 2048, NULL, 1, NULL);
 }

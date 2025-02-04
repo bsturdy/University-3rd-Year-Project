@@ -33,6 +33,9 @@ class TimerClass
         static void CyclicTask(void *pvParameters);         // Task called by cyclic ISR. This task calls the user task
         static void WatchdogTask(void *pvParameters);       // Task called by Watchdog ISR. This task resets the cyclic task
 
+        void SetupTimer(float CycleTimeInMs, float WatchdogTime, 
+                        uint16_t Prescalar);                                    // Configures cyclic timer at 80MHz to call cyclic ISR
+
 
 
     protected:
@@ -43,15 +46,14 @@ class TimerClass
         TimerClass();
         ~TimerClass();
 
-        // Timer Functions
-        void SetupTimer(float CycleTimeInMs, float WatchdogTime, uint16_t Prescalar);   // Configures cyclic timer at 80MHz to call cyclic ISR
-        void SetupDeterministicTask(void (*TaskToRun)(void*));       // Takes user-input task and assigns it to UserTask pointer
+        void SetupCyclicTask(void (*TaskToRun)(void*), float CycleTimeInMs, 
+                            float WatchdogTime, uint16_t Prescalar);            // Takes user-input task and assigns it to UserTask pointer
         uint64_t GetCyclicIsrCounter();
         uint64_t GetCyclicTaskCounter();
         uint64_t GetWatchdogIsrCounter();
         uint64_t GetWatchdogTaskCounter();
         uint64_t GetTimerFrequency();
-        void SetWatchdogOnOff(bool IsWatchdogEnabled);
+        void SetWatchdogOnOff(bool IsWatchdogEnabled);                          // Determines if the Watchdog functionality is used or not 
 };
 
 

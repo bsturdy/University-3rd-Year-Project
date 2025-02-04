@@ -2,31 +2,30 @@
 
 
 
-//=============================================================//
-//    Timer Class                                              //
-//=============================================================// 
+//=============================================================================// 
+//                            Timer Class                                      //
+//=============================================================================// 
 
 #define CyclicTimerGroup        TIMER_GROUP_0
 #define CyclicTimerIndex        TIMER_0
 #define WatchdogTimerGroup      TIMER_GROUP_1
 #define WatchdogTimerIndex      TIMER_0
 
-const int TimerClass::StackSize;
 StackType_t TimerClass::StaticTaskStack[StackSize];
 StaticTask_t TimerClass::StaticTaskTCB;
 
 TimerClass* ClassInstance;
-static TaskHandle_t DeterministicTaskHandle = NULL;
-static TaskHandle_t WatchdogTaskHandle = NULL;
-static BaseType_t xHigherPriorityTaskWoken1;
-static BaseType_t xHigherPriorityTaskWoken2;
-static const char *TAG = "Timer Class";
+TaskHandle_t CyclicTaskHandle = NULL;
+TaskHandle_t WatchdogTaskHandle = NULL;
+BaseType_t xHigherPriorityTaskWoken1;
+BaseType_t xHigherPriorityTaskWoken2;
+const char *TAG = "Timer Class";
 
 
 
-//=============================================================//
-//    Constructors, Destructors, Internal Functions            //
-//=============================================================// 
+//=============================================================================//
+//               Constructors, Destructors, Internal Functions                 //
+//=============================================================================// 
 
 TimerClass::TimerClass()
 {
@@ -38,10 +37,12 @@ TimerClass::~TimerClass()
     ;
 }
 
+// Task called by cyclic ISR. This task calls the user task
 void TimerClass::CyclicTask(void* pvParameters) 
 {
     while (true) 
     {
+        // Block until called
         ulTaskNotifyTake(pdTRUE, portMAX_DELAY);
 
         if (ClassInstance->AreTimersInitated)
@@ -67,27 +68,25 @@ void TimerClass::CyclicTask(void* pvParameters)
     }
 }
 
+// Task called by Watchdog ISR. This task resets the cyclic task
 void TimerClass::WatchdogTask(void* pvParameters)
 {
     while(true)
     {
+        // Block until called
         ulTaskNotifyTake(pdTRUE, portMAX_DELAY);
 
         if (ClassInstance->AreTimersInitated)
         {
             ClassInstance->WatchdogTaskCounter++;
 
-            timer_pause(WatchdogTimerGroup, WatchdogTimerIndex);
+            ESP_ERROR_CHECK(timer_pause(WatchdogTimerGroup, WatchdogTimerIndex));
 
-            vTaskSuspend(DeterministicTaskHandle);
+            vTaskDelete(CyclicTaskHandle);
 
-            if (DeterministicTaskHandle != NULL) 
-            {
-                vTaskDelete(DeterministicTaskHandle);
-                DeterministicTaskHandle = NULL; // Clear the handle
-            }
+            CyclicTaskHandle = NULL;
 
-            DeterministicTaskHandle = xTaskCreateStatic
+            CyclicTaskHandle = xTaskCreateStatic
             (
                 CyclicTask,                // Task function
                 "Deterministic Task",      // Task name
@@ -98,28 +97,30 @@ void TimerClass::WatchdogTask(void* pvParameters)
                 &StaticTaskTCB             // Preallocated TCB memory
             );
 
-            timer_set_counter_value(WatchdogTimerGroup, WatchdogTimerIndex, 0);
+            ESP_ERROR_CHECK(timer_set_counter_value(WatchdogTimerGroup, WatchdogTimerIndex, 0));
 
             if (ClassInstance->IsWatchdogEnabled)
             {
-                timer_set_alarm(WatchdogTimerGroup, WatchdogTimerIndex, TIMER_ALARM_EN);
+                ESP_ERROR_CHECK(timer_set_alarm(WatchdogTimerGroup, WatchdogTimerIndex, TIMER_ALARM_EN));
             }
-            
+
         }
     }
 }
 
+// ISR called cyclically by a hardware timer, signals deterministic task to run
 bool IRAM_ATTR TimerClass::CyclicISR(void* arg) 
 {
     ClassInstance->CyclicIsrCounter++;
     
     xHigherPriorityTaskWoken1 = pdFALSE;
-    vTaskNotifyGiveFromISR(DeterministicTaskHandle, &xHigherPriorityTaskWoken1);
+    vTaskNotifyGiveFromISR(CyclicTaskHandle, &xHigherPriorityTaskWoken1);
     
     portYIELD_FROM_ISR(xHigherPriorityTaskWoken1);  
     return true;
 }
 
+// ISR called by a timer triggered in the cyclic task, signals that a task has taken too long and must be terminated
 bool IRAM_ATTR TimerClass::WatchdogISR(void* arg) 
 { 
     ClassInstance->WatchdogISRCounter++;
@@ -133,21 +134,22 @@ bool IRAM_ATTR TimerClass::WatchdogISR(void* arg)
 
 
 
-//=============================================================//
-//    Setup Functions                                          //
-//=============================================================// 
+//=============================================================================// 
+//                           Setup Functions                                   //
+//=============================================================================// 
 
+// Configures cyclic timer at 80MHz to call cyclic ISR
 void TimerClass::SetupTimer(float CycleTimeInMs, float WatchdogTime, uint16_t Prescalar)
 {
     printf("\n");
     ESP_LOGI(TAG, "SetupTimer Executed!");
 
-    ClassInstance->CycleTimeMs = CycleTimeInMs; /// 5;
+    ClassInstance->CycleTimeMs = CycleTimeInMs;
     ClassInstance->MaxExecutionTimeMs = WatchdogTime;
     ClassInstance->Prescalar = Prescalar;
 
-    // If no task to link with ISR to, block process
-    while(DeterministicTaskHandle == NULL)
+    // If cyclic task doesnt exist yet, wait
+    while(CyclicTaskHandle == NULL)
     {
         vTaskDelay(100);
     }
@@ -177,8 +179,7 @@ void TimerClass::SetupTimer(float CycleTimeInMs, float WatchdogTime, uint16_t Pr
     // Enable alarm
     timer_set_alarm(CyclicTimerGroup, CyclicTimerIndex, TIMER_ALARM_EN);
 
-
-    // Configure timeout timer
+    // Configure Watchdog timer
     timer_config_t WatchdogConfig = 
     {
         .alarm_en = TIMER_ALARM_EN,
@@ -205,16 +206,16 @@ void TimerClass::SetupTimer(float CycleTimeInMs, float WatchdogTime, uint16_t Pr
     printf("\n");
 }   
 
-void TimerClass::SetupDeterministicTask(void (*TaskToRun)(void*))
+// Takes user-input task and assigns it to UserTask pointer
+void TimerClass::SetupCyclicTask(void (*TaskToRun)(void*), float CycleTimeInMs, float WatchdogTime, uint16_t Prescalar)
 {
     printf("\n");
-    ESP_LOGI(TAG, "SetupDeterministicTask Executed!");
+    ESP_LOGI(TAG, "SetupCyclicTask Executed!");
 
     UserTask = TaskToRun;
 
-
-    // Create the task using static memory
-    DeterministicTaskHandle = xTaskCreateStatic
+    // Create the task in static location
+    CyclicTaskHandle = xTaskCreateStatic
     (
         CyclicTask,         // Task function
         "Deterministic Task",      // Task name
@@ -236,24 +237,26 @@ void TimerClass::SetupDeterministicTask(void (*TaskToRun)(void*))
     );
 
     // Check if the task was successfully created
-    if (DeterministicTaskHandle == NULL) 
+    if (CyclicTaskHandle == NULL) 
     {
-        ESP_LOGI(TAG, "Fucked it Det");
+        ESP_LOGI(TAG, "Failed To Create CyclicTask");
     }
     if (WatchdogTaskHandle == NULL)
     {
-        ESP_LOGI(TAG, "Fucked it wdog");
+        ESP_LOGI(TAG, "Failed To Create Watchdog Task");
     }
 
-    ESP_LOGI(TAG, "SetupDeterministicTask Successful!");
+    ESP_LOGI(TAG, "SetupCyclicTask Successful!");
     printf("\n");
+
+    ClassInstance->SetupTimer(CycleTimeInMs, WatchdogTime, Prescalar);
 }
 
 
 
-//=============================================================//
-//    Get / Set                                                //
-//=============================================================// 
+//=============================================================================// 
+//                             Get / Set                                       //
+//=============================================================================// 
 
 uint64_t TimerClass::GetCyclicIsrCounter()
 {
@@ -280,6 +283,7 @@ uint64_t TimerClass::GetTimerFrequency()
     return 80000000/Prescalar;
 }
 
+// Determines if the Watchdog functionality is used or not 
 void TimerClass::SetWatchdogOnOff(bool IsWatchdogEnabled)
 {
     ClassInstance->IsWatchdogEnabled = IsWatchdogEnabled;
