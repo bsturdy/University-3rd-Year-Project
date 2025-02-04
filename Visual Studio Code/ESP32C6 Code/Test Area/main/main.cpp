@@ -17,7 +17,7 @@ WifiClass WifiAp;
 // Hardware Timer
 TimerClass Timer;
 float CycleTime = 0.25;
-float WatchdogTime = 0.2;
+float WatchdogTime = 0.225;
 uint16_t Prescalar = 2;
 
 uint64_t CyclicIsr = 0;
