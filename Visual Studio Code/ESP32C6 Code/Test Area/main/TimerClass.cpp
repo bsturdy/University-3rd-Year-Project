@@ -27,7 +27,7 @@ const char *TAG = "Timer Class";
 
 
 //=============================================================================//
-//               Constructors, Destructors, Internal Functions                 //
+//            Constructors, Destructors, Internal Functions                    //
 //=============================================================================// 
 
 // Constructor.

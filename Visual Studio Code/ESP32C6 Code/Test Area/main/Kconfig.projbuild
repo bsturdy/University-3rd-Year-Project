@@ -1,4 +1,4 @@
-menu "Example Configuration"
+menu "Wifi Configuration"
 
     config ESP_WIFI_SSID
         string "WiFi SSID"
@@ -23,4 +23,9 @@ menu "Example Configuration"
         default 4
         help
             Max number of the STA connects to AP.
+endmenu
+
+menu "LED Configuration"
+
+   
 endmenu
