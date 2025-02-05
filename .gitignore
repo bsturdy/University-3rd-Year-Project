@@ -22,7 +22,6 @@ __pycache__/
 *.cmake
 CMakeCache.txt
 *.cmake.sh
-components/
 partitions.csv
 partition_table/
 
