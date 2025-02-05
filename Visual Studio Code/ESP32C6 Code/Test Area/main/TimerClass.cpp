@@ -228,7 +228,7 @@ void TimerClass::SetupTimer(float CycleTimeInMs, float WatchdogTime, uint16_t Pr
     printf("\n");
 }   
 
-// Takes user-input task and assigns it to UserTask pointer.
+// Takes a task input and converts it into a cyclically executed task with watchdog protection
 void TimerClass::SetupCyclicTask(void (*TaskToRun)(void*), float CycleTimeInMs, float WatchdogTime, uint16_t Prescalar)
 {
     printf("\n");

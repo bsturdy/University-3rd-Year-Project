@@ -50,7 +50,7 @@ class TimerClass
         ~TimerClass();
 
         void SetupCyclicTask(void (*TaskToRun)(void*), float CycleTimeInMs, 
-                            float WatchdogTime, uint16_t Prescalar);            // Takes user-input task and assigns it to UserTask pointer
+                            float WatchdogTime, uint16_t Prescalar);            // Takes a task input and converts it into a cyclically executed task with watchdog protection
         uint64_t GetCyclicIsrCounter();
         uint64_t GetCyclicTaskCounter();
         uint64_t GetWatchdogIsrCounter();
