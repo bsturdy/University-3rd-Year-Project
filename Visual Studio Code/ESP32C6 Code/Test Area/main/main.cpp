@@ -4,7 +4,8 @@
 //    Main Program                                             //
 //=============================================================// 
 
-
+#include "freertos/FreeRTOS.h"
+#include "freertos/task.h"
 #include "WifiClass.h"
 #include "TimerClass.h"
 #include "GpioConfig.h"
@@ -85,12 +86,45 @@ void CyclicUserTask(void* pvParameters)
 
 
 extern "C" void app_main()
-{
-    WifiAp.SetupWifiAP();
+{ 
+    uint8_t State = 0;
+        
+    while(true)
+    {
+        switch (State)
+        {
+            case 0:
+                if (WifiAp.SetupWifiAP())
+                {
+                    State = 1;
+                }
+                break;
 
-    SetupNeopixel(8, 1);
+            case 1:
+                if (WifiAp.SetupEspNow())
+                {
+                    State = 2;
+                }
+                break;
 
-    Timer.SetupCyclicTask(CyclicUserTask, CycleTime, WatchdogTime, 2);
+            case 2:
+                if (SetupNeopixel(8, 1))
+                {
+                    State = 3;
+                }
+                break;
 
-    xTaskCreate(Main, "Main Task", 2048, NULL, 1, NULL);
+            case 3:
+                if (Timer.SetupCyclicTask(CyclicUserTask, CycleTime, WatchdogTime, 2))
+                {
+                    State = 4;
+                }
+                break;
+
+            case 4:
+                xTaskCreate(Main, "Main Task", 2048, NULL, 1, NULL);
+                vTaskDelete(NULL);
+                break;
+        }
+    }
 }

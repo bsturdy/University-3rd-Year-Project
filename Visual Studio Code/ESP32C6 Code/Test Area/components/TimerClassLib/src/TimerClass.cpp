@@ -160,7 +160,7 @@ bool IRAM_ATTR TimerClass::WatchdogISR(void* arg)
 //=============================================================================// 
 
 // Configures cyclic timer at 80MHz to call cyclic ISR.
-void TimerClass::SetupTimer(float CycleTimeInMs, float WatchdogTime, uint16_t Prescalar)
+bool TimerClass::SetupTimer(float CycleTimeInMs, float WatchdogTime, uint16_t Prescalar)
 {
     printf("\n");
     ESP_LOGI(TAG, "SetupTimer Executed!");
@@ -226,10 +226,12 @@ void TimerClass::SetupTimer(float CycleTimeInMs, float WatchdogTime, uint16_t Pr
 
     ESP_LOGI(TAG, "SetupTimer Successful!");
     printf("\n");
+
+    return true;
 }   
 
 // Takes a task input and converts it into a cyclically executed task with watchdog protection
-void TimerClass::SetupCyclicTask(void (*TaskToRun)(void*), float CycleTimeInMs, float WatchdogTime, uint16_t Prescalar)
+bool TimerClass::SetupCyclicTask(void (*TaskToRun)(void*), float CycleTimeInMs, float WatchdogTime, uint16_t Prescalar)
 {
     printf("\n");
     ESP_LOGI(TAG, "SetupCyclicTask Executed!");
@@ -276,7 +278,7 @@ void TimerClass::SetupCyclicTask(void (*TaskToRun)(void*), float CycleTimeInMs, 
     printf("\n");
 
     // Initiate the timers after the tasks are created
-    ClassInstance->SetupTimer(CycleTimeInMs, WatchdogTime, Prescalar);
+    return ClassInstance->SetupTimer(CycleTimeInMs, WatchdogTime, Prescalar);
 }
 
 

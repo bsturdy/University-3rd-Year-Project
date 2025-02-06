@@ -12,8 +12,8 @@
 static uint8_t LedState = 0;
 static led_strip_handle_t LedStrip;
 
-void SetupOutputPin(uint8_t Pin, gpio_pullup_t PullUp, gpio_pulldown_t PullDown);
-void SetupNeopixel(uint8_t Pin, uint16_t Length);
+bool SetupOutputPin(uint8_t Pin, gpio_pullup_t PullUp, gpio_pulldown_t PullDown);
+bool SetupNeopixel(uint8_t Pin, uint16_t Length);
 void OnboardLedColour(uint8_t R, uint8_t G, uint8_t B);
 
 #endif

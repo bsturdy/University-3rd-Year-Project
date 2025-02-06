@@ -1,7 +1,19 @@
 #include "GpioConfig.h"
 
-void SetupOutputPin(uint8_t Pin, gpio_pullup_t PullUp, gpio_pulldown_t PullDown)
+
+
+//=============================================================//
+//    GPIO                                                     //
+//=============================================================// 
+
+static const char *TAG = "GPIO";
+
+
+bool SetupOutputPin(uint8_t Pin, gpio_pullup_t PullUp, gpio_pulldown_t PullDown)
 {
+    printf("\n");
+    ESP_LOGI(TAG, "SetupOutputPin Executed! Pin Number: %d", Pin);
+
     gpio_config_t Config =
     {
         .pin_bit_mask = (1ULL << Pin),
@@ -12,11 +24,18 @@ void SetupOutputPin(uint8_t Pin, gpio_pullup_t PullUp, gpio_pulldown_t PullDown)
     };
 
     gpio_config(&Config);
+
+    ESP_LOGI(TAG, "SetupOutputPin Successful!");
+    printf("\n");
+
+    return true;
 }
 
-void SetupNeopixel(uint8_t Pin, uint16_t Length)
+bool SetupNeopixel(uint8_t Pin, uint16_t Length)
 {
-    //ESP_LOGI(TAG, "Example configured to blink addressable LED!");
+    printf("\n");
+    ESP_LOGI(TAG, "SetupNeopixel Executed! Pin Number: %d", Pin);
+
     led_strip_config_t StripConfig = 
     {
         .strip_gpio_num = Pin,
@@ -33,6 +52,11 @@ void SetupNeopixel(uint8_t Pin, uint16_t Length)
 
     /* Set all LED off to clear all pixels */
     led_strip_clear(LedStrip);
+
+    ESP_LOGI(TAG, "SetupNeopixel Successful!");
+    printf("\n");
+
+    return true;
 }
 
 void OnboardLedColour(uint8_t R, uint8_t G, uint8_t B)

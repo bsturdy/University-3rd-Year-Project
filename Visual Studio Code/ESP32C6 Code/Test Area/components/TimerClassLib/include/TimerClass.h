@@ -4,7 +4,6 @@
 #include "driver/timer.h"
 #include "freertos/FreeRTOS.h"
 #include "freertos/task.h"
-#include "freertos/semphr.h"
 #include "esp_log.h"
 #include "esp_timer.h"
 
@@ -36,7 +35,7 @@ class TimerClass
         static void CyclicTask(void *pvParameters);                 // Task called by cyclic ISR. This task calls the user task
         static void WatchdogTask(void *pvParameters);               // Task called by Watchdog ISR. This task resets the cyclic task
 
-        void SetupTimer(float CycleTimeInMs, float WatchdogTime, 
+        bool SetupTimer(float CycleTimeInMs, float WatchdogTime, 
                         uint16_t Prescalar);                        // Configures cyclic timer at 80MHz to call cyclic ISR
 
 
@@ -49,7 +48,7 @@ class TimerClass
         TimerClass();
         ~TimerClass();
 
-        void SetupCyclicTask(void (*TaskToRun)(void*), float CycleTimeInMs, 
+        bool SetupCyclicTask(void (*TaskToRun)(void*), float CycleTimeInMs, 
                             float WatchdogTime, uint16_t Prescalar);            // Takes a task input and converts it into a cyclically executed task with watchdog protection
         uint64_t GetCyclicIsrCounter();
         uint64_t GetCyclicTaskCounter();

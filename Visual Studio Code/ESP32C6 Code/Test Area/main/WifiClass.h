@@ -2,13 +2,14 @@
 #define WifiClass_H
 
 #include "freertos/FreeRTOS.h"
-#include "freertos/task.h"
+//#include "freertos/task.h"
 #include "esp_log.h"
 #include "esp_mac.h"
 #include "esp_wifi.h"
 #include "esp_event.h"
 #include "esp_log.h"
 #include "esp_timer.h" 
+#include "esp_now.h"
 #include <string.h>
 #include <vector>
 #include <algorithm>
@@ -34,12 +35,12 @@ class WifiClass
         WifiClass();
         ~WifiClass();
 
-        // AP Functions
         bool SetupWifiAP();
-        int GetNumClientsConnected();
+        bool SetupWifiClient();   
+        bool SetupEspNow(); 
+        bool EspNowRegisterDevice(ClientDevice DeviceConnected);
 
-        // Client Functions
-        bool SetupWifiClient();
+        size_t GetNumClientsConnected();
         bool GetIsConnectedToHost();
 };
 
