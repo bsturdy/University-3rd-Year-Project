@@ -21,6 +21,7 @@ struct ClientDevice
 {
     uint64_t TimeOfConnection;
     uint8_t MacId[6];
+    bool IsRegisteredWithEspNow;
 };
 
 class WifiClass
@@ -30,6 +31,14 @@ class WifiClass
                                     int32_t event_id, void* event_data);
 
         std::vector<ClientDevice> DeviceList;
+        
+        QueueHandle_t DeviceQueue;
+        static void EspNowTask(void *pvParameters);
+        static const int EspNowStackSize = 2048;                    
+        static StackType_t EspNowTaskStack[EspNowStackSize];       
+        static StaticTask_t EspNowTaskTCB;  
+        bool EspNowRegisterDevice(ClientDevice* DeviceToRegister);
+        bool EspNowDeleteDevice(ClientDevice* DeviceToDelete); 
 
     public:
         WifiClass();
@@ -38,7 +47,6 @@ class WifiClass
         bool SetupWifiAP();
         bool SetupWifiClient();   
         bool SetupEspNow(); 
-        bool EspNowRegisterDevice(ClientDevice DeviceConnected);
 
         size_t GetNumClientsConnected();
         bool GetIsConnectedToHost();

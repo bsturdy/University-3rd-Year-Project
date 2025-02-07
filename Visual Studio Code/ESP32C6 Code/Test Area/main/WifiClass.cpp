@@ -15,6 +15,10 @@ static WifiClass* ClassInstance;
 
 static const char *TAG = "Wifi Class";
 
+TaskHandle_t EspNowTaskHandle = NULL;
+StackType_t WifiClass::EspNowTaskStack[EspNowStackSize];
+StaticTask_t WifiClass::EspNowTaskTCB;
+
 
 
 //=============================================================================//
@@ -24,6 +28,7 @@ static const char *TAG = "Wifi Class";
 WifiClass::WifiClass()
 {
     ClassInstance = this;
+    DeviceQueue = NULL;
 }
 
 WifiClass::~WifiClass()
@@ -34,36 +39,86 @@ WifiClass::~WifiClass()
 void WifiClass::wifi_event_handler(void* arg, esp_event_base_t event_base,
                                     int32_t event_id, void* event_data)
 {
-    WifiClass* Instance = static_cast<WifiClass*>(arg);
-
     if (event_id == WIFI_EVENT_AP_STACONNECTED) 
     {
         wifi_event_ap_staconnected_t* event = (wifi_event_ap_staconnected_t*) event_data;
-        ESP_LOGI(TAG, "station "MACSTR" join, AID=%d",
+        ESP_LOGI(TAG, "Station "MACSTR" join, AID=%d",
                  MAC2STR(event->mac), event->aid);
    
         ClientDevice NewDevice;
         NewDevice.TimeOfConnection = esp_timer_get_time();
         memcpy(NewDevice.MacId, event->mac, sizeof(NewDevice.MacId));
-        Instance->DeviceList.push_back(NewDevice);
+        NewDevice.IsRegisteredWithEspNow = false;
+        ClassInstance->DeviceList.push_back(NewDevice);
+
+        BaseType_t higherPriorityTaskWoken = pdFALSE;
+        xQueueSendFromISR(ClassInstance->DeviceQueue, &NewDevice, &higherPriorityTaskWoken);
     } 
     
     else if (event_id == WIFI_EVENT_AP_STADISCONNECTED) 
     {
         wifi_event_ap_stadisconnected_t* event = (wifi_event_ap_stadisconnected_t*) event_data;
-        ESP_LOGI(TAG, "station "MACSTR" leave, AID=%d, reason=%d",
+        ESP_LOGI(TAG, "Station "MACSTR" leave, AID=%d, reason=%d",
                  MAC2STR(event->mac), event->aid, event->reason);
 
-        auto it = std::find_if(Instance->DeviceList.begin(), Instance->DeviceList.end(),
+        auto it = std::find_if(ClassInstance->DeviceList.begin(), ClassInstance->DeviceList.end(),
                                 [event](const ClientDevice& device)
                                 {
                                     return memcmp(device.MacId, event->mac, sizeof(device.MacId)) == 0;
                                 });
-        if (it != Instance->DeviceList.end()) 
+        
+        if (it != ClassInstance->DeviceList.end()) 
         {
             // Device found, remove it
-            Instance->DeviceList.erase(it);  
-        }       
+            ClientDevice TempDevice = *it;
+
+            TempDevice.IsRegisteredWithEspNow = true;
+
+            ClassInstance->DeviceList.erase(it);  
+
+            BaseType_t higherPriorityTaskWoken = pdFALSE;
+
+            xQueueSendFromISR(ClassInstance->DeviceQueue, &TempDevice, &higherPriorityTaskWoken);
+        }
+    }
+}
+
+void WifiClass::EspNowTask(void *pvParameters)
+{
+    ClientDevice DeviceToAction;
+
+    while(true)
+    {
+        if ((xQueueReceive(ClassInstance->DeviceQueue, &DeviceToAction, portMAX_DELAY) == pdPASS))
+        {
+            printf("\n");
+            ESP_LOGI(TAG, "EspNowTask Executed!");
+
+            if (!DeviceToAction.IsRegisteredWithEspNow)
+            {
+                ESP_LOGI(TAG, "Processing new device registration in ESP-NOW task for MAC: " 
+                        MACSTR, MAC2STR(DeviceToAction.MacId));
+
+                if (!ClassInstance->EspNowRegisterDevice(&DeviceToAction))
+                {
+                    ESP_LOGE(TAG, "Failed to register device with ESP-NOW");
+                }
+            }
+
+            else if (DeviceToAction.IsRegisteredWithEspNow)
+            {
+                ESP_LOGI(TAG, "Deleting device registration in ESP-NOW task for MAC: " 
+                        MACSTR, MAC2STR(DeviceToAction.MacId));
+
+                if (!ClassInstance->EspNowDeleteDevice(&DeviceToAction))
+                {
+                    ESP_LOGE(TAG, "Failed to Delete device with ESP-NOW");
+                }
+            }
+
+            ESP_LOGI(TAG, "EspNowTask Successful!");
+            printf("\n");
+        }
     }
 }
 
@@ -182,6 +237,7 @@ bool WifiClass::SetupEspNow()
       ret = nvs_flash_init();
     }
     ESP_ERROR_CHECK(ret);
+    ESP_LOGI(TAG, "NVS Ready!");
 
     // Initialize ESP-NOW
     esp_err_t init_status = esp_now_init();
@@ -190,13 +246,36 @@ bool WifiClass::SetupEspNow()
         ESP_LOGE(TAG, "ESP-NOW initialization failed: %s", esp_err_to_name(init_status));
         return false;
     }
+    ESP_LOGI(TAG, "ESP-Now Ready!");
+
+    // Create a queue for handling ESP-NOW device registration
+    DeviceQueue = xQueueCreate(10, sizeof(ClientDevice));
+    if (DeviceQueue == NULL)
+    {
+        ESP_LOGE(TAG, "Failed to create deviceQueue!");
+        return false;
+    }
+    ESP_LOGI(TAG, "DeviceQueue Ready!");
+
+    // Create a FreeRTOS task to handle ESP-NOW registration
+    EspNowTaskHandle = xTaskCreateStatic
+    (
+        EspNowTask, 
+        "ESP-Now Task",
+        EspNowStackSize,
+        ClassInstance,
+        5,
+        EspNowTaskStack,
+        &EspNowTaskTCB
+    );
+    ESP_LOGI(TAG, "EspNowTask Ready!");
 
     ESP_LOGI(TAG, "SetupEspNow Successful!");
     printf("\n");
     return true;
 }
 
-bool WifiClass::EspNowRegisterDevice(ClientDevice DeviceConnected)
+bool WifiClass::EspNowRegisterDevice(ClientDevice* DeviceToRegister)
 {
     printf("\n");
     ESP_LOGI(TAG, "EspNowRegisterDevice Executed!");
@@ -206,17 +285,17 @@ bool WifiClass::EspNowRegisterDevice(ClientDevice DeviceConnected)
 
     uint8_t peerMacAddr[] = 
     {
-        DeviceConnected.MacId[0], 
-        DeviceConnected.MacId[1],
-        DeviceConnected.MacId[2],
-        DeviceConnected.MacId[3],
-        DeviceConnected.MacId[4],
-        DeviceConnected.MacId[5]
+        DeviceToRegister->MacId[0], 
+        DeviceToRegister->MacId[1],
+        DeviceToRegister->MacId[2],
+        DeviceToRegister->MacId[3],
+        DeviceToRegister->MacId[4],
+        DeviceToRegister->MacId[5]
     };
 
     ESP_LOGI(TAG, "Registering device with MAC address: %02x:%02x:%02x:%02x:%02x:%02x",
-         peerMacAddr[0], peerMacAddr[1], peerMacAddr[2],
-         peerMacAddr[3], peerMacAddr[4], peerMacAddr[5]);
+            peerMacAddr[0], peerMacAddr[1], peerMacAddr[2],
+            peerMacAddr[3], peerMacAddr[4], peerMacAddr[5]);
 
     memcpy(peerInfo.peer_addr, peerMacAddr, 6);    
 
@@ -230,10 +309,49 @@ bool WifiClass::EspNowRegisterDevice(ClientDevice DeviceConnected)
         return false;
     }
 
+    DeviceToRegister->IsRegisteredWithEspNow = true;
+
     ESP_LOGI(TAG, "EspNowRegisterDevice Successful!");
     printf("\n");
     return true;
 }
+
+bool WifiClass::EspNowDeleteDevice(ClientDevice* DeviceToDelete)
+{
+    printf("\n");
+    ESP_LOGI(TAG, "EspNowDeleteDevice Executed!");
+
+    // Prepare the MAC address for logging and deletion.
+    uint8_t peerMacAddr[] = 
+    {
+        DeviceToDelete->MacId[0],
+        DeviceToDelete->MacId[1],
+        DeviceToDelete->MacId[2],
+        DeviceToDelete->MacId[3],
+        DeviceToDelete->MacId[4],
+        DeviceToDelete->MacId[5]
+    };
+
+    ESP_LOGI(TAG, "Deleting device with MAC address: %02x:%02x:%02x:%02x:%02x:%02x",
+            peerMacAddr[0], peerMacAddr[1], peerMacAddr[2],
+            peerMacAddr[3], peerMacAddr[4], peerMacAddr[5]);
+
+    // Call the ESP-NOW deletion function.
+    esp_err_t del_peer_status = esp_now_del_peer(peerMacAddr);
+    if (del_peer_status != ESP_OK)
+    {
+        ESP_LOGE(TAG, "Failed to delete peer: %s", esp_err_to_name(del_peer_status));
+        return false;
+    }
+
+    DeviceToDelete->IsRegisteredWithEspNow = false;
+
+    ESP_LOGI(TAG, "EspNowDeleteDevice Successful!");
+    printf("\n");
+    return true;
+}
+
+
 
 //=============================================================================// 
 //                             Get / Set                                       //
