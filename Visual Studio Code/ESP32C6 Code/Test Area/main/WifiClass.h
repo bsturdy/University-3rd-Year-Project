@@ -69,8 +69,10 @@ class WifiClass
         ~WifiClass();
 
         bool SetupWifiAP(uint16_t UdpPort, uint16_t Timeout);
-        bool SetupWifiSta(uint16_t UdpPort);   
+        bool SetupWifiSta(uint16_t UdpPort, uint16_t Timeout);   
         bool SetupEspNow(); 
+
+        bool SendUdpPacket(const char* data, const char* dest_ip, uint16_t dest_port);
 
         size_t GetNumClientsConnected();
         bool GetIsConnectedToHost();

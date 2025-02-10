@@ -525,7 +525,7 @@ bool WifiClass::SetupWifiAP(uint16_t UdpPort, uint16_t Timeout)
     return true;
 }
 
-bool WifiClass::SetupWifiSta(uint16_t UdpPort)
+bool WifiClass::SetupWifiSta(uint16_t UdpPort, uint16_t Timeout)
 {
     printf("\n");
     ESP_LOGI(TAG, "SetupWifiSta Executed!");
@@ -654,7 +654,7 @@ bool WifiClass::SetupWifiSta(uint16_t UdpPort)
     ESP_LOGI(TAG, "10 - Wi-Fi Station Started!");
 
 
-    ret = esp_wifi_set_inactive_time(WIFI_IF_AP, 3);
+    ret = esp_wifi_set_inactive_time(WIFI_IF_STA, Timeout);
     if (ret != ESP_OK)
     {
         ESP_LOGE(TAG, "Failed to set Inactive Timer: %s", esp_err_to_name(ret));
@@ -669,6 +669,51 @@ bool WifiClass::SetupWifiSta(uint16_t UdpPort)
         return false;
     }
     ESP_LOGI(TAG, "12 - UDP Socket Bound!");
+
+
+    UdpPollingTaskHandle = xTaskCreateStatic
+    (
+        UdpPollingTask,                     // Task function
+        "Udp Polling Task",                 // Task name
+        UdpPollingTaskStackSize,            // Stack depth
+        NULL,                               // Parameters to pass
+        1,                                  // Low priority
+        UdpPollingTaskStack,                // Preallocated stack memory
+        &UdpPollingTaskTCB                  // Preallocated TCB memory
+    );   
+    if (UdpPollingTaskHandle == NULL)
+    {
+        ESP_LOGE(TAG, "Failed to create UDP polling task");
+        return false;
+    }
+    ESP_LOGI(TAG, "13 - UDP Polling Task Created!");
+
+
+    UdpProcessingQueue = xQueueCreate(10, sizeof(int)); 
+    if (UdpProcessingQueue == NULL) 
+    {
+        ESP_LOGE(TAG, "Failed to create UDP queue");
+        return false;
+    }
+    ESP_LOGI(TAG, "14 - UdpProcessingQueue Ready!");
+
+
+    UdpProcessingTaskHandle = xTaskCreateStatic
+    (
+        UdpProcessingTask,                      // Task function
+        "Udp Processing Task",                  // Task name
+        UdpProcessingTaskStackSize,             // Stack depth
+        NULL,                                   // Parameters to pass
+        configMAX_PRIORITIES - 5,               // High priority
+        UdpProcessingTaskStack,                 // Preallocated stack memory
+        &UdpProcessingTaskTCB                   // Preallocated TCB memory
+    );   
+    if (UdpProcessingTaskHandle == NULL)
+    {
+        ESP_LOGE(TAG, "Failed to create UDP processing task");
+        return false;
+    }
+    ESP_LOGI(TAG, "15 - UDP Processing Task Created!");
 
 
     ESP_LOGI(TAG, "Connecting to SSID: %s", WIFI_SSID);
@@ -729,6 +774,42 @@ bool WifiClass::SetupEspNow()
 
     ESP_LOGI(TAG, "SetupEspNow Successful!");
     printf("\n");
+    return true;
+}
+
+
+
+//=============================================================================// 
+//                             Commands                                        //
+//=============================================================================//
+
+bool WifiClass::SendUdpPacket(const char* Data, const char* DestinationIP, uint16_t DestinationPort)
+{
+    struct sockaddr_in DestinationAddress;
+
+    memset(&DestinationAddress, 0, sizeof(DestinationAddress));
+
+    DestinationAddress.sin_family = AF_INET;
+
+    if (inet_pton(AF_INET, DestinationIP, &DestinationAddress.sin_addr) <= 0)
+    {
+        ESP_LOGE(TAG, "Invalid IP address: %s", DestinationIP);
+        return false;
+    }
+
+    DestinationAddress.sin_port = htons(DestinationPort);
+
+    int SentBytes = sendto(UdpSocketFD, Data, strlen(Data), 0, (struct sockaddr*)&DestinationAddress, sizeof(DestinationAddress));
+
+    if (SentBytes < 0)
+    {
+        ESP_LOGE(TAG, "Failed to send UDP packet, error = %d", errno);
+        return false;
+    }
+    else
+    {
+        ESP_LOGI(TAG, "Sent UDP packet, length = %d bytes", SentBytes);
+    }
     return true;
 }
 

@@ -15,13 +15,13 @@ static const char *TAG = "Main";
 
 // Wifi
 WifiClass Wifi;
-bool IsAccessPoint = true;
+bool IsAccessPoint = false;
 
 
 // Hardware Timer
 TimerClass Timer;
-float CycleTime = 1;
-float WatchdogTime = 0.7;
+float CycleTime = 10;
+float WatchdogTime = 7;
 uint16_t Prescalar = 2;
 
 uint64_t CyclicIsr = 0;
@@ -120,18 +120,15 @@ void CyclicUserTaskSta(void* pvParameters)
     switch (CyclicState)
     {
         case 0:
-            if (CyclicCounter % 1 == 0)
-            {
-                //OnboardLedColour(0, 0, 0);
-            }
-            if (CyclicCounter % 3 == 0)
-            {
-                //OnboardLedColour(0, 0, 120);
-            }
             break;
 
         case 1:
-            //OnboardLedColour(0, 0, 120);
+
+            if (CyclicCounter == 0)
+            {
+                ESP_LOGI(TAG, "State 1");
+                Wifi.SendUdpPacket("Test Packet", "192.168.4.1", 25000);
+            }
             break;
 
         case 2:
@@ -142,6 +139,10 @@ void CyclicUserTaskSta(void* pvParameters)
     }
 
     CyclicCounter++;
+    if (CyclicCounter >= 100)
+    {
+        CyclicCounter = 0;
+    }
 }
 
 
@@ -167,7 +168,7 @@ extern "C" void app_main()
                 }
                 else
                 {
-                    if (Wifi.SetupWifiSta(25000))
+                    if (Wifi.SetupWifiSta(25000, 10))
                     {
                         State = 1;
                     }
