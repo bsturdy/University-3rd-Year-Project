@@ -16,6 +16,8 @@
 #include "nvs_flash.h"
 #include "lwip/err.h"
 #include "lwip/sys.h"
+#include <sys/socket.h>
+
 
 struct ClientDevice
 {
@@ -27,12 +29,16 @@ struct ClientDevice
 class WifiClass
 {
     private:
-        static void wifi_event_handler(void* arg, esp_event_base_t event_base,
+        static void WifiEventHandlerAp(void* arg, esp_event_base_t event_base,
+                                    int32_t event_id, void* event_data);
+
+        static void WifiEventHandlerSta(void* arg, esp_event_base_t event_base,
                                     int32_t event_id, void* event_data);
 
         std::vector<ClientDevice> DeviceList;
+        bool IsConnectedToAP;
         
-        QueueHandle_t DeviceQueue;
+        QueueHandle_t EspNowDeviceQueue;
         static void EspNowTask(void *pvParameters);
         static const int EspNowStackSize = 2048;                    
         static StackType_t EspNowTaskStack[EspNowStackSize];       
@@ -40,12 +46,30 @@ class WifiClass
         bool EspNowRegisterDevice(ClientDevice* DeviceToRegister);
         bool EspNowDeleteDevice(ClientDevice* DeviceToDelete); 
 
+        bool SetupUdpSocket(uint16_t UDP_PORT);
+        struct sockaddr_in UdpServerAddress;
+        socklen_t UdpAddressLength = sizeof(UdpServerAddress);
+        char UdpBuffer[1024];
+        int UdpSocketFD;
+
+        static void UdpPollingTask (void *pvParameters);
+        static const int UdpPollingTaskStackSize = 2048;                  
+        static StackType_t UdpPollingTaskStack[UdpPollingTaskStackSize];    
+        static StaticTask_t UdpPollingTaskTCB;
+        static void UdpProcessingTask(void* pvParameters);   
+        static const int UdpProcessingTaskStackSize = 2048;                  
+        static StackType_t UdpProcessingTaskStack[UdpProcessingTaskStackSize];    
+        static StaticTask_t UdpProcessingTaskTCB;
+        QueueHandle_t UdpProcessingQueue;
+
+
+
     public:
         WifiClass();
         ~WifiClass();
 
-        bool SetupWifiAP();
-        bool SetupWifiClient();   
+        bool SetupWifiAP(uint16_t UdpPort, uint16_t Timeout);
+        bool SetupWifiSta(uint16_t UdpPort);   
         bool SetupEspNow(); 
 
         size_t GetNumClientsConnected();

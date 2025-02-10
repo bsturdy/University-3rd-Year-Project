@@ -14,7 +14,7 @@ menu "Wifi Configuration"
     config ESP_WIFI_CHANNEL
         int "WiFi Channel"
         range 1 13
-        default 1
+        default 6
         help
             WiFi channel (network channel) for the example to use.
 
@@ -23,9 +23,4 @@ menu "Wifi Configuration"
         default 4
         help
             Max number of the STA connects to AP.
-endmenu
-
-menu "LED Configuration"
-
-   
 endmenu

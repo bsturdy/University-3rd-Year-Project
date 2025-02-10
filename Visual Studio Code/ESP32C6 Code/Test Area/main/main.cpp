@@ -11,15 +11,17 @@
 #include "GpioConfig.h"
 #include <cmath>
 
+static const char *TAG = "Main";
 
 // Wifi
-WifiClass WifiAp;
+WifiClass Wifi;
+bool IsAccessPoint = true;
 
 
 // Hardware Timer
 TimerClass Timer;
 float CycleTime = 1;
-float WatchdogTime = 0.8;
+float WatchdogTime = 0.7;
 uint16_t Prescalar = 2;
 
 uint64_t CyclicIsr = 0;
@@ -32,7 +34,7 @@ uint64_t WatchdogIsrPrev = 0;
 uint64_t WatchdogTaskPrev = 0;
 uint64_t MainCounter = 0;
 
-
+TaskHandle_t MainHandle;
 void Main(void* pvParameters)
 {
     while(1)
@@ -49,7 +51,7 @@ void Main(void* pvParameters)
         printf("    Cyclic Task:                 %llu\n", (CyclicTask - CyclicTaskPrev));        
         printf("    Watchdog ISR:                %llu\n", (WatchdogIsr - WatchdogIsrPrev));
         printf("    Watchdog Task:               %llu\n\n", (WatchdogTask - WatchdogTaskPrev));
-        printf("    Number of devices connected: %d\n", WifiAp.GetNumClientsConnected());
+        printf("    Number of devices connected: %d\n", Wifi.GetNumClientsConnected());
         printf("=============================================\n");
 
         CyclicIsrPrev = CyclicIsr;
@@ -64,21 +66,79 @@ void Main(void* pvParameters)
 }
 
 uint64_t CyclicCounter = 0;
-void CyclicUserTask(void* pvParameters)
+uint8_t CyclicState = 0;
+void CyclicUserTaskAp(void* pvParameters)
 {
     if (CyclicCounter >= 1000)
     {
         CyclicCounter = 0;
     }
 
-    if (CyclicCounter == 0)
+    switch (CyclicState)
     {
-        OnboardLedColour(120, 60, 0);
+        case 0:
+            if (CyclicCounter == 0)
+            {
+                //OnboardLedColour(120, 60, 0);
+            }
+            if (CyclicCounter == 500)
+            {
+                //OnboardLedColour(0, 0, 0);
+            }
+            break;
+
+        case 1:
+            break;
+
+        case 2:
+            break;
+
+        case 3:
+            break;
     }
 
-    if (CyclicCounter == 500)
+    CyclicCounter++;
+}
+void CyclicUserTaskSta(void* pvParameters)
+{
+    if (CyclicState == 0)
     {
-        OnboardLedColour(0, 0, 0);
+        if (Wifi.GetIsConnectedToHost())
+        {
+            CyclicState = 1;
+        }
+    }
+    else
+    {
+        if (!Wifi.GetIsConnectedToHost())
+        {
+            CyclicState = 0;
+        }
+    }
+    
+
+    switch (CyclicState)
+    {
+        case 0:
+            if (CyclicCounter % 1 == 0)
+            {
+                //OnboardLedColour(0, 0, 0);
+            }
+            if (CyclicCounter % 3 == 0)
+            {
+                //OnboardLedColour(0, 0, 120);
+            }
+            break;
+
+        case 1:
+            //OnboardLedColour(0, 0, 120);
+            break;
+
+        case 2:
+            break;
+
+        case 3:
+            break;
     }
 
     CyclicCounter++;
@@ -94,35 +154,81 @@ extern "C" void app_main()
         switch (State)
         {
             case 0:
-                if (WifiAp.SetupWifiAP())
+                if (IsAccessPoint)
                 {
-                    State = 1;
+                    if (Wifi.SetupWifiAP(25000, 100))
+                    {
+                        State = 1;
+                    }
+                    else
+                    {
+                        State = 99;
+                    }
+                }
+                else
+                {
+                    if (Wifi.SetupWifiSta(25000))
+                    {
+                        State = 1;
+                    }
+                    else
+                    {
+                        State = 99;
+                    }
                 }
                 break;
 
             case 1:
-                if (WifiAp.SetupEspNow())
+                if (Wifi.SetupEspNow())
                 {
                     State = 2;
+                }
+                else
+                {
+                    State = 99;
                 }
                 break;
 
             case 2:
-                if (SetupNeopixel(8, 1))
-                {
+                //if (SetupNeopixel(8, 1))
+                //{
                     State = 3;
-                }
+                //}
                 break;
 
             case 3:
-                if (Timer.SetupCyclicTask(CyclicUserTask, CycleTime, WatchdogTime, 2))
+                if (IsAccessPoint)
                 {
-                    State = 4;
+                    if (Timer.SetupCyclicTask(CyclicUserTaskAp, CycleTime, WatchdogTime, 2))
+                    {
+                        State = 4;
+                    }
+                    else
+                    {
+                        State = 99;
+                    }
                 }
+                else
+                {
+                    if (Timer.SetupCyclicTask(CyclicUserTaskSta, CycleTime, WatchdogTime, 2))
+                    {
+                        State = 4;
+                    }
+                    else
+                    {
+                        State = 99;
+                    }
+                }
+
                 break;
 
             case 4:
-                xTaskCreate(Main, "Main Task", 2048, NULL, 1, NULL);
+                xTaskCreate(Main, "Main Task", 2048, NULL, 1, &MainHandle);
+                vTaskDelete(NULL);
+                break;
+
+            case 99:
+                ESP_LOGE(TAG, "System Error");
                 vTaskDelete(NULL);
                 break;
         }
