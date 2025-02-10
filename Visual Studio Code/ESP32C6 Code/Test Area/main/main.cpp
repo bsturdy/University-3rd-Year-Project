@@ -21,7 +21,7 @@ bool IsAccessPoint = false;
 // Hardware Timer
 TimerClass Timer;
 float CycleTime = 10;
-float WatchdogTime = 7;
+float WatchdogTime = 5;
 uint16_t Prescalar = 2;
 
 uint64_t CyclicIsr = 0;
@@ -51,7 +51,14 @@ void Main(void* pvParameters)
         printf("    Cyclic Task:                 %llu\n", (CyclicTask - CyclicTaskPrev));        
         printf("    Watchdog ISR:                %llu\n", (WatchdogIsr - WatchdogIsrPrev));
         printf("    Watchdog Task:               %llu\n\n", (WatchdogTask - WatchdogTaskPrev));
-        printf("    Number of devices connected: %d\n", Wifi.GetNumClientsConnected());
+        if (Wifi.GetIsAp())
+        {
+            printf("    Number of devices connected: %d\n", Wifi.GetNumClientsConnected());
+        }
+        if (Wifi.GetIsSta())
+        {
+            printf("    Is connected to host:        %d\n", Wifi.GetIsConnectedToHost());
+        }
         printf("=============================================\n");
 
         CyclicIsrPrev = CyclicIsr;
@@ -69,7 +76,7 @@ uint64_t CyclicCounter = 0;
 uint8_t CyclicState = 0;
 void CyclicUserTaskAp(void* pvParameters)
 {
-    if (CyclicCounter >= 1000)
+    if (CyclicCounter >= 100)
     {
         CyclicCounter = 0;
     }
@@ -126,7 +133,6 @@ void CyclicUserTaskSta(void* pvParameters)
 
             if (CyclicCounter == 0)
             {
-                ESP_LOGI(TAG, "State 1");
                 Wifi.SendUdpPacket("Test Packet", "192.168.4.1", 25000);
             }
             break;
@@ -139,7 +145,7 @@ void CyclicUserTaskSta(void* pvParameters)
     }
 
     CyclicCounter++;
-    if (CyclicCounter >= 100)
+    if (CyclicCounter >= 200)
     {
         CyclicCounter = 0;
     }
@@ -157,7 +163,7 @@ extern "C" void app_main()
             case 0:
                 if (IsAccessPoint)
                 {
-                    if (Wifi.SetupWifiAP(25000, 100))
+                    if (Wifi.SetupWifiAP(25000, 10))
                     {
                         State = 1;
                     }

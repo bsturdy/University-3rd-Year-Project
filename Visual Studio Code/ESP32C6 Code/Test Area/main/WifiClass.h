@@ -29,38 +29,47 @@ struct ClientDevice
 class WifiClass
 {
     private:
+        bool IsAp = false;
+        bool IsSta = false;
+        bool IsConnectedToAP;
+        std::vector<ClientDevice> DeviceList;
+
         static void WifiEventHandlerAp(void* arg, esp_event_base_t event_base,
                                     int32_t event_id, void* event_data);
 
         static void WifiEventHandlerSta(void* arg, esp_event_base_t event_base,
                                     int32_t event_id, void* event_data);
-
-        std::vector<ClientDevice> DeviceList;
-        bool IsConnectedToAP;
         
-        QueueHandle_t EspNowDeviceQueue;
+        TaskHandle_t EspNowTaskHandle = NULL;
+        TaskHandle_t UdpPollingTaskHandle = NULL;
+        TaskHandle_t UdpProcessingTaskHandle = NULL;
         static void EspNowTask(void *pvParameters);
+        static void UdpPollingTask (void *pvParameters);
+        static void UdpProcessingTask(void* pvParameters);   
+
         static const int EspNowStackSize = 2048;                    
         static StackType_t EspNowTaskStack[EspNowStackSize];       
         static StaticTask_t EspNowTaskTCB;  
+
+        static const int UdpPollingTaskStackSize = 2048;                  
+        static StackType_t UdpPollingTaskStack[UdpPollingTaskStackSize];    
+        static StaticTask_t UdpPollingTaskTCB;
+
+        static const int UdpProcessingTaskStackSize = 2048;                  
+        static StackType_t UdpProcessingTaskStack[UdpProcessingTaskStackSize];    
+        static StaticTask_t UdpProcessingTaskTCB;
+
+        QueueHandle_t EspNowDeviceQueue;
+        QueueHandle_t UdpProcessingQueue;
+
         bool EspNowRegisterDevice(ClientDevice* DeviceToRegister);
         bool EspNowDeleteDevice(ClientDevice* DeviceToDelete); 
-
         bool SetupUdpSocket(uint16_t UDP_PORT);
+
         struct sockaddr_in UdpServerAddress;
         socklen_t UdpAddressLength = sizeof(UdpServerAddress);
         char UdpBuffer[1024];
         int UdpSocketFD;
-
-        static void UdpPollingTask (void *pvParameters);
-        static const int UdpPollingTaskStackSize = 2048;                  
-        static StackType_t UdpPollingTaskStack[UdpPollingTaskStackSize];    
-        static StaticTask_t UdpPollingTaskTCB;
-        static void UdpProcessingTask(void* pvParameters);   
-        static const int UdpProcessingTaskStackSize = 2048;                  
-        static StackType_t UdpProcessingTaskStack[UdpProcessingTaskStackSize];    
-        static StaticTask_t UdpProcessingTaskTCB;
-        QueueHandle_t UdpProcessingQueue;
 
 
 
@@ -76,6 +85,11 @@ class WifiClass
 
         size_t GetNumClientsConnected();
         bool GetIsConnectedToHost();
+        bool GetIsAp();
+        bool GetIsSta();
+        TaskHandle_t GetEspNowTaskHandle();
+        TaskHandle_t GetUdpPollingTaskHandle();
+        TaskHandle_t GetUdpProcessingTaskHandle();
 };
 
 #endif

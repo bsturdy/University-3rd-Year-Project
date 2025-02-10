@@ -15,15 +15,12 @@ static WifiClass* ClassInstance;
 
 static const char *TAG = "Wifi Class";
 
-TaskHandle_t EspNowTaskHandle = NULL;
 StackType_t WifiClass::EspNowTaskStack[EspNowStackSize];
 StaticTask_t WifiClass::EspNowTaskTCB;
 
-TaskHandle_t UdpPollingTaskHandle = NULL;
 StackType_t WifiClass::UdpPollingTaskStack[UdpPollingTaskStackSize];
 StaticTask_t WifiClass::UdpPollingTaskTCB;
 
-TaskHandle_t UdpProcessingTaskHandle = NULL;
 StackType_t WifiClass::UdpProcessingTaskStack[UdpProcessingTaskStackSize];
 StaticTask_t WifiClass::UdpProcessingTaskTCB;
 
@@ -112,7 +109,6 @@ void WifiClass::WifiEventHandlerSta(void* arg, esp_event_base_t event_base,
         ESP_LOGI(TAG, "Connected to Wi-Fi!");
     }
 }
-
 
 void WifiClass::EspNowTask(void *pvParameters)
 {
@@ -296,6 +292,8 @@ void WifiClass::UdpProcessingTask(void* pvParameters)
         }
     }
 }
+
+
 
 //=============================================================================// 
 //                           Setup Functions                                   //
@@ -521,6 +519,7 @@ bool WifiClass::SetupWifiAP(uint16_t UdpPort, uint16_t Timeout)
     ESP_LOGI(TAG, "SSID: %s, Password: %s, Channel: %d",
              WIFI_SSID, WIFI_PASS, WIFI_CHANNEL);
     ESP_LOGI(TAG, "SetupWifiAP Successful!");    
+    IsAp = true;
     printf("\n");
     return true;
 }
@@ -719,7 +718,7 @@ bool WifiClass::SetupWifiSta(uint16_t UdpPort, uint16_t Timeout)
     ESP_LOGI(TAG, "Connecting to SSID: %s", WIFI_SSID);
     ESP_LOGI(TAG, "SetupWifiSta Successful!");    
 
-
+    IsSta = true;
     esp_wifi_disconnect();  // Disconnect first, just in case
     esp_wifi_connect();     // Manually trigger the connection
     printf("\n");
@@ -785,6 +784,13 @@ bool WifiClass::SetupEspNow()
 
 bool WifiClass::SendUdpPacket(const char* Data, const char* DestinationIP, uint16_t DestinationPort)
 {
+    if ((IsAp and (GetNumClientsConnected() == 0)) or
+         (IsSta and !GetIsConnectedToHost()))
+    {
+        ESP_LOGE(TAG, "Not Connected");
+        return false;
+    }
+
     struct sockaddr_in DestinationAddress;
 
     memset(&DestinationAddress, 0, sizeof(DestinationAddress));
@@ -806,10 +812,6 @@ bool WifiClass::SendUdpPacket(const char* Data, const char* DestinationIP, uint1
         ESP_LOGE(TAG, "Failed to send UDP packet, error = %d", errno);
         return false;
     }
-    else
-    {
-        ESP_LOGI(TAG, "Sent UDP packet, length = %d bytes", SentBytes);
-    }
     return true;
 }
 
@@ -827,4 +829,29 @@ size_t WifiClass::GetNumClientsConnected()
 bool WifiClass::GetIsConnectedToHost()
 {
     return IsConnectedToAP;
+}
+
+bool WifiClass::GetIsAp()
+{
+    return IsAp;
+}
+
+bool WifiClass::GetIsSta()
+{
+    return IsSta;
+}
+
+TaskHandle_t WifiClass::GetEspNowTaskHandle()
+{
+    return EspNowTaskHandle;
+}
+
+TaskHandle_t WifiClass::GetUdpPollingTaskHandle()
+{
+    return UdpPollingTaskHandle;
+}
+
+TaskHandle_t WifiClass::GetUdpProcessingTaskHandle()
+{
+    return UdpProcessingTaskHandle;
 }
