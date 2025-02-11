@@ -1,0 +1,18 @@
+dependencies:
+  espressif/led_strip:
+    dependencies: []
+    source:
+      path: C:\University Work\3rd Year Project\University-3rd-Year-Project\Visual
+        Studio Code\ESP32C6 Code\Test Area\components\espressif__led_strip
+      type: local
+    version: 2.5.5
+  idf:
+    source:
+      type: idf
+    version: 5.4.0
+direct_dependencies:
+- espressif/led_strip
+- idf
+manifest_hash: 5f7bb06ba8507929340ae52c7dc24dae0953b86e8c650b494972bee0397ebb2a
+target: esp32s3
+version: 2.0.0
