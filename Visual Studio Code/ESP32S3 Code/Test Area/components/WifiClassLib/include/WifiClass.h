@@ -61,7 +61,7 @@ class WifiClass
         static StackType_t UdpProcessingTaskStack[UdpProcessingTaskStackSize];          // Static memory size for UDP Processing task
         static StaticTask_t UdpProcessingTaskTCB;                                       // Static memory location for UDP Processing task
 
-        static const uint8_t UdpBufferSize = 1024;                                      // Size of UDP buffer
+        static const uint16_t UdpBufferSize = 1024;                                     // Size of UDP buffer
 
         TaskHandle_t EspNowTaskHandle = NULL;                                           // Task handle
         TaskHandle_t UdpPollingTaskHandle = NULL;                                       // Task handle
@@ -71,8 +71,10 @@ class WifiClass
 
         bool EspNowRegisterDevice(ClientDevice* DeviceToRegister);                      // Function to register a device to ESP NOW
         bool EspNowDeleteDevice(ClientDevice* DeviceToDelete);                          // Function to deregister / delete a device from ESP NOW
-        bool SetupUdpSocket(uint16_t UDP_PORT);                                         // Function to establish a UDP socket on a given port
-
+        bool SetupUdpSocket(uint16_t UdpPort);                                          // Function to establish a UDP socket on a given port
+        bool SetupWifiAP(uint16_t UdpPort, uint16_t Timeout, uint8_t CoreToUse);        // Sets up system as an Access Point. Parameters are configured through the Menu Config
+        bool SetupWifiSta(uint16_t UdpPort, uint16_t Timeout, uint8_t CoreToUse);       // Sets up system as a station and polls for available Access Points. Parameters are configured through the Menu Config
+        
         bool IsAp = false;                                                              // Internal check
         bool IsSta = false;                                                             // Internal check
         bool IsConnectedToAP;                                                           // Is system connected to an Access Point (used when in station mode)
@@ -94,8 +96,7 @@ class WifiClass
         WifiClass();
         ~WifiClass();
 
-        bool SetupWifiAP(uint16_t UdpPort, uint16_t Timeout, uint8_t CoreToUse);        // Sets up system as an Access Point. Parameters are configured through the Menu Config
-        bool SetupWifiSta(uint16_t UdpPort, uint16_t Timeout, uint8_t CoreToUse);       // Sets up system as a station and polls for available Access Points. Parameters are configured through the Menu Config
+        bool SetupWifi(uint8_t CoreToUse);                                              // Sets up system according to Menu Configuration
         bool SetupEspNow(uint8_t CoreToUse);                                            // Sets up ESP-NOW configuration and detection
 
         bool SendUdpPacket(const char* data, const char* dest_ip, uint16_t dest_port);  // Sends a UDP packet to a given IP address and Port

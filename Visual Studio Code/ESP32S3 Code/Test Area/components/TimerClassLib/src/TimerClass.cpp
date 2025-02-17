@@ -91,7 +91,7 @@ void TimerClass::CyclicTask(void* pvParameters)
                 ClassInstance->UserTask(NULL);
 
                 // Increment task counter
-                ClassInstance->CyclicTaskCounter++;
+                ClassInstance->CyclicTaskCounter = ClassInstance->CyclicTaskCounter + 1;
 
                 // Pause watchdog timer
                 ESP_ERROR_CHECK(timer_pause(WatchdogTimerGroup, WatchdogTimerIndex));
@@ -143,7 +143,7 @@ void TimerClass::WatchdogTask(void* pvParameters)
             }
 
             // Increment task counter
-            ClassInstance->WatchdogTaskCounter++;
+            ClassInstance->WatchdogTaskCounter = ClassInstance->WatchdogTaskCounter + 1;
 
         }
     }
@@ -153,7 +153,7 @@ void TimerClass::WatchdogTask(void* pvParameters)
 bool IRAM_ATTR TimerClass::CyclicISR(void* arg) 
 {
     // Increment ISR counter
-    ClassInstance->CyclicIsrCounter++;
+    ClassInstance->CyclicIsrCounter = ClassInstance->CyclicIsrCounter + 1;
     
     // Notify task to run with appropriate priority interruption
     vTaskNotifyGiveFromISR(ClassInstance->CyclicTaskHandle, &ClassInstance->xHigherPriorityTaskWokenFalse);
@@ -167,7 +167,7 @@ bool IRAM_ATTR TimerClass::CyclicISR(void* arg)
 bool IRAM_ATTR TimerClass::WatchdogISR(void* arg) 
 { 
     // Increment ISR counter
-    ClassInstance->WatchdogISRCounter++;
+    ClassInstance->WatchdogISRCounter = ClassInstance->WatchdogISRCounter + 1;
 
     // Notify task to run with appropriate priority interruption
     vTaskNotifyGiveFromISR(ClassInstance->WatchdogTaskHandle, &ClassInstance->xHigherPriorityTaskWokenTrue);
@@ -183,7 +183,7 @@ bool IRAM_ATTR TimerClass::WatchdogISR(void* arg)
 
 //==============================================================================// 
 //                                                                              //
-//                           Setup Functions                                    //
+//                       Public Setup Functions                                 //
 //                                                                              //
 //==============================================================================// 
 
@@ -209,11 +209,11 @@ bool TimerClass::SetupTimer(float CycleTimeInMs, float WatchdogTime, uint16_t Pr
     {
         .alarm_en = TIMER_ALARM_DIS,
         .counter_en = TIMER_START,
+        .intr_type = TIMER_INTR_LEVEL, 
         .counter_dir = TIMER_COUNT_UP,
         .auto_reload = TIMER_AUTORELOAD_EN,
         .clk_src = TIMER_SRC_CLK_APB,
-        .divider = ClassInstance->Prescalar,
-        //.intr_type = 
+        .divider = ClassInstance->Prescalar
     };
 
     // init timer
@@ -234,11 +234,11 @@ bool TimerClass::SetupTimer(float CycleTimeInMs, float WatchdogTime, uint16_t Pr
     {
         .alarm_en = TIMER_ALARM_EN,
         .counter_en = TIMER_PAUSE,
+        .intr_type = TIMER_INTR_LEVEL, 
         .counter_dir = TIMER_COUNT_UP,
         .auto_reload = TIMER_AUTORELOAD_DIS,
         .clk_src = TIMER_SRC_CLK_APB,
-        .divider = ClassInstance->Prescalar,
-        //.intr_type =        
+        .divider = ClassInstance->Prescalar       
     };
 
     // init timer
@@ -354,6 +354,16 @@ uint64_t TimerClass::GetTimerFrequency()
     return 80000000/Prescalar;
 }
 
+TaskHandle_t TimerClass::GetCyclicTaskHandle()
+{
+    return CyclicTaskHandle;
+}
+
+TaskHandle_t TimerClass::GetWatchdogTaskHandle()
+{
+    return WatchdogTaskHandle;
+}
+
 // Determines if the Watchdog functionality is used or not.
 void TimerClass::SetWatchdogOnOff(bool IsWatchdogEnabled)
 {
@@ -364,14 +374,6 @@ void TimerClass::SetWatchdogOnOff(bool IsWatchdogEnabled)
     }
 }
 
-TaskHandle_t TimerClass::GetCyclicTaskHandle()
-{
-    return CyclicTaskHandle;
-}
 
-TaskHandle_t TimerClass::GetWatchdogTaskHandle()
-{
-    return WatchdogTaskHandle;
-}
 
 

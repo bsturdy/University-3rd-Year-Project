@@ -113,53 +113,36 @@ void CyclicUserTaskStation(void* pvParameters)
 
 extern "C" void app_main()
 { 
-    if (CONFIG_ESP_DEVICE_MODE == 0)
+    ESP_LOGI(TAG, "Configuring Wifi!");
+    if (!Wifi.SetupWifi(0))
     {
-        ESP_LOGI(TAG, "Configuring Access Point!");
-        if (!Wifi.SetupWifiAP(25000, 10, 0))
-        {
-            ESP_LOGE(TAG, "SetupWifiAP Failed!");
-            return;
-        }
-        if (!Wifi.SetupEspNow(0))
-        {
-            ESP_LOGE(TAG, "SetupEspNow Failed!");
-            return;
-        }
+        ESP_LOGE(TAG, "SetupWifi Failed!");
+        return;
+    }
+    if (!Wifi.SetupEspNow(0))
+    {
+        ESP_LOGE(TAG, "SetupEspNow Failed!");
+        return;
+    }
+    if (Wifi.GetIsAp())
+    {
         if (!Timer.SetupCyclicTask(CyclicUserTaskAp, 1))
         {
-            ESP_LOGE(TAG, "SetupCyclicTask Failed!");
-            return;
-        }
-        if (xTaskCreatePinnedToCore(Main, "Main Task", 4096, NULL, 1, &MainHandle, 0) != pdPASS)
-        {
-            ESP_LOGE(TAG, "SetupMainTask Failed!");
+            ESP_LOGE(TAG, "SetupCyclicTask AP Failed!");
             return;
         }
     }
-
-    if (CONFIG_ESP_DEVICE_MODE == 1)
+    else if (Wifi.GetIsSta())
     {
-        ESP_LOGI(TAG, "Configuring Station!");
-        if (!Wifi.SetupWifiSta(25000, 10, 0))
-        {
-            ESP_LOGE(TAG, "SetupWifiSta Failed!");
-            return;
-        }
-        if (!Wifi.SetupEspNow(0))
-        {
-            ESP_LOGE(TAG, "SetupEspNow Failed!");
-            return;
-        }
         if (!Timer.SetupCyclicTask(CyclicUserTaskStation, 1))
         {
-            ESP_LOGE(TAG, "SetupCyclicTask Failed!");
+            ESP_LOGE(TAG, "SetupCyclicTask Station Failed!");
             return;
         }
-        if (xTaskCreatePinnedToCore(Main, "Main Task", 4096, NULL, 1, &MainHandle, 0) != pdPASS)
-        {
-            ESP_LOGE(TAG, "SetupMainTask Failed!");
-            return;
-        }
+    }
+    if (xTaskCreatePinnedToCore(Main, "Main Task", 4096, NULL, 1, &MainHandle, 0) != pdPASS)
+    {
+        ESP_LOGE(TAG, "SetupMainTask Failed!");
+        return;
     }
 }

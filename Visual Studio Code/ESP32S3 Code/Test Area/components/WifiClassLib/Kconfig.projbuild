@@ -37,4 +37,11 @@ menu "Wifi Class Configuration"
         help
             Max number of the STA connects to AP
 
+    config ESP_UDP_PORT
+        int "UDP Port"
+        range 1 65535
+        default 25000
+        help
+            The port that UDP uses
+
 endmenu

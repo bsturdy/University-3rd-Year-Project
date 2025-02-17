@@ -22,6 +22,7 @@
 #define WIFI_CHANNEL                CONFIG_ESP_WIFI_CHANNEL
 #define MAX_STA_CONN                CONFIG_ESP_MAX_STA_CONN
 #define WIFI_MODE                   CONFIG_ESP_DEVICE_MODE
+#define UDP_PORT                    CONFIG_ESP_UDP_PORT
 #define TAG                         "Wifi Class"
 
 static WifiClass* ClassInstance;
@@ -45,17 +46,20 @@ StaticTask_t WifiClass::UdpProcessingTaskTCB;
 //                                                                              //
 //==============================================================================// 
 
+// Constructor
 WifiClass::WifiClass()
 {
     ClassInstance = this;
     EspNowDeviceQueue = NULL;    
 }
 
+// Destructor (Unsused, this class should exist throughout runtime)
 WifiClass::~WifiClass()
 {
     ;
 }
 
+// Software event handler for wifi AP events
 void WifiClass::WifiEventHandlerAp(void* arg, esp_event_base_t event_base,
                                     int32_t event_id, void* event_data)
 {
@@ -103,6 +107,7 @@ void WifiClass::WifiEventHandlerAp(void* arg, esp_event_base_t event_base,
     }
 }
 
+// Software event handler for wifi STA events
 void WifiClass::WifiEventHandlerSta(void* arg, esp_event_base_t event_base,
                                     int32_t event_id, void* event_data)
 
@@ -127,6 +132,7 @@ void WifiClass::WifiEventHandlerSta(void* arg, esp_event_base_t event_base,
     }
 }
 
+// Software event handler for IP STA events
 void WifiClass::IpEventHandlerSta(void* arg, esp_event_base_t event_base,
                                     int32_t event_id, void* event_data)
 {
@@ -140,6 +146,7 @@ void WifiClass::IpEventHandlerSta(void* arg, esp_event_base_t event_base,
     }
 }
 
+// Task that connects and disconnects devices from ESP-NOW registery
 void WifiClass::EspNowTask(void *pvParameters)
 {
     ClientDevice DeviceToAction;
@@ -179,6 +186,7 @@ void WifiClass::EspNowTask(void *pvParameters)
     }
 }
 
+// Function that registers device with ESP-NOW
 bool WifiClass::EspNowRegisterDevice(ClientDevice* DeviceToRegister)
 {
     printf("\n");
@@ -220,6 +228,7 @@ bool WifiClass::EspNowRegisterDevice(ClientDevice* DeviceToRegister)
     return true;
 }
 
+// Function that deregisters device with ESP-NOW
 bool WifiClass::EspNowDeleteDevice(ClientDevice* DeviceToDelete)
 {
     printf("\n");
@@ -255,7 +264,8 @@ bool WifiClass::EspNowDeleteDevice(ClientDevice* DeviceToDelete)
     return true;
 }
 
-bool WifiClass::SetupUdpSocket(uint16_t UDP_PORT)
+// Function that sets up a UDP socket
+bool WifiClass::SetupUdpSocket(uint16_t UdpPort)
 {
     UdpSocketFD = socket(AF_INET, SOCK_DGRAM, 0);
     if (UdpSocketFD < 0)
@@ -267,7 +277,7 @@ bool WifiClass::SetupUdpSocket(uint16_t UDP_PORT)
     memset(&UdpServerAddress, 0, sizeof(UdpServerAddress));
     UdpServerAddress.sin_family = AF_INET;
     UdpServerAddress.sin_addr.s_addr = htonl(INADDR_ANY);
-    UdpServerAddress.sin_port = htons(UDP_PORT);
+    UdpServerAddress.sin_port = htons(UdpPort);
 
     if (bind(UdpSocketFD, (struct sockaddr *)&UdpServerAddress, sizeof(UdpServerAddress)) < 0) 
     {
@@ -276,10 +286,11 @@ bool WifiClass::SetupUdpSocket(uint16_t UDP_PORT)
         return false;
     }
 
-    ESP_LOGI(TAG, "UDP Socket bound to port %d", UDP_PORT);
+    ESP_LOGI(TAG, "UDP Socket bound to port %d", UdpPort);
     return true;
 }
 
+// Task that polls for new UDP data received
 void WifiClass::UdpPollingTask(void* pvParameters)
 {
     while(true)
@@ -299,6 +310,7 @@ void WifiClass::UdpPollingTask(void* pvParameters)
     }
 }
 
+// Task that processes received UDP data
 void WifiClass::UdpProcessingTask(void* pvParameters)
 {
     int PacketLength;
@@ -323,6 +335,7 @@ void WifiClass::UdpProcessingTask(void* pvParameters)
     }
 }
 
+// Task that performs background UDP system functions, such as occasional system pings
 void WifiClass::UdpSystemTask(void* pvParameters)
 {
     while(true)
@@ -341,16 +354,7 @@ void WifiClass::UdpSystemTask(void* pvParameters)
     }
 }
 
-
-
-
-
-//==============================================================================// 
-//                                                                              //
-//                           Setup Functions                                    //
-//                                                                              //
-//=============================================================================// 
-
+// Function that sets up the system as an Access Point
 bool WifiClass::SetupWifiAP(uint16_t UdpPort, uint16_t Timeout, uint8_t CoreToUse)
 {
     printf("\n");
@@ -578,6 +582,7 @@ bool WifiClass::SetupWifiAP(uint16_t UdpPort, uint16_t Timeout, uint8_t CoreToUs
     return true;
 }
 
+// Function that sets up the system as a Station
 bool WifiClass::SetupWifiSta(uint16_t UdpPort, uint16_t Timeout, uint8_t CoreToUse)
 {
     printf("\n");
@@ -794,6 +799,17 @@ bool WifiClass::SetupWifiSta(uint16_t UdpPort, uint16_t Timeout, uint8_t CoreToU
     return true;
 }
 
+
+
+
+
+//==============================================================================// 
+//                                                                              //
+//                       Public Setup Functions                                 //
+//                                                                              //
+//==============================================================================// 
+
+// Function that sets up ESP-NOW
 bool WifiClass::SetupEspNow(uint8_t CoreToUse)
 {
     printf("\n");
@@ -851,6 +867,40 @@ bool WifiClass::SetupEspNow(uint8_t CoreToUse)
     return true;
 }
 
+// Function that sets up the wifi system based on the menu configuration
+bool WifiClass::SetupWifi(uint8_t CoreToUse)
+{
+    printf("\n");
+    ESP_LOGI(TAG, "SetupWifi Executed!");
+
+
+    // AP
+    if (WIFI_MODE == 0)
+    {
+        if (!SetupWifiAP(UDP_PORT, 10, CoreToUse))
+        {
+            ESP_LOGI(TAG, "SetupWifiAP Failed!");
+            return false;
+        }
+    }
+
+
+    // Station
+    if (WIFI_MODE == 1)
+    {
+        if (!SetupWifiSta(UDP_PORT, 10, CoreToUse))
+        {
+            ESP_LOGI(TAG, "SetupWifiSta Failed!");
+            return false;
+        }
+    }
+
+
+    ESP_LOGI(TAG, "SetupWifi Successful!");
+    printf("\n");
+    return true;
+}
+
 
 
 
@@ -861,6 +911,7 @@ bool WifiClass::SetupEspNow(uint8_t CoreToUse)
 //                                                                              //
 //==============================================================================//
 
+// Function that sends a message as a UDP packet to a destination
 bool WifiClass::SendUdpPacket(const char* Data, const char* DestinationIP, uint16_t DestinationPort)
 {
     if ((IsAp and (GetNumClientsConnected() == 0)) or
