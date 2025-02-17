@@ -33,11 +33,15 @@ class WifiClass
         bool IsSta = false;
         bool IsConnectedToAP;
         std::vector<ClientDevice> DeviceList;
+        char AccessPointIp[16];
 
         static void WifiEventHandlerAp(void* arg, esp_event_base_t event_base,
                                     int32_t event_id, void* event_data);
 
         static void WifiEventHandlerSta(void* arg, esp_event_base_t event_base,
+                                    int32_t event_id, void* event_data);
+
+        static void IpEventHandlerSta(void* arg, esp_event_base_t event_base,
                                     int32_t event_id, void* event_data);
         
         TaskHandle_t EspNowTaskHandle = NULL;
@@ -46,6 +50,7 @@ class WifiClass
         static void EspNowTask(void *pvParameters);
         static void UdpPollingTask (void *pvParameters);
         static void UdpProcessingTask(void* pvParameters);   
+        static void UdpSystemTask(void* pvParameters);
 
         static const int EspNowTaskStackSize = 4096;                    
         static StackType_t EspNowTaskStack[EspNowTaskStackSize];       
@@ -66,10 +71,15 @@ class WifiClass
         bool EspNowDeleteDevice(ClientDevice* DeviceToDelete); 
         bool SetupUdpSocket(uint16_t UDP_PORT);
 
+        constexpr static uint16_t UdpPollingTaskCycleTime = 10;
         struct sockaddr_in UdpServerAddress;
         socklen_t UdpAddressLength = sizeof(UdpServerAddress);
         char UdpBuffer[1024];
         int UdpSocketFD;
+
+ 
+
+    protected:
 
 
 
@@ -87,6 +97,7 @@ class WifiClass
         bool GetIsConnectedToHost();
         bool GetIsAp();
         bool GetIsSta();
+        const char* GetApIpAddress();
         TaskHandle_t GetEspNowTaskHandle();
         TaskHandle_t GetUdpPollingTaskHandle();
         TaskHandle_t GetUdpProcessingTaskHandle();

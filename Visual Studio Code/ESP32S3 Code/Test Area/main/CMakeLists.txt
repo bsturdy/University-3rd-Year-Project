@@ -1,5 +1,5 @@
 idf_component_register(
-    SRCS "GpioConfig.cpp" "main.cpp" "WifiClass.cpp" 
+    SRCS "GpioConfig.cpp" "main.cpp" 
     INCLUDE_DIRS "."
 )
 

@@ -10,9 +10,10 @@
 #define WIFI_PASS           CONFIG_ESP_WIFI_PASSWORD
 #define WIFI_CHANNEL        CONFIG_ESP_WIFI_CHANNEL
 #define MAX_STA_CONN        CONFIG_ESP_MAX_STA_CONN
+#define WIFI_MODE           CONFIG_ESP_DEVICE_MODE
+#define TAG                 "Wifi Class"
 
 static WifiClass* ClassInstance;
-static const char *TAG = "Wifi Class";
 
 StackType_t WifiClass::EspNowTaskStack[EspNowTaskStackSize];
 StaticTask_t WifiClass::EspNowTaskTCB;
@@ -32,7 +33,7 @@ StaticTask_t WifiClass::UdpProcessingTaskTCB;
 WifiClass::WifiClass()
 {
     ClassInstance = this;
-    EspNowDeviceQueue = NULL;
+    EspNowDeviceQueue = NULL;    
 }
 
 WifiClass::~WifiClass()
@@ -76,9 +77,6 @@ void WifiClass::WifiEventHandlerAp(void* arg, esp_event_base_t event_base,
             // Device found, remove it
             ClientDevice TempDevice = *it;
 
-            //===========================//
-            //       FIX THIS            //
-            //===========================//
             TempDevice.IsRegisteredWithEspNow = true;
 
             ClassInstance->DeviceList.erase(it);  
@@ -97,6 +95,10 @@ void WifiClass::WifiEventHandlerSta(void* arg, esp_event_base_t event_base,
     if (event_id == WIFI_EVENT_STA_DISCONNECTED) 
     {
         ClassInstance->IsConnectedToAP = false;
+        //if (ClassInstance->AccessPointIp != NULL)
+        //{
+        //    memset(&ClassInstance->AccessPointIp, 0, sizeof(ClassInstance->AccessPointIp));
+        //}
         ESP_LOGI(TAG, "Disconnected from Wi-Fi, retrying...");
         esp_wifi_disconnect();
         esp_wifi_connect();  // Retry connection immediately
@@ -105,7 +107,21 @@ void WifiClass::WifiEventHandlerSta(void* arg, esp_event_base_t event_base,
     else if (event_id == WIFI_EVENT_STA_CONNECTED) 
     {
         ClassInstance->IsConnectedToAP = true;
+        //inet_ntoa_r(AccessPointIP.ip, ClassInstance->AccessPointIp, sizeof(ClassInstance->AccessPointIp));
         ESP_LOGI(TAG, "Connected to Wi-Fi!");
+    }
+}
+
+void WifiClass::IpEventHandlerSta(void* arg, esp_event_base_t event_base,
+                                    int32_t event_id, void* event_data)
+{
+    if (event_id == IP_EVENT_STA_GOT_IP) 
+    {
+        esp_netif_t *NetIf = esp_netif_get_handle_from_ifkey("WIFI_STA_DEF");
+        esp_netif_ip_info_t TempAccessPointIp;
+        esp_netif_get_ip_info(NetIf, &TempAccessPointIp);
+        esp_ip4addr_ntoa(&TempAccessPointIp.ip, ClassInstance->AccessPointIp, sizeof(ClassInstance->AccessPointIp));
+        ESP_LOGI(TAG, "Access Point IP: %s", ClassInstance->AccessPointIp);
     }
 }
 
@@ -264,7 +280,7 @@ void WifiClass::UdpPollingTask(void* pvParameters)
             }
         }
 
-        vTaskDelay(10 / portTICK_PERIOD_MS);
+        vTaskDelay(ClassInstance->UdpPollingTaskCycleTime / portTICK_PERIOD_MS);
     }
 }
 
@@ -289,6 +305,24 @@ void WifiClass::UdpProcessingTask(void* pvParameters)
                 ESP_LOGI(TAG, "%c", ReceivedChar);
             }
         }
+    }
+}
+
+void WifiClass::UdpSystemTask(void* pvParameters)
+{
+    while(true)
+    {
+        if (ClassInstance->IsAp)
+        {
+            //SendUdpPacket(192)
+        }
+
+        if (ClassInstance->IsSta)
+        {
+            ClassInstance->SendUdpPacket("Sync", ClassInstance->GetApIpAddress(), 25000);
+        }
+
+        vTaskDelay(500 / portTICK_PERIOD_MS);
     }
 }
 
@@ -478,8 +512,8 @@ bool WifiClass::SetupWifiAP(uint16_t UdpPort, uint16_t Timeout, uint8_t CoreToUs
         NULL,                               // Parameters to pass
         1,                                  // Low priority
         UdpPollingTaskStack,                // Preallocated stack memory
-        &UdpPollingTaskTCB,                  // Preallocated TCB memory
-        CoreToUse
+        &UdpPollingTaskTCB,                 // Preallocated TCB memory
+        CoreToUse                           // Core assigned
     );   
     if (UdpPollingTaskHandle == NULL)
     {
@@ -507,7 +541,7 @@ bool WifiClass::SetupWifiAP(uint16_t UdpPort, uint16_t Timeout, uint8_t CoreToUs
         configMAX_PRIORITIES - 5,               // High priority
         UdpProcessingTaskStack,                 // Preallocated stack memory
         &UdpProcessingTaskTCB,                  // Preallocated TCB memory
-        CoreToUse
+        CoreToUse                               // Core assigned
     );   
     if (UdpProcessingTaskHandle == NULL)
     {
@@ -517,10 +551,10 @@ bool WifiClass::SetupWifiAP(uint16_t UdpPort, uint16_t Timeout, uint8_t CoreToUs
     ESP_LOGI(TAG, "15 - UDP Processing Task Created!");
 
 
+    IsAp = true;
     ESP_LOGI(TAG, "SSID: %s, Password: %s, Channel: %d",
              WIFI_SSID, WIFI_PASS, WIFI_CHANNEL);
     ESP_LOGI(TAG, "SetupWifiAP Successful!");    
-    IsAp = true;
     printf("\n");
     return true;
 }
@@ -614,7 +648,21 @@ bool WifiClass::SetupWifiSta(uint16_t UdpPort, uint16_t Timeout, uint8_t CoreToU
         ESP_LOGE(TAG, "Failed to register event handler: %s", esp_err_to_name(ret));
         return false;
     }
-    ESP_LOGI(TAG, "7 - Event Handler Ready!");
+    ESP_LOGI(TAG, "7 - Wifi Event Handler Ready!");
+
+
+    // Register event handler
+    ret = esp_event_handler_instance_register(IP_EVENT,
+                                              ESP_EVENT_ANY_ID,
+                                              &WifiClass::IpEventHandlerSta,
+                                              ClassInstance,
+                                              NULL);
+    if (ret != ESP_OK)
+    {
+        ESP_LOGE(TAG, "Failed to register event handler: %s", esp_err_to_name(ret));
+        return false;       
+    }
+    ESP_LOGI(TAG, "8 - IP Event Handler Ready!");
 
 
     // Configure Station settings
@@ -631,7 +679,7 @@ bool WifiClass::SetupWifiSta(uint16_t UdpPort, uint16_t Timeout, uint8_t CoreToU
         ESP_LOGE(TAG, "Failed to set Wi-Fi mode: %s", esp_err_to_name(ret));
         return false;
     }
-    ESP_LOGI(TAG, "8 - Wi-Fi Mode Set To Station!");
+    ESP_LOGI(TAG, "9 - Wi-Fi Mode Set To Station!");
 
 
     // Apply Wi-Fi configuration
@@ -641,7 +689,7 @@ bool WifiClass::SetupWifiSta(uint16_t UdpPort, uint16_t Timeout, uint8_t CoreToU
         ESP_LOGE(TAG, "Failed to apply Wi-Fi configuration: %s", esp_err_to_name(ret));
         return false;
     }
-    ESP_LOGI(TAG, "9 - Wi-Fi Configuration Applied!");
+    ESP_LOGI(TAG, "10 - Wi-Fi Configuration Applied!");
 
 
     // Start Wi-Fi in Station mode
@@ -651,7 +699,7 @@ bool WifiClass::SetupWifiSta(uint16_t UdpPort, uint16_t Timeout, uint8_t CoreToU
         ESP_LOGE(TAG, "Failed to start Wi-Fi Station: %s", esp_err_to_name(ret));
         return false;
     }
-    ESP_LOGI(TAG, "10 - Wi-Fi Station Started!");
+    ESP_LOGI(TAG, "11 - Wi-Fi Station Started!");
 
 
     ret = esp_wifi_set_inactive_time(WIFI_IF_STA, Timeout);
@@ -660,7 +708,7 @@ bool WifiClass::SetupWifiSta(uint16_t UdpPort, uint16_t Timeout, uint8_t CoreToU
         ESP_LOGE(TAG, "Failed to set Inactive Timer: %s", esp_err_to_name(ret));
         return false;
     }
-    ESP_LOGI(TAG, "11 - Inactive Timer Set To 10s!");
+    ESP_LOGI(TAG, "12 - Inactive Timer Set To 10s!");
 
 
     if (!SetupUdpSocket(UdpPort))
@@ -668,7 +716,7 @@ bool WifiClass::SetupWifiSta(uint16_t UdpPort, uint16_t Timeout, uint8_t CoreToU
         ESP_LOGE(TAG, "Failed to bind UDP socket");
         return false;
     }
-    ESP_LOGI(TAG, "12 - UDP Socket Bound!");
+    ESP_LOGI(TAG, "13 - UDP Socket Bound!");
 
 
     UdpPollingTaskHandle = xTaskCreateStaticPinnedToCore
@@ -680,14 +728,14 @@ bool WifiClass::SetupWifiSta(uint16_t UdpPort, uint16_t Timeout, uint8_t CoreToU
         1,                                  // Low priority
         UdpPollingTaskStack,                // Preallocated stack memory
         &UdpPollingTaskTCB,                 // Preallocated TCB memory
-        CoreToUse
+        CoreToUse                           // Core assigned
     );   
     if (UdpPollingTaskHandle == NULL)
     {
         ESP_LOGE(TAG, "Failed to create UDP polling task");
         return false;
     }
-    ESP_LOGI(TAG, "13 - UDP Polling Task Created!");
+    ESP_LOGI(TAG, "14 - UDP Polling Task Created!");
 
 
     UdpProcessingQueue = xQueueCreate(10, sizeof(int)); 
@@ -696,7 +744,7 @@ bool WifiClass::SetupWifiSta(uint16_t UdpPort, uint16_t Timeout, uint8_t CoreToU
         ESP_LOGE(TAG, "Failed to create UDP queue");
         return false;
     }
-    ESP_LOGI(TAG, "14 - UdpProcessingQueue Ready!");
+    ESP_LOGI(TAG, "15 - UdpProcessingQueue Ready!");
 
 
     UdpProcessingTaskHandle = xTaskCreateStaticPinnedToCore
@@ -708,20 +756,19 @@ bool WifiClass::SetupWifiSta(uint16_t UdpPort, uint16_t Timeout, uint8_t CoreToU
         configMAX_PRIORITIES - 5,               // High priority
         UdpProcessingTaskStack,                 // Preallocated stack memory
         &UdpProcessingTaskTCB,                  // Preallocated TCB memory
-        CoreToUse
+        CoreToUse                               // Core assigned
     );   
     if (UdpProcessingTaskHandle == NULL)
     {
         ESP_LOGE(TAG, "Failed to create UDP processing task");
         return false;
     }
-    ESP_LOGI(TAG, "15 - UDP Processing Task Created!");
+    ESP_LOGI(TAG, "16 - UDP Processing Task Created!");
 
-
-    ESP_LOGI(TAG, "Connecting to SSID: %s", WIFI_SSID);
-    ESP_LOGI(TAG, "SetupWifiSta Successful!");    
 
     IsSta = true;
+    ESP_LOGI(TAG, "Connecting to SSID: %s", WIFI_SSID);
+    ESP_LOGI(TAG, "SetupWifiSta Successful!");    
     esp_wifi_disconnect();  // Disconnect first, just in case
     esp_wifi_connect();     // Manually trigger the connection
     printf("\n");
@@ -733,6 +780,7 @@ bool WifiClass::SetupEspNow(uint8_t CoreToUse)
     printf("\n");
     ESP_LOGI(TAG, "SetupEspNow Executed!");
 
+
     //Initialize NVS
     esp_err_t ret = nvs_flash_init();
     if (ret == ESP_ERR_NVS_NO_FREE_PAGES || ret == ESP_ERR_NVS_NEW_VERSION_FOUND) 
@@ -743,6 +791,7 @@ bool WifiClass::SetupEspNow(uint8_t CoreToUse)
     ESP_ERROR_CHECK(ret);
     ESP_LOGI(TAG, "NVS Ready!");
 
+
     // Initialize ESP-NOW
     esp_err_t init_status = esp_now_init();
     if (init_status != ESP_OK) 
@@ -752,6 +801,7 @@ bool WifiClass::SetupEspNow(uint8_t CoreToUse)
     }
     ESP_LOGI(TAG, "ESP-Now Ready!");
 
+
     // Create a queue for handling ESP-NOW device registration
     EspNowDeviceQueue = xQueueCreate(10, sizeof(ClientDevice));
     if (EspNowDeviceQueue == NULL)
@@ -760,6 +810,7 @@ bool WifiClass::SetupEspNow(uint8_t CoreToUse)
         return false;
     }
     ESP_LOGI(TAG, "EspNowDeviceQueue Ready!");
+
 
     // Create a FreeRTOS task to handle ESP-NOW registration
     EspNowTaskHandle = xTaskCreateStaticPinnedToCore
@@ -775,6 +826,7 @@ bool WifiClass::SetupEspNow(uint8_t CoreToUse)
     );
     ESP_LOGI(TAG, "EspNowTask Ready!");
 
+    
     ESP_LOGI(TAG, "SetupEspNow Successful!");
     printf("\n");
     return true;
@@ -843,6 +895,11 @@ bool WifiClass::GetIsAp()
 bool WifiClass::GetIsSta()
 {
     return IsSta;
+}
+
+const char* WifiClass::GetApIpAddress()
+{
+    return AccessPointIp;
 }
 
 TaskHandle_t WifiClass::GetEspNowTaskHandle()

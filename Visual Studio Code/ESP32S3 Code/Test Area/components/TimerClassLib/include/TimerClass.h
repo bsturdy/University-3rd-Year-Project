@@ -15,6 +15,7 @@ class TimerClass
         uint16_t Prescalar;                                             // Timer clock ticks are scaled by this, e.g. 1000Hz clock with 5 prescalar = 200Hz timer (5 clock ticks per 1 timer tick)
         volatile bool AreTimersInitated = false;                        // Internal check
         bool IsWatchdogEnabled = true;                                  // Internal check
+        uint8_t CoreToRunCyclicTask = 1;                                // Core cyclic task is pinned to
 
         static bool IRAM_ATTR CyclicISR(void* arg);                     // ISR called cyclically by a hardware timer, signals deterministic task to run
         static bool IRAM_ATTR WatchdogISR(void* arg);                   // ISR called by a timer triggered in the cyclic task, signals that a task has taken too long and must be terminated
@@ -22,7 +23,7 @@ class TimerClass
         static void CyclicTask(void *pvParameters);                     // Task called by cyclic ISR. This task calls the user task
         static void WatchdogTask(void *pvParameters);                   // Task called by Watchdog ISR. This task resets the cyclic task
 
-        static const int CyclicTaskStackSize = 1024;                    // Size given to cyclic task
+        static const int CyclicTaskStackSize = 4096;                    // Size given to cyclic task
         static StackType_t CyclicTaskStack[CyclicTaskStackSize];        // Static memory size for cyclic task
         static StaticTask_t CyclicTaskTCB;                              // Static memory location for cyclic task
         
@@ -50,7 +51,7 @@ class TimerClass
         ~TimerClass();
 
         bool SetupCyclicTask(void (*TaskToRun)(void*), 
-                            float CycleTimeInMs, float WatchdogTime, 
+                            /*float CycleTimeInMs, float WatchdogTime,*/ 
                             uint16_t Prescalar, uint8_t CoreToUse);     // Takes a task input and converts it into a cyclically executed task with watchdog protection
         uint64_t GetCyclicIsrCounter();
         uint64_t GetCyclicTaskCounter();

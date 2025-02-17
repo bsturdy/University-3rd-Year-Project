@@ -11,17 +11,17 @@
 #include "GpioConfig.h"
 #include <cmath>
 
-static const char *TAG = "Main";
+#define WIFI_MODE       CONFIG_ESP_DEVICE_MODE
+#define TAG             "Main"
 
 // Wifi
 WifiClass Wifi;
-constexpr bool IsAccessPoint = true;
 
 
 // Hardware Timer
 TimerClass Timer;
-float CycleTime = 0.05;
-float WatchdogTime = 0.04;
+float CycleTime = 0.1;
+float WatchdogTime = 0.08;
 uint16_t Prescalar = 2;
 
 uint64_t CyclicIsr = 0;
@@ -74,9 +74,10 @@ void Main(void* pvParameters)
 
 uint64_t CyclicCounter = 0;
 uint8_t CyclicState = 0;
+
 void CyclicUserTaskAp(void* pvParameters)
 {
-    if (CyclicCounter >= 100)
+    if (CyclicCounter >= 10000)
     {
         CyclicCounter = 0;
     }
@@ -84,77 +85,36 @@ void CyclicUserTaskAp(void* pvParameters)
     switch (CyclicState)
     {
         case 0:
-            if (CyclicCounter == 0)
-            {
-                //OnboardLedColour(120, 60, 0);
-            }
-            if (CyclicCounter == 500)
-            {
-                //OnboardLedColour(0, 0, 0);
-            }
             break;
 
-        case 1:
+        default:
             break;
-
-        case 2:
-            break;
-
-        case 3:
-            break;
-    }
-
-    CyclicCounter++;
-}
-void CyclicUserTaskSta(void* pvParameters)
-{
-    if (CyclicState == 0)
-    {
-        if (Wifi.GetIsConnectedToHost())
-        {
-            CyclicState = 1;
-        }
-    }
-    else
-    {
-        if (!Wifi.GetIsConnectedToHost())
-        {
-            CyclicState = 0;
-        }
     }
     
+    CyclicCounter++;
+}
+void CyclicUserTaskStation(void* pvParameters)
+{
+    if (CyclicCounter >= 10000)
+    {
+        CyclicCounter = 0;
+    }
 
     switch (CyclicState)
     {
         case 0:
             break;
-
-        case 1:
-
-            if (CyclicCounter == 0)
-            {
-                Wifi.SendUdpPacket("Test Packet", "192.168.4.1", 25000);
-            }
-            break;
-
-        case 2:
-            break;
-
-        case 3:
+    
+        default:
             break;
     }
-
     CyclicCounter++;
-    if (CyclicCounter >= 200)
-    {
-        CyclicCounter = 0;
-    }
 }
 
 
 extern "C" void app_main()
 { 
-    if (IsAccessPoint)
+    if (CONFIG_ESP_DEVICE_MODE == 0)
     {
         ESP_LOGI(TAG, "Configuring Access Point!");
         if (!Wifi.SetupWifiAP(25000, 10, 0))
@@ -167,7 +127,7 @@ extern "C" void app_main()
             ESP_LOGE(TAG, "SetupEspNow Failed!");
             return;
         }
-        if (!Timer.SetupCyclicTask(CyclicUserTaskAp, CycleTime, WatchdogTime, 2, 1))
+        if (!Timer.SetupCyclicTask(CyclicUserTaskAp, 2, 1))
         {
             ESP_LOGE(TAG, "SetupCyclicTask Failed!");
             return;
@@ -178,8 +138,8 @@ extern "C" void app_main()
             return;
         }
     }
-    
-    else
+
+    if (CONFIG_ESP_DEVICE_MODE == 1)
     {
         ESP_LOGI(TAG, "Configuring Station!");
         if (!Wifi.SetupWifiSta(25000, 10, 0))
@@ -192,12 +152,12 @@ extern "C" void app_main()
             ESP_LOGE(TAG, "SetupEspNow Failed!");
             return;
         }
-        if (!Timer.SetupCyclicTask(CyclicUserTaskSta, CycleTime, WatchdogTime, 2, 1))
+        if (!Timer.SetupCyclicTask(CyclicUserTaskStation, 2, 1))
         {
             ESP_LOGE(TAG, "SetupCyclicTask Failed!");
             return;
         }
-        if (xTaskCreatePinnedToCore(Main, "Main Task", 2048, NULL, 1, &MainHandle, 0) != pdPASS)
+        if (xTaskCreatePinnedToCore(Main, "Main Task", 4096, NULL, 1, &MainHandle, 0) != pdPASS)
         {
             ESP_LOGE(TAG, "SetupMainTask Failed!");
             return;

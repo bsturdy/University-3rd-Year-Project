@@ -1,0 +1,67 @@
+menu "Timer Class Configuration"
+
+    config ESP_CYCLIC_TIMER_GROUP
+        int "Select Timer Group For Cyclic Task"
+        default 0
+        range 0 1
+        help
+            Choose the timer group for the Cyclic Task. 
+
+                0 = TIMER_GROUP_0
+
+                1 = TIMER_GROUP_1
+
+    config ESP_CYCLIC_TIMER_INDEX
+        int "Select Timer Index For Cyclic Task"
+        default 0
+        range 0 1
+        help
+            Choose the timer index for the Cyclic Task. The timer group and timer index for the 
+            cyclic task cannot be the same as the watchdog task.
+                
+                0 = TIMER_0
+
+                1 = TIMER_1
+
+    config ESP_WATCHDOG_TIMER_GROUP
+        int "Select Timer Group For Watchdog Task"
+        default 0
+        range 0 1
+        help
+            Choose the timer group for the Watchdog Task.
+
+                0 = TIMER_GROUP_0
+
+                1 = TIMER_GROUP_1
+
+    config ESP_WATCHDOG_TIMER_INDEX
+        int "Select Timer Index For Watchdog Task"
+        default 1
+        range 0 1
+        help
+            Choose the timer index for the Watchdog Task. The timer group and timer index for the 
+            watchdog task cannot be the same as the cyclic task.
+                
+                0 = TIMER_0
+
+                1 = TIMER_1
+
+    config ESP_CYCLIC_TASK_PERIOD
+        int "Select The Period Of The Cyclic Task In Microseconds (us)"
+        default 10000
+        range 50 100000000
+        help
+            Determines how long it takes for the cyclic task to be called.
+            
+                This value is in Microseconds (us).
+
+    config ESP_WATCHDOG_TASK_PERIOD
+        int "Select The Timeout Of The Cyclic Task In Microseconds (us)"
+        default 8000
+        range 50 100000000
+        help
+            Set the watchdog timeout period for the cyclic task. This must be less than the cyclic task period.
+            
+                This value is in Microseconds (us).
+
+endmenu

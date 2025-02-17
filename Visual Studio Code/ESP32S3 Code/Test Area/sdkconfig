@@ -554,13 +554,25 @@ CONFIG_PARTITION_TABLE_MD5=y
 # end of Partition Table
 
 #
-# Wifi Configuration
+# Timer Class Configuration
 #
+CONFIG_ESP_CYCLIC_TIMER_GROUP=0
+CONFIG_ESP_CYCLIC_TIMER_INDEX=0
+CONFIG_ESP_WATCHDOG_TIMER_GROUP=0
+CONFIG_ESP_WATCHDOG_TIMER_INDEX=1
+CONFIG_ESP_CYCLIC_TASK_PERIOD=10000
+CONFIG_ESP_WATCHDOG_TIMEOUT=8000
+# end of Timer Class Configuration
+
+#
+# Wifi Class Configuration
+#
+CONFIG_ESP_DEVICE_MODE=0
 CONFIG_ESP_WIFI_SSID="Access Point"
 CONFIG_ESP_WIFI_PASSWORD="12345678"
 CONFIG_ESP_WIFI_CHANNEL=6
 CONFIG_ESP_MAX_STA_CONN=4
-# end of Wifi Configuration
+# end of Wifi Class Configuration
 
 #
 # Compiler options

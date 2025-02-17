@@ -14,8 +14,8 @@
 TimerClass* ClassInstance;
 const char *TAG = "Timer Class";
 
-StaticTask_t TimerClass::CyclicTaskTCB;
 StackType_t TimerClass::CyclicTaskStack[CyclicStackSize];
+StaticTask_t TimerClass::CyclicTaskTCB;
 
 StackType_t TimerClass::WatchdogTaskStack[WatchdogStackSize];
 StaticTask_t TimerClass::WatchdogTaskTCB;

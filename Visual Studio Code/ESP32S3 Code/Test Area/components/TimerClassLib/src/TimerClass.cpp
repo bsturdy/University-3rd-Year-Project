@@ -6,13 +6,15 @@
 //                            Timer Class                                      //
 //=============================================================================// 
 
-#define CyclicTimerGroup        TIMER_GROUP_0
-#define CyclicTimerIndex        TIMER_0
-#define WatchdogTimerGroup      TIMER_GROUP_1
-#define WatchdogTimerIndex      TIMER_0
+#define CyclicTimerGroup        ((timer_group_t)(CONFIG_ESP_CYCLIC_TIMER_GROUP == 0 ? TIMER_GROUP_0 : TIMER_GROUP_1))
+#define CyclicTimerIndex        ((timer_idx_t)(CONFIG_ESP_CYCLIC_TIMER_INDEX == 0 ? TIMER_0 : TIMER_1))
+#define WatchdogTimerGroup      ((timer_group_t)(CONFIG_ESP_WATCHDOG_TIMER_GROUP == 0 ? TIMER_GROUP_0 : TIMER_GROUP_1))
+#define WatchdogTimerIndex      ((timer_idx_t)(CONFIG_ESP_WATCHDOG_TIMER_INDEX == 0 ? TIMER_0 : TIMER_1))
+#define CyclicPeriodInUs        CONFIG_ESP_CYCLIC_TASK_PERIOD
+#define WatchdogPeriodInUs      CONFIG_ESP_WATCHDOG_TIMEOUT
+#define TAG                     "Timer Class"
 
 static TimerClass* ClassInstance;
-static const char *TAG = "Timer Class";
 
 StackType_t TimerClass::CyclicTaskStack[CyclicTaskStackSize];
 StaticTask_t TimerClass::CyclicTaskTCB;
@@ -105,7 +107,7 @@ void TimerClass::WatchdogTask(void* pvParameters)
             CyclicTaskHandle = NULL;
 
             // Re-create cyclic task (static memory location for fast speeds)
-            CyclicTaskHandle = xTaskCreateStatic
+            CyclicTaskHandle = xTaskCreateStaticPinnedToCore
             (
                 CyclicTask,                // Task function
                 "Deterministic Task",      // Task name
@@ -113,7 +115,8 @@ void TimerClass::WatchdogTask(void* pvParameters)
                 NULL,                      // Parameters to pass
                 configMAX_PRIORITIES - 2,  // Highest priority
                 CyclicTaskStack,           // Preallocated stack memory
-                &CyclicTaskTCB             // Preallocated TCB memory
+                &CyclicTaskTCB,             // Preallocated TCB memory
+                ClassInstance->CoreToRunCyclicTask
             );
 
             // Reset watchdog timer
@@ -240,13 +243,17 @@ bool TimerClass::SetupTimer(float CycleTimeInMs, float WatchdogTime, uint16_t Pr
 }   
 
 // Takes a task input and converts it into a cyclically executed task with watchdog protection
-bool TimerClass::SetupCyclicTask(void (*TaskToRun)(void*), float CycleTimeInMs, float WatchdogTime, 
+bool TimerClass::SetupCyclicTask(void (*TaskToRun)(void*), /*float CycleTimeInUs, float WatchdogTimeInUs,*/ 
                                  uint16_t Prescalar, uint8_t CoreToUse)
 {
     printf("\n");
     ESP_LOGI(TAG, "SetupCyclicTask Executed!");
 
+    float CycleTimeInMs = CyclicPeriodInUs / 1000.0;
+    float WatchdogTimeInMs = WatchdogPeriodInUs / 1000.0;
+
     // Assign vars
+    CoreToRunCyclicTask = CoreToUse;
     UserTask = TaskToRun;
 
     // Create the cyclic task in static location (fast speeds for deleting and recreating)
@@ -254,12 +261,12 @@ bool TimerClass::SetupCyclicTask(void (*TaskToRun)(void*), float CycleTimeInMs, 
     (
         CyclicTask,                     // Task function
         "Deterministic Task",           // Task name
-        CyclicTaskStackSize,                // Stack depth
+        CyclicTaskStackSize,            // Stack depth
         NULL,                           // Parameters to pass
         configMAX_PRIORITIES - 2,       // Highest priority - 1
         CyclicTaskStack,                // Preallocated stack memory
-        &CyclicTaskTCB,                  // Preallocated TCB memory
-        CoreToUse
+        &CyclicTaskTCB,                 // Preallocated TCB memory
+        CoreToRunCyclicTask             // Core task is pinned to
     );
 
     // Create the watchdog task in static location (fast speeds for deleting and recreating)
@@ -267,12 +274,12 @@ bool TimerClass::SetupCyclicTask(void (*TaskToRun)(void*), float CycleTimeInMs, 
     (
         WatchdogTask,                   // Task function
         "Watchdog Task",                // Task name
-        WatchdogTaskStackSize,              // Stack depth
+        WatchdogTaskStackSize,          // Stack depth
         NULL,                           // Parameters to pass
         configMAX_PRIORITIES - 1,       // Highest priority - 1
         WatchdogTaskStack,              // Preallocated stack memory
-        &WatchdogTaskTCB,                // Preallocated TCB memory
-        CoreToUse
+        &WatchdogTaskTCB,               // Preallocated TCB memory
+        CoreToRunCyclicTask             // Core task is pinned to
     );   
 
 
@@ -290,7 +297,7 @@ bool TimerClass::SetupCyclicTask(void (*TaskToRun)(void*), float CycleTimeInMs, 
     printf("\n");
 
     // Initiate the timers after the tasks are created
-    return ClassInstance->SetupTimer(CycleTimeInMs, WatchdogTime, Prescalar);
+    return ClassInstance->SetupTimer(CycleTimeInMs, WatchdogTimeInMs, Prescalar);
 }
 
 
