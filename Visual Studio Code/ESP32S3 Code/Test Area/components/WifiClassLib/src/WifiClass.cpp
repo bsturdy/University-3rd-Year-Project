@@ -1,17 +1,28 @@
 #include "WifiClass.h"
 
+// Author - Ben Sturdy
+// This file implements a class 'Wifi Class'. This class should be instantiated
+// only once in a project. This class controls all wireless functionalities.
+// This class can set up a system as an Access Point or a Station in WiFi mode. 
+// This class can set up and utilise ESP-NOW. The functions with this class can 
+// run on the same core as other processes.
 
 
-//=============================================================================// 
-//                            Wifi Class                                       //
-//=============================================================================// 
 
-#define WIFI_SSID           CONFIG_ESP_WIFI_SSID
-#define WIFI_PASS           CONFIG_ESP_WIFI_PASSWORD
-#define WIFI_CHANNEL        CONFIG_ESP_WIFI_CHANNEL
-#define MAX_STA_CONN        CONFIG_ESP_MAX_STA_CONN
-#define WIFI_MODE           CONFIG_ESP_DEVICE_MODE
-#define TAG                 "Wifi Class"
+
+
+//==============================================================================// 
+//                                                                              //
+//                            Wifi Class                                        //
+//                                                                              //
+//==============================================================================// 
+
+#define WIFI_SSID                   CONFIG_ESP_WIFI_SSID
+#define WIFI_PASS                   CONFIG_ESP_WIFI_PASSWORD
+#define WIFI_CHANNEL                CONFIG_ESP_WIFI_CHANNEL
+#define MAX_STA_CONN                CONFIG_ESP_MAX_STA_CONN
+#define WIFI_MODE                   CONFIG_ESP_DEVICE_MODE
+#define TAG                         "Wifi Class"
 
 static WifiClass* ClassInstance;
 
@@ -26,9 +37,13 @@ StaticTask_t WifiClass::UdpProcessingTaskTCB;
 
 
 
-//=============================================================================//
-//            Constructors, Destructors, Internal Functions                    //
-//=============================================================================// 
+
+
+//==============================================================================//
+//                                                                              //
+//            Constructors, Destructors, Internal Functions                     //
+//                                                                              //
+//==============================================================================// 
 
 WifiClass::WifiClass()
 {
@@ -328,8 +343,12 @@ void WifiClass::UdpSystemTask(void* pvParameters)
 
 
 
-//=============================================================================// 
-//                           Setup Functions                                   //
+
+
+//==============================================================================// 
+//                                                                              //
+//                           Setup Functions                                    //
+//                                                                              //
 //=============================================================================// 
 
 bool WifiClass::SetupWifiAP(uint16_t UdpPort, uint16_t Timeout, uint8_t CoreToUse)
@@ -834,9 +853,13 @@ bool WifiClass::SetupEspNow(uint8_t CoreToUse)
 
 
 
-//=============================================================================// 
-//                             Commands                                        //
-//=============================================================================//
+
+
+//==============================================================================// 
+//                                                                              //
+//                             Commands                                         //
+//                                                                              //
+//==============================================================================//
 
 bool WifiClass::SendUdpPacket(const char* Data, const char* DestinationIP, uint16_t DestinationPort)
 {
@@ -873,9 +896,13 @@ bool WifiClass::SendUdpPacket(const char* Data, const char* DestinationIP, uint1
 
 
 
-//=============================================================================// 
-//                             Get / Set                                       //
-//=============================================================================//
+
+
+//==============================================================================// 
+//                                                                              //
+//                             Get / Set                                        //
+//                                                                              //
+//==============================================================================//
 
 size_t WifiClass::GetNumClientsConnected()
 {
@@ -916,3 +943,7 @@ TaskHandle_t WifiClass::GetUdpProcessingTaskHandle()
 {
     return UdpProcessingTaskHandle;
 }
+
+
+
+

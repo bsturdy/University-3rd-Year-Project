@@ -15,13 +15,12 @@
 #define TAG             "Main"
 
 // Wifi
+TimerClass Timer;
 WifiClass Wifi;
 
 
 // Hardware Timer
-TimerClass Timer;
-float CycleTime = 0.1;
-float WatchdogTime = 0.08;
+
 uint16_t Prescalar = 2;
 
 uint64_t CyclicIsr = 0;
@@ -127,7 +126,7 @@ extern "C" void app_main()
             ESP_LOGE(TAG, "SetupEspNow Failed!");
             return;
         }
-        if (!Timer.SetupCyclicTask(CyclicUserTaskAp, 2, 1))
+        if (!Timer.SetupCyclicTask(CyclicUserTaskAp, 1))
         {
             ESP_LOGE(TAG, "SetupCyclicTask Failed!");
             return;
@@ -152,7 +151,7 @@ extern "C" void app_main()
             ESP_LOGE(TAG, "SetupEspNow Failed!");
             return;
         }
-        if (!Timer.SetupCyclicTask(CyclicUserTaskStation, 2, 1))
+        if (!Timer.SetupCyclicTask(CyclicUserTaskStation, 1))
         {
             ESP_LOGE(TAG, "SetupCyclicTask Failed!");
             return;

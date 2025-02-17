@@ -64,4 +64,15 @@ menu "Timer Class Configuration"
             
                 This value is in Microseconds (us).
 
+    config ESP_TIMER_PRESCALER
+        int "Select The Prescaler Used For The Timers"
+        default 2
+        range 2 65536
+        help
+            Set the prescalar value used for the timers. This value multiplies the number of clock ticks 
+            needed for one timer tick to be recognised.
+            
+                For example, a clock running at 1000Hz with a prescalar of 5 means that the timer attached
+                to that clock will run at 200Hz (5 clock ticks per 1 timer tick).
+
 endmenu
