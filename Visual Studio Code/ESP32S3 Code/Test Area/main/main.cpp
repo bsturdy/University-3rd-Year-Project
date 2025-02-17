@@ -1,9 +1,3 @@
-
-
-//=============================================================//
-//    Main Program                                             //
-//=============================================================// 
-
 #include "freertos/FreeRTOS.h"
 #include "freertos/task.h"
 #include "WifiClass.h"
@@ -11,18 +5,25 @@
 #include "GpioConfig.h"
 #include <cmath>
 
-#define WIFI_MODE       CONFIG_ESP_DEVICE_MODE
-#define TAG             "Main"
+
+
+
+
+//==============================================================================//
+//                                                                              //
+//                               Main Program                                   //
+//                                                                              //
+//==============================================================================// 
+
+#define TAG     "Main"
 
 // Wifi
-TimerClass Timer;
 WifiClass Wifi;
 
-
 // Hardware Timer
+TimerClass Timer;
 
-uint16_t Prescalar = 2;
-
+// Main Task
 uint64_t CyclicIsr = 0;
 uint64_t CyclicTask = 0;
 uint64_t WatchdogIsr = 0;
@@ -32,8 +33,8 @@ uint64_t CyclicTaskPrev = 0;
 uint64_t WatchdogIsrPrev = 0;
 uint64_t WatchdogTaskPrev = 0;
 uint64_t MainCounter = 0;
-
 TaskHandle_t MainHandle;
+
 void Main(void* pvParameters)
 {
     while(1)
@@ -71,6 +72,7 @@ void Main(void* pvParameters)
     }
 }
 
+// Cyclic task
 uint64_t CyclicCounter = 0;
 uint8_t CyclicState = 0;
 
@@ -92,6 +94,7 @@ void CyclicUserTaskAp(void* pvParameters)
     
     CyclicCounter++;
 }
+
 void CyclicUserTaskStation(void* pvParameters)
 {
     if (CyclicCounter >= 10000)
@@ -110,7 +113,7 @@ void CyclicUserTaskStation(void* pvParameters)
     CyclicCounter++;
 }
 
-
+// app_main
 extern "C" void app_main()
 { 
     ESP_LOGI(TAG, "Configuring Wifi!");
