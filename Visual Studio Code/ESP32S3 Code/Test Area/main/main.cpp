@@ -58,6 +58,7 @@ void Main(void* pvParameters)
         if (Wifi.GetIsSta())
         {
             printf("    Is connected to host:        %d\n", Wifi.GetIsConnectedToHost());
+            printf("    Access Point IP:             %s\n", Wifi.GetApIpAddress());
         }
         printf("=============================================\n");
 

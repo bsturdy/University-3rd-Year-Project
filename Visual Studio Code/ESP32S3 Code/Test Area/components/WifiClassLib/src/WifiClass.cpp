@@ -36,6 +36,9 @@ StaticTask_t WifiClass::UdpPollingTaskTCB;
 StackType_t WifiClass::UdpProcessingTaskStack[UdpProcessingTaskStackSize];
 StaticTask_t WifiClass::UdpProcessingTaskTCB;
 
+StackType_t WifiClass::UdpSystemTaskStack[UdpSystemTaskStackSize];
+StaticTask_t WifiClass::UdpSystemTaskTCB;
+
 
 
 
@@ -110,7 +113,6 @@ void WifiClass::WifiEventHandlerAp(void* arg, esp_event_base_t event_base,
 // Software event handler for wifi STA events
 void WifiClass::WifiEventHandlerSta(void* arg, esp_event_base_t event_base,
                                     int32_t event_id, void* event_data)
-
 {
     if (event_id == WIFI_EVENT_STA_DISCONNECTED) 
     {
@@ -132,6 +134,37 @@ void WifiClass::WifiEventHandlerSta(void* arg, esp_event_base_t event_base,
     }
 }
 
+// Software event handler for IP AP events
+void WifiClass::IpEventHandlerAp(void* arg, esp_event_base_t event_base,
+                                    int32_t event_id, void* event_data)
+{
+    if (event_id == IP_EVENT_AP_STAIPASSIGNED)
+    {
+        ip_event_ap_staipassigned_t* event = (ip_event_ap_staipassigned_t*) event_data;
+        
+        // Convert the assigned IP to a string
+        char ip_str[16];
+        esp_ip4addr_ntoa(&event->ip, ip_str, sizeof(ip_str));
+
+        ESP_LOGI(TAG, "Station assigned IP: %s", ip_str);
+
+        // Loop through the DeviceList and find the device by MAC address
+        for (auto& device : ClassInstance->DeviceList)
+        {
+            // Match by MAC address
+            if (memcmp(device.MacId, event->mac, sizeof(device.MacId)) == 0)
+            {
+                // Found the device, store the IP as a string in the corresponding slot
+                strncpy(device.IpAddress, ip_str, sizeof(device.IpAddress) - 1);
+                device.IpAddress[sizeof(device.IpAddress) - 1] = '\0'; // Ensure null-termination
+
+                ESP_LOGI(TAG, "Device " MACSTR " now has IP: %s", MAC2STR(event->mac), device.IpAddress);
+                break;
+            }
+        }
+    }
+}
+
 // Software event handler for IP STA events
 void WifiClass::IpEventHandlerSta(void* arg, esp_event_base_t event_base,
                                     int32_t event_id, void* event_data)
@@ -140,8 +173,10 @@ void WifiClass::IpEventHandlerSta(void* arg, esp_event_base_t event_base,
     {
         esp_netif_t *NetIf = esp_netif_get_handle_from_ifkey("WIFI_STA_DEF");
         esp_netif_ip_info_t TempAccessPointIp;
+
+        // Retrieve IP address
         esp_netif_get_ip_info(NetIf, &TempAccessPointIp);
-        esp_ip4addr_ntoa(&TempAccessPointIp.ip, ClassInstance->AccessPointIp, sizeof(ClassInstance->AccessPointIp));
+        esp_ip4addr_ntoa(&TempAccessPointIp.gw, ClassInstance->AccessPointIp, sizeof(ClassInstance->AccessPointIp));
         ESP_LOGI(TAG, "Access Point IP: %s", ClassInstance->AccessPointIp);
     }
 }
@@ -300,7 +335,7 @@ void WifiClass::UdpPollingTask(void* pvParameters)
         
         if (PacketLength > 0)
         {            
-            if (xQueueSend(ClassInstance->UdpProcessingQueue, &PacketLength, 0) != pdPASS)
+            if ((xQueueSend(ClassInstance->UdpProcessingQueue, &PacketLength, 0) != pdPASS) and (ClassInstance->IsRuntimeLoggingEnabled))
             {
                 ESP_LOGE(TAG, "UDP Processing Queue full!");
             }
@@ -319,18 +354,35 @@ void WifiClass::UdpProcessingTask(void* pvParameters)
     {
         if (xQueueReceive(ClassInstance->UdpProcessingQueue, &PacketLength, portMAX_DELAY) == pdPASS)
         {
-            ESP_LOGI(TAG, "Processing UDP packet, length = %d", PacketLength);
+            if (ClassInstance->IsRuntimeLoggingEnabled)
+            {
+                ESP_LOGI(TAG, "Processing UDP packet, length = %d", PacketLength);
+            }
 
             if (PacketLength > sizeof(ClassInstance->UdpBuffer))
             {
                 PacketLength = sizeof(ClassInstance->UdpBuffer);
             }
 
-            for (int i = 0; i < PacketLength; i++)
+            if (strcmp((char*)ClassInstance->UdpBuffer, "Sync") == 0)
             {
-                char ReceivedChar = ClassInstance->UdpBuffer[i];
-                ESP_LOGI(TAG, "%c", ReceivedChar);
+                ClassInstance->SyncPacketCheckCounter = ClassInstance->SyncPacketCheckCounter + 1; 
+                
+                if (ClassInstance->IsRuntimeLoggingEnabled)
+                {
+                    ESP_LOGI(TAG, "Received Sync packet! Packet check: %i", ClassInstance->SyncPacketCheckCounter);
+                }
             }
+
+            if (ClassInstance->IsRuntimeLoggingEnabled)
+            {
+                for (int i = 0; i < PacketLength; i++)
+                {
+                    char ReceivedChar = ClassInstance->UdpBuffer[i];
+                    ESP_LOGI(TAG, "%c", ReceivedChar);
+                }
+            }
+            
         }
     }
 }
@@ -338,19 +390,61 @@ void WifiClass::UdpProcessingTask(void* pvParameters)
 // Task that performs background UDP system functions, such as occasional system pings
 void WifiClass::UdpSystemTask(void* pvParameters)
 {
+    uint8_t Counter = 0;
     while(true)
     {
+        if (Counter >= 10)
+        {
+            Counter = 0;
+        }
+
         if (ClassInstance->IsAp)
         {
-            //SendUdpPacket(192)
+            // Sync System
+
+            if (Counter % 2 == 0)
+            {
+                for (int i = 0; i < ClassInstance->DeviceList.size(); i++)
+                {
+                    if (ClassInstance->IsRuntimeLoggingEnabled)
+                    {
+                        ESP_LOGI(TAG, "Sending UDP Sync Packet to %s...", ClassInstance->DeviceList[i].IpAddress);
+                    }
+
+                    if (ClassInstance->SendUdpPacket("Sync", ClassInstance->DeviceList[i].IpAddress, 25000))
+                    {
+                        if (ClassInstance->IsRuntimeLoggingEnabled)
+                        {
+                            ESP_LOGI(TAG, "Sent UDP Sync Packet!");
+                        }
+                    }
+                }
+            }
         }
 
         if (ClassInstance->IsSta)
         {
-            ClassInstance->SendUdpPacket("Sync", ClassInstance->GetApIpAddress(), 25000);
+            // Sync System
+
+            if (Counter % 2 == 0)
+            {
+                if (ClassInstance->IsRuntimeLoggingEnabled)
+                {
+                    ESP_LOGI(TAG, "Sending UDP Sync Packet to %s...", ClassInstance->AccessPointIp);
+                }
+
+                if (ClassInstance->SendUdpPacket("Sync", ClassInstance->AccessPointIp, 25000))
+                {
+                    if (ClassInstance->IsRuntimeLoggingEnabled)
+                    {
+                        ESP_LOGI(TAG, "Sent UDP Sync Packet!");  
+                    }
+                }
+            }
         }
 
-        vTaskDelay(500 / portTICK_PERIOD_MS);
+        Counter ++;
+        vTaskDelay(100 / portTICK_PERIOD_MS);
     }
 }
 
@@ -442,10 +536,24 @@ bool WifiClass::SetupWifiAP(uint16_t UdpPort, uint16_t Timeout, uint8_t CoreToUs
                                                 NULL));
     if (ret != ESP_OK) 
     {
-        ESP_LOGE(TAG, "Failed to register event handler: %s", esp_err_to_name(ret));
+        ESP_LOGE(TAG, "Failed to register wifi event handler: %s", esp_err_to_name(ret));
         return false;
     }
-    ESP_LOGI(TAG, "7 - Event Handler Ready!");
+    ESP_LOGI(TAG, "7 - Wifi Event Handler Ready!");
+
+
+    // Register event handler
+    ret = esp_event_handler_instance_register(IP_EVENT,
+                                                ESP_EVENT_ANY_ID,
+                                                &WifiClass::IpEventHandlerAp,
+                                                ClassInstance,
+                                                NULL);
+    if (ret != ESP_OK)
+    {
+    ESP_LOGE(TAG, "Failed to register event handler: %s", esp_err_to_name(ret));
+    return false;       
+    }
+    ESP_LOGI(TAG, "8 - IP Event Handler Ready!");
 
 
     // Configure AP settings
@@ -487,7 +595,7 @@ bool WifiClass::SetupWifiAP(uint16_t UdpPort, uint16_t Timeout, uint8_t CoreToUs
         ESP_LOGE(TAG, "Failed to set Wi-Fi mode: %s", esp_err_to_name(ret));
         return false;
     }
-    ESP_LOGI(TAG, "8 - Wi-Fi Mode Set To AP!");
+    ESP_LOGI(TAG, "9 - Wi-Fi Mode Set To AP!");
 
 
     // Apply previously made configuration
@@ -497,7 +605,7 @@ bool WifiClass::SetupWifiAP(uint16_t UdpPort, uint16_t Timeout, uint8_t CoreToUs
         ESP_LOGE(TAG, "Failed to apply Wi-Fi configuration: %s", esp_err_to_name(ret));
         return false;
     }
-    ESP_LOGI(TAG, "9 - Wi-Fi Configuration Applied!");
+    ESP_LOGI(TAG, "10 - Wi-Fi Configuration Applied!");
 
 
     // Start wifi AP
@@ -507,7 +615,7 @@ bool WifiClass::SetupWifiAP(uint16_t UdpPort, uint16_t Timeout, uint8_t CoreToUs
         ESP_LOGE(TAG, "Failed to start Wi-Fi AP: %s", esp_err_to_name(ret));
         return false;
     }
-    ESP_LOGI(TAG, "10 - Wi-Fi AP Started!");
+    ESP_LOGI(TAG, "11 - Wi-Fi AP Started!");
 
 
     ret = esp_wifi_set_inactive_time(WIFI_IF_AP, Timeout);
@@ -516,7 +624,7 @@ bool WifiClass::SetupWifiAP(uint16_t UdpPort, uint16_t Timeout, uint8_t CoreToUs
         ESP_LOGE(TAG, "Failed to set Inactive Timer: %s", esp_err_to_name(ret));
         return false;
     }
-    ESP_LOGI(TAG, "11 - Inactive Timer Set To 10s!");
+    ESP_LOGI(TAG, "12 - Inactive Timer Set To 10s!");
 
 
     if (!SetupUdpSocket(UdpPort))
@@ -524,7 +632,7 @@ bool WifiClass::SetupWifiAP(uint16_t UdpPort, uint16_t Timeout, uint8_t CoreToUs
         ESP_LOGE(TAG, "Failed to bind UDP socket");
         return false;
     }
-    ESP_LOGI(TAG, "12 - UDP Socket Bound!");
+    ESP_LOGI(TAG, "13 - UDP Socket Bound!");
 
 
     UdpPollingTaskHandle = xTaskCreateStaticPinnedToCore
@@ -543,7 +651,7 @@ bool WifiClass::SetupWifiAP(uint16_t UdpPort, uint16_t Timeout, uint8_t CoreToUs
         ESP_LOGE(TAG, "Failed to create UDP polling task");
         return false;
     }
-    ESP_LOGI(TAG, "13 - UDP Polling Task Created!");
+    ESP_LOGI(TAG, "14 - UDP Polling Task Created!");
 
 
     UdpProcessingQueue = xQueueCreate(10, sizeof(int)); 
@@ -552,7 +660,7 @@ bool WifiClass::SetupWifiAP(uint16_t UdpPort, uint16_t Timeout, uint8_t CoreToUs
         ESP_LOGE(TAG, "Failed to create UDP queue");
         return false;
     }
-    ESP_LOGI(TAG, "14 - UdpProcessingQueue Ready!");
+    ESP_LOGI(TAG, "15 - UdpProcessingQueue Ready!");
 
 
     UdpProcessingTaskHandle = xTaskCreateStaticPinnedToCore
@@ -571,7 +679,26 @@ bool WifiClass::SetupWifiAP(uint16_t UdpPort, uint16_t Timeout, uint8_t CoreToUs
         ESP_LOGE(TAG, "Failed to create UDP processing task");
         return false;
     }
-    ESP_LOGI(TAG, "15 - UDP Processing Task Created!");
+    ESP_LOGI(TAG, "16 - UDP Processing Task Created!");
+
+
+    UdpSystemTaskHandle = xTaskCreateStaticPinnedToCore
+    (
+        UdpSystemTask,                          // Task function
+        "Udp System Task",                      // Task name
+        UdpSystemTaskStackSize,                 // Stack depth
+        NULL,                                   // Parameters to pass
+        configMAX_PRIORITIES - 5,               // High priority
+        UdpSystemTaskStack,                     // Preallocated stack memory
+        &UdpSystemTaskTCB,                      // Preallocated TCB memory
+        CoreToUse                               // Core assigned
+    );   
+    if (UdpProcessingTaskHandle == NULL)
+    {
+        ESP_LOGE(TAG, "Failed to create UDP System task");
+        return false;
+    }
+    ESP_LOGI(TAG, "17 - UDP System Task Created!");
 
 
     IsAp = true;
@@ -790,6 +917,25 @@ bool WifiClass::SetupWifiSta(uint16_t UdpPort, uint16_t Timeout, uint8_t CoreToU
     ESP_LOGI(TAG, "16 - UDP Processing Task Created!");
 
 
+    UdpSystemTaskHandle = xTaskCreateStaticPinnedToCore
+    (
+        UdpSystemTask,                          // Task function
+        "Udp System Task",                      // Task name
+        UdpSystemTaskStackSize,                 // Stack depth
+        NULL,                                   // Parameters to pass
+        configMAX_PRIORITIES - 5,               // High priority
+        UdpSystemTaskStack,                     // Preallocated stack memory
+        &UdpSystemTaskTCB,                      // Preallocated TCB memory
+        CoreToUse                               // Core assigned
+    );   
+    if (UdpProcessingTaskHandle == NULL)
+    {
+        ESP_LOGE(TAG, "Failed to create UDP System task");
+        return false;
+    }
+    ESP_LOGI(TAG, "17 - UDP System Task Created!");
+
+
     IsSta = true;
     ESP_LOGI(TAG, "Connecting to SSID: %s", WIFI_SSID);
     ESP_LOGI(TAG, "SetupWifiSta Successful!");    
@@ -917,7 +1063,10 @@ bool WifiClass::SendUdpPacket(const char* Data, const char* DestinationIP, uint1
     if ((IsAp and (GetNumClientsConnected() == 0)) or
          (IsSta and !GetIsConnectedToHost()))
     {
-        ESP_LOGE(TAG, "Not Connected");
+        if (IsRuntimeLoggingEnabled)
+        {
+            ESP_LOGE(TAG, "Not Connected");
+        }
         return false;
     }
 
@@ -929,7 +1078,10 @@ bool WifiClass::SendUdpPacket(const char* Data, const char* DestinationIP, uint1
 
     if (inet_pton(AF_INET, DestinationIP, &DestinationAddress.sin_addr) <= 0)
     {
-        ESP_LOGE(TAG, "Invalid IP address: %s", DestinationIP);
+        if (IsRuntimeLoggingEnabled)
+        {
+            ESP_LOGE(TAG, "Invalid IP address: %s", DestinationIP);
+        }
         return false;
     }
 
@@ -939,7 +1091,10 @@ bool WifiClass::SendUdpPacket(const char* Data, const char* DestinationIP, uint1
 
     if (SentBytes < 0)
     {
-        ESP_LOGE(TAG, "Failed to send UDP packet, error = %d", errno);
+        if (IsRuntimeLoggingEnabled)
+        {
+            ESP_LOGE(TAG, "Failed to send UDP packet, error = %d", errno);
+        }
         return false;
     }
     return true;
@@ -995,6 +1150,9 @@ TaskHandle_t WifiClass::GetUdpProcessingTaskHandle()
     return UdpProcessingTaskHandle;
 }
 
-
+void WifiClass::SetRuntimeLogging(bool EnableRuntimeLogging)
+{
+    IsRuntimeLoggingEnabled = EnableRuntimeLogging;
+}
 
 
