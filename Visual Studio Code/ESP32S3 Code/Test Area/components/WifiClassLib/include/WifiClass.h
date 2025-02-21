@@ -29,18 +29,19 @@ struct ClientDevice
 {
     uint64_t TimeOfConnection;
     uint8_t MacId[6];
+    uint16_t aid;
     char IpAddress[16];
     bool IsRegisteredWithEspNow;
-    bool IsSyncSYstemRunning = false;
+    bool IsSyncSystemRunning = false;
     uint8_t SyncPacketCheckCounter = 10;
 };
 
 struct UdpPacket
 {
-    int PacketLength;
+    int PacketLength = 0;
     char Data[128];
     char SenderIp[16];
-    uint16_t SenderPort;
+    uint16_t SenderPort = 0;
 };
 
 class WifiClass
@@ -69,7 +70,7 @@ class WifiClass
         static StackType_t EspNowTaskStack[EspNowTaskStackSize];                        // Static memory size for ESP NOW task
         static StaticTask_t EspNowTaskTCB;                                              // Static memory location for ESP NOW task
 
-        static const int UdpPollingTaskStackSize = 2048;                                // Size given to UDP Polling task    
+        static const int UdpPollingTaskStackSize = 4096;                                // Size given to UDP Polling task    
         static StackType_t UdpPollingTaskStack[UdpPollingTaskStackSize];                // Static memory size for UDP Polling task
         static StaticTask_t UdpPollingTaskTCB;                                          // Static memory location for UDP Polling task
 
@@ -81,7 +82,7 @@ class WifiClass
         static StackType_t UdpSystemTaskStack[UdpProcessingTaskStackSize];              // Static memory size for UDP Processing task
         static StaticTask_t UdpSystemTaskTCB;                                           // Static memory location for UDP Processing task
 
-        static const uint16_t UdpBufferSize = 1024;                                     // Size of UDP buffer
+        static const uint16_t UdpHostBufferSize = 1024;                                     // Size of UDP buffer
 
         TaskHandle_t EspNowTaskHandle = NULL;                                           // Task handle
         TaskHandle_t UdpPollingTaskHandle = NULL;                                       // Task handle
@@ -90,12 +91,22 @@ class WifiClass
         QueueHandle_t EspNowDeviceQueue;                                                // Queue handle
         QueueHandle_t UdpProcessingQueue;                                               // Queue handle
 
+        void DeauthenticateDevice(const char* ipAddress);
         bool EspNowRegisterDevice(ClientDevice* DeviceToRegister);                      // Function to register a device to ESP NOW
         bool EspNowDeleteDevice(ClientDevice* DeviceToDelete);                          // Function to deregister / delete a device from ESP NOW
         bool SetupUdpSocket(uint16_t UdpPort);                                          // Function to establish a UDP socket on a given port
         bool SetupWifiAP(uint16_t UdpPort, uint16_t Timeout, uint8_t CoreToUse);        // Sets up system as an Access Point. Parameters are configured through the Menu Config
         bool SetupWifiSta(uint16_t UdpPort, uint16_t Timeout, uint8_t CoreToUse);       // Sets up system as a station and polls for available Access Points. Parameters are configured through the Menu Config
         
+        void UdpPollingOnAp(struct sockaddr_in* SourceAddress, 
+                            socklen_t* SourceAddressLength, 
+                            UdpPacket* ReceivedPacket);
+        void UdpPollingOnSta(int* PacketLength);
+        void UdpProcessOnAp(UdpPacket* ReceivedPacket);
+        void UdpProcessOnSta(int* PacketLengthIn);
+        void UdpSystemOnAp(uint8_t Counter);
+        void UdpSystemOnSta(uint8_t Counter);
+
         bool IsRuntimeLoggingEnabled = true;                                            // Print out logs for runtime functions
         bool IsAp = false;                                                              // Internal check
         bool IsSta = false;                                                             // Internal check
@@ -103,9 +114,10 @@ class WifiClass
         std::vector<ClientDevice> DeviceList;                                           // List of devices connected to Access Point (used when in AP mode)
         char AccessPointIp[16];                                                         // IP address of Access Point connected to (used when in station mode)
         const uint16_t UdpPollingTaskCycleTime = 10;                                    // Cycle time of UDP polling task
-        struct sockaddr_in UdpServerAddress;                                            // Address of UDP server
-        socklen_t UdpAddressLength = sizeof(UdpServerAddress);                          // Length of UDP server address
-        char UdpBuffer[UdpBufferSize];                                                  // Buffer for UDP data
+        const uint16_t UdpSystemTaskCycleTime = 10;
+        struct sockaddr_in UdpHostServerAddress;                                        // Address of UDP server
+        socklen_t UdpAddressLength = sizeof(UdpHostServerAddress);                      // Length of UDP server address
+        char UdpHostBuffer[UdpHostBufferSize];                                          // Buffer for UDP data
         int UdpSocketFD;                                                                // File Descriptor of UDP socket
 
 

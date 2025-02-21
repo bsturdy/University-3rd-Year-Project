@@ -117,6 +117,8 @@ void CyclicUserTaskStation(void* pvParameters)
 // app_main
 extern "C" void app_main()
 { 
+    esp_log_level_set("*", ESP_LOG_INFO);
+
     ESP_LOGI(TAG, "Configuring Wifi!");
     if (!Wifi.SetupWifi(0))
     {
