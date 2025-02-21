@@ -601,7 +601,7 @@ void WifiClass::UdpProcessOnSta(int* PacketLengthIn)
     if (ClassInstance->IsRuntimeLoggingEnabled)
     {
         printf("\n");
-        ESP_LOGW(TAG, "ESP-NOW REGISTER DEVICE");
+        ESP_LOGW(TAG, "UDP PROCESSING PACKET");
         ESP_LOGI(TAG, "Processing UDP packet, length = %d", *PacketLengthIn);
     }
 
