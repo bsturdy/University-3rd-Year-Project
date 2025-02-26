@@ -1,1 +1,2 @@
 source "components/WifiClassLib/Kconfig"
+source "components/TimerClassLib/Kconfig"

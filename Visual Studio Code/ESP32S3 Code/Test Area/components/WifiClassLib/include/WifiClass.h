@@ -25,7 +25,7 @@
 #include "lwip/sys.h"
 #include <sys/socket.h>
 
-struct ClientDevice
+struct WifiDevice
 {
     uint64_t TimeOfConnection;
     uint8_t MacId[6];
@@ -82,7 +82,7 @@ class WifiClass
         static StackType_t UdpSystemTaskStack[UdpProcessingTaskStackSize];              // Static memory size for UDP Processing task
         static StaticTask_t UdpSystemTaskTCB;                                           // Static memory location for UDP Processing task
 
-        static const uint16_t UdpHostBufferSize = 1024;                                     // Size of UDP buffer
+        static const uint16_t UdpHostBufferSize = 1024;                                 // Size of UDP buffer
 
         TaskHandle_t EspNowTaskHandle = NULL;                                           // Task handle
         TaskHandle_t UdpPollingTaskHandle = NULL;                                       // Task handle
@@ -91,9 +91,10 @@ class WifiClass
         QueueHandle_t EspNowDeviceQueue;                                                // Queue handle
         QueueHandle_t UdpProcessingQueue;                                               // Queue handle
 
-        void DeauthenticateDevice(const char* ipAddress);
-        bool EspNowRegisterDevice(ClientDevice* DeviceToRegister);                      // Function to register a device to ESP NOW
-        bool EspNowDeleteDevice(ClientDevice* DeviceToDelete);                          // Function to deregister / delete a device from ESP NOW
+        void DeauthenticateDeviceAp(const char* ipAddress);
+        void DeauthenticateDeviceSta(const char* ipAddress);
+        bool EspNowRegisterDevice(WifiDevice* DeviceToRegister);                        // Function to register a device to ESP NOW
+        bool EspNowDeleteDevice(WifiDevice* DeviceToDelete);                            // Function to deregister / delete a device from ESP NOW
         bool SetupUdpSocket(uint16_t UdpPort);                                          // Function to establish a UDP socket on a given port
         bool SetupWifiAP(uint16_t UdpPort, uint16_t Timeout, uint8_t CoreToUse);        // Sets up system as an Access Point. Parameters are configured through the Menu Config
         bool SetupWifiSta(uint16_t UdpPort, uint16_t Timeout, uint8_t CoreToUse);       // Sets up system as a station and polls for available Access Points. Parameters are configured through the Menu Config
@@ -101,9 +102,11 @@ class WifiClass
         void UdpPollingOnAp(struct sockaddr_in* SourceAddress, 
                             socklen_t* SourceAddressLength, 
                             UdpPacket* ReceivedPacket);
-        void UdpPollingOnSta(int* PacketLength);
+        void UdpPollingOnSta(struct sockaddr_in* SourceAddress, 
+                            socklen_t* SourceAddressLength, 
+                            UdpPacket* ReceivedPacket);
         void UdpProcessOnAp(UdpPacket* ReceivedPacket);
-        void UdpProcessOnSta(int* PacketLengthIn);
+        void UdpProcessOnSta(UdpPacket* ReceivedPacket);
         void UdpSystemOnAp(uint8_t Counter);
         void UdpSystemOnSta(uint8_t Counter);
 
@@ -111,10 +114,11 @@ class WifiClass
         bool IsAp = false;                                                              // Internal check
         bool IsSta = false;                                                             // Internal check
         bool IsConnectedToAP;                                                           // Is system connected to an Access Point (used when in station mode)
-        std::vector<ClientDevice> DeviceList;                                           // List of devices connected to Access Point (used when in AP mode)
+        WifiDevice HostWifiDevice;                                                      // AccessPoint that station is connected to (used when in station mode)
+        std::vector<WifiDevice> ClientWifiDeviceList;                                   // List of devices connected to Access Point (used when in AP mode)
         char AccessPointIp[16];                                                         // IP address of Access Point connected to (used when in station mode)
         const uint16_t UdpPollingTaskCycleTime = 10;                                    // Cycle time of UDP polling task
-        const uint16_t UdpSystemTaskCycleTime = 10;
+        const uint16_t UdpSystemTaskCycleTime = 10;                                     // Cycle time of UDP system task
         struct sockaddr_in UdpHostServerAddress;                                        // Address of UDP server
         socklen_t UdpAddressLength = sizeof(UdpHostServerAddress);                      // Length of UDP server address
         char UdpHostBuffer[UdpHostBufferSize];                                          // Buffer for UDP data
