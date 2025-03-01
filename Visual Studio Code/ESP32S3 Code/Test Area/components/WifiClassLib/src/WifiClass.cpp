@@ -81,23 +81,38 @@ void WifiClass::WifiEventHandlerAp(void* arg, esp_event_base_t event_base,
         if (ClassInstance->IsRuntimeLoggingEnabled)
         {
             printf("\n");
-            ESP_LOGW(TAG, "WI-FI CONNCETION EVENT");
+            ESP_LOGW(TAG, "WI-FI AP CONNECTION EVENT");
         }
 
+
+        // Store event data
         wifi_event_ap_staconnected_t* event = (wifi_event_ap_staconnected_t*) event_data;
-        ESP_LOGI(TAG, "Station "MACSTR" join, AID=%d",
+        ESP_LOGI(TAG, "Station "MACSTR" join, AID = %d",
                  MAC2STR(event->mac), event->aid);
-   
+
+
+        // Create wifi device with event data         
         WifiDevice NewDevice;
         NewDevice.TimeOfConnection = esp_timer_get_time();
         memcpy(NewDevice.MacId, event->mac, sizeof(NewDevice.MacId));
         NewDevice.IsRegisteredWithEspNow = false;
         NewDevice.aid = event->aid;
 
+
+        // Store device in class
         ClassInstance->ClientWifiDeviceList.push_back(NewDevice);
 
+
+        // Trigger ESP-NOW task queue to add to ESP-NOW register
         BaseType_t higherPriorityTaskWoken = pdFALSE;
         xQueueSendFromISR(ClassInstance->EspNowDeviceQueue, &NewDevice, &higherPriorityTaskWoken);
+
+
+        if (ClassInstance->IsRuntimeLoggingEnabled)
+        {
+            ESP_LOGW(TAG, "WI-FI AP CONNECTION EVENT COMPLETED");
+            printf("\n");
+        }
     } 
     
     else if (event_id == WIFI_EVENT_AP_STADISCONNECTED) 
@@ -105,32 +120,46 @@ void WifiClass::WifiEventHandlerAp(void* arg, esp_event_base_t event_base,
         if (ClassInstance->IsRuntimeLoggingEnabled)
         {
             printf("\n");
-            ESP_LOGW(TAG, "WI-FI DISCONNCETION EVENT");
+            ESP_LOGW(TAG, "WI-FI AP DISCONNECTION EVENT");
         }
 
+
+        // Store event data
         wifi_event_ap_stadisconnected_t* event = (wifi_event_ap_stadisconnected_t*) event_data;
-        ESP_LOGI(TAG, "Station "MACSTR" leave, AID=%d, reason=%d",
+        ESP_LOGI(TAG, "Station "MACSTR" leave, AID = %d, reason = %d",
                  MAC2STR(event->mac), event->aid, event->reason);
 
+
+        // Find device to remove by MacId
         auto it = std::find_if(ClassInstance->ClientWifiDeviceList.begin(), ClassInstance->ClientWifiDeviceList.end(),
                                 [event](const WifiDevice& device)
                                 {
                                     return memcmp(device.MacId, event->mac, sizeof(device.MacId)) == 0;
                                 });
         
+
         if (it != ClassInstance->ClientWifiDeviceList.end()) 
         {
-            // Device found, remove it
+            // Copy wifi device data
             WifiDevice TempDevice = *it;
 
-            TempDevice.IsRegisteredWithEspNow = true;
+            // Wipe wifi device from the class
+            ClassInstance->ClientWifiDeviceList.erase(it); 
 
-            ClassInstance->ClientWifiDeviceList.erase(it);  
+            // Force all disconnected devices to attempt to deauth ESP-NOW
+            TempDevice.IsRegisteredWithEspNow = true; 
 
+            // Trigger ESP-NOW task queue to wipe from ESP-NOW register
             BaseType_t higherPriorityTaskWoken = pdFALSE;
-
             xQueueSendFromISR(ClassInstance->EspNowDeviceQueue, &TempDevice, &higherPriorityTaskWoken);
         }
+
+
+        if (ClassInstance->IsRuntimeLoggingEnabled)
+        {
+            ESP_LOGW(TAG, "WI-FI AP DISCONNECTION EVENT COMPLETED");
+            printf("\n");
+        }  
     }
 }
 
@@ -143,36 +172,42 @@ void WifiClass::WifiEventHandlerSta(void* arg, esp_event_base_t event_base,
         if (ClassInstance->IsRuntimeLoggingEnabled)
         {
             printf("\n");
-            ESP_LOGW(TAG, "WI-FI CONNCETION EVENT");
+            ESP_LOGW(TAG, "WI-FI STA CONNECTION EVENT");
         }
 
-        wifi_event_sta_connected_t* event = (wifi_event_sta_connected_t*)event_data;
 
+        // Store event data
+        wifi_event_sta_connected_t* event = (wifi_event_sta_connected_t*)event_data;
+        ESP_LOGI(TAG, "Station connected, BSSID = "MACSTR", SSID = %s (length: %d), Channel = %d, AuthMode = %d, AID = %d",
+                MAC2STR(event->bssid), event->ssid, event->ssid_len, event->channel, event->authmode, event->aid);
+
+
+        // Create wifi device with event data
         WifiDevice NewDevice;
         NewDevice.TimeOfConnection = esp_timer_get_time();
         NewDevice.IsRegisteredWithEspNow = false;
         NewDevice.aid = event->aid;
-        
-        // Get the MAC address of the ESP32 station
-        uint8_t mac[6];
-        esp_err_t result = esp_wifi_get_mac(WIFI_IF_STA, mac);
-        if (result == ESP_OK)
-        {
-            memcpy(NewDevice.MacId, mac, sizeof(NewDevice.MacId));
-        }
-        else if (ClassInstance->IsRuntimeLoggingEnabled)
-        {
-            ESP_LOGE(TAG, "Failed to get MAC address for STA mode");
-        }
+        memcpy(NewDevice.MacId, event->bssid, sizeof(NewDevice.MacId));
 
+
+        // Store device in class
         ClassInstance->HostWifiDevice = NewDevice;
 
+
+        // Tell class it is connected to access point
         ClassInstance->IsConnectedToAP = true;
 
+
+        // Trigger ESP-NOW task queue to add to ESP-NOW register
         BaseType_t higherPriorityTaskWoken = pdFALSE;
         xQueueSendFromISR(ClassInstance->EspNowDeviceQueue, &NewDevice, &higherPriorityTaskWoken);
 
-        ESP_LOGI(TAG, "Connected to Wi-Fi!");
+
+        if (ClassInstance->IsRuntimeLoggingEnabled)
+        {
+            ESP_LOGW(TAG, "WI-FI STA CONNECTION EVENT COMPLETED");
+            printf("\n");
+        }
     }
 
     else if (event_id == WIFI_EVENT_STA_DISCONNECTED) 
@@ -180,27 +215,48 @@ void WifiClass::WifiEventHandlerSta(void* arg, esp_event_base_t event_base,
         if (ClassInstance->IsRuntimeLoggingEnabled)
         {
             printf("\n");
-            ESP_LOGW(TAG, "WI-FI DISCONNCETION EVENT");
+            ESP_LOGW(TAG, "WI-FI STA DISCONNECTION EVENT");
         }
+
+
+        // Store event data
+        wifi_event_sta_disconnected_t* event = (wifi_event_sta_disconnected_t*) event_data;
+        ESP_LOGI(TAG, "Station "MACSTR" leave, SSID = %s, BSSID = "MACSTR", Reason = %d, RSSI = %d",
+                 MAC2STR(event->bssid), event->ssid, MAC2STR(event->bssid), event->reason, event->rssi);
+
 
         if (ClassInstance->IsConnectedToAP)
         {
+            // Copy wifi device data
             WifiDevice TempDevice = ClassInstance->HostWifiDevice;
 
-            TempDevice.IsRegisteredWithEspNow = true;
-
+            // Wipe wifi device from the class
             memset(&ClassInstance->HostWifiDevice, 0, sizeof(ClassInstance->HostWifiDevice));
 
-            BaseType_t higherPriorityTaskWoken = pdFALSE;
+            // Force all disconnected devices to attempt to deauth ESP-NOW
+            TempDevice.IsRegisteredWithEspNow = true;
 
+            // Trigger ESP-NOW task queue to wipe from ESP-NOW register
+            BaseType_t higherPriorityTaskWoken = pdFALSE;
             xQueueSendFromISR(ClassInstance->EspNowDeviceQueue, &TempDevice, &higherPriorityTaskWoken);
         }
 
+
+        // Tell class it is NOT connected to access point
         ClassInstance->IsConnectedToAP = false;
 
-        ESP_LOGI(TAG, "Disconnected from Wi-Fi, retrying...");
+
+        // Retry connection immediately
         esp_wifi_disconnect();
-        esp_wifi_connect();  // Retry connection immediately
+        esp_wifi_connect();
+
+
+        if (ClassInstance->IsRuntimeLoggingEnabled)
+        {
+            ESP_LOGW(TAG, "WI-FI STA DISCONNECTION EVENT COMPLETED");
+            ESP_LOGI(TAG, "Disconnected from Wi-Fi, retrying...");
+            printf("\n");
+        }  
     } 
 }
 
@@ -213,7 +269,7 @@ void WifiClass::IpEventHandlerAp(void* arg, esp_event_base_t event_base,
         if (ClassInstance->IsRuntimeLoggingEnabled)
         {
             printf("\n");
-            ESP_LOGW(TAG, "IP ASSIGNED EVENT");
+            ESP_LOGW(TAG, "IP AP ASSIGNED EVENT");
         }
 
         ip_event_ap_staipassigned_t* event = (ip_event_ap_staipassigned_t*) event_data;
@@ -238,6 +294,12 @@ void WifiClass::IpEventHandlerAp(void* arg, esp_event_base_t event_base,
                 break;
             }
         }
+
+        if (ClassInstance->IsRuntimeLoggingEnabled)
+        {
+            ESP_LOGW(TAG, "IP AP ASSIGNED EVENT COMPLETED");
+            printf("\n");
+        }
     }
 }
 
@@ -250,7 +312,7 @@ void WifiClass::IpEventHandlerSta(void* arg, esp_event_base_t event_base,
         if (ClassInstance->IsRuntimeLoggingEnabled)
         {
             printf("\n");
-            ESP_LOGW(TAG, "IP ASSIGNED EVENT");
+            ESP_LOGW(TAG, "IP STA ASSIGNED EVENT");
         }
 
         char ip_str[16];
@@ -261,6 +323,12 @@ void WifiClass::IpEventHandlerSta(void* arg, esp_event_base_t event_base,
         ESP_LOGI(TAG, "Got IP from network (STA Mode): %s", ip_str);
 
         strncpy(ClassInstance->HostWifiDevice.IpAddress, ip_str, sizeof(ClassInstance->HostWifiDevice.IpAddress));
+
+        if (ClassInstance->IsRuntimeLoggingEnabled)
+        {
+            ESP_LOGW(TAG, "IP STA ASSIGNED EVENT COMPLETED");
+            printf("\n");
+        }
     }
 }
 
@@ -274,8 +342,9 @@ void WifiClass::DeauthenticateDeviceAp(const char* ipAddress)
     if (ClassInstance->IsRuntimeLoggingEnabled)
     {
         printf("\n");
-        ESP_LOGW(TAG, "WI-FI MANUAL DISCONNCETION EVENT");
+        ESP_LOGW(TAG, "WI-FI AP TRIGGER DISCONNCETION EVENT");
     }
+
 
     // Find the device in the list using the provided IP address
     auto it = std::find_if(ClassInstance->ClientWifiDeviceList.begin(), ClassInstance->ClientWifiDeviceList.end(),
@@ -284,35 +353,36 @@ void WifiClass::DeauthenticateDeviceAp(const char* ipAddress)
                                 return strcmp(device.IpAddress, ipAddress) == 0;
                             });
 
+
     if (it != ClassInstance->ClientWifiDeviceList.end()) 
     {
         // Device found, extract info
         WifiDevice TempDevice = *it;
 
-        // Mark the device as deauthenticated (or perform other state changes if necessary)
+        // Force the found device to attempt to deauth ESP-NOW
         TempDevice.IsRegisteredWithEspNow = true;
 
-        // Optionally, deauthenticate the device at the Wi-Fi level
+        // Deauthenticate the device from wifi - triggers wifi disconnection event
         esp_err_t result = esp_wifi_deauth_sta(TempDevice.aid);
-        if (result == ESP_OK)
+        if (result == ESP_OK && ClassInstance->IsRuntimeLoggingEnabled)
         {
             ESP_LOGI(TAG, "Device with MAC "MACSTR" deauthenticated.", MAC2STR(TempDevice.MacId));
         }
         else
         {
-            ESP_LOGE(TAG, "Failed to deauthenticate device with MAC "MACSTR". Error code: %d", MAC2STR(TempDevice.MacId), result);
+            ESP_LOGE(TAG, "Failed to deauthenticate device with MAC "MACSTR"! Error code: %d", MAC2STR(TempDevice.MacId), result);
         }
-
-        // Remove the device from the device list
-        ClassInstance->ClientWifiDeviceList.erase(it);  
-
-        // Send the deauthenticated device info to the queue (if necessary)
-        BaseType_t higherPriorityTaskWoken = pdFALSE;
-        xQueueSendFromISR(ClassInstance->EspNowDeviceQueue, &TempDevice, &higherPriorityTaskWoken);
     }
     else
     {
-        ESP_LOGW(TAG, "Device with IP: %s not found in device list.", ipAddress);
+        ESP_LOGE(TAG, "Device with IP: %s not found in device list!", ipAddress);
+    }
+
+
+    if (ClassInstance->IsRuntimeLoggingEnabled)
+    {
+        ESP_LOGW(TAG, "WI-FI AP TRIGGER DISCONNCETION EVENT COMPLETED");
+        printf("\n");
     }
 }
 
@@ -322,16 +392,17 @@ void WifiClass::DeauthenticateDeviceSta(const char* ipAddress)
     if (ClassInstance->IsRuntimeLoggingEnabled)
     {
         printf("\n");
-        ESP_LOGW(TAG, "WI-FI MANUAL DISCONNCETION EVENT");
+        ESP_LOGW(TAG, "WI-FI STA TRIGGER DISCONNCETION EVENT");
     }
 
+
+    // Check if host is the IP to deauthenticate
     if (strcmp(ipAddress, ClassInstance->HostWifiDevice.IpAddress) == 0) 
     {
-
-        // Mark the device as deauthenticated (or perform other state changes if necessary)
+        // Force the found device to attempt to deauth ESP-NOW
         ClassInstance->HostWifiDevice.IsRegisteredWithEspNow = true;
 
-        // Optionally, deauthenticate the device at the Wi-Fi level
+        // Deauthenticate the device from wifi - triggers wifi disconnection event
         esp_err_t result = esp_wifi_disconnect();
         if (result == ESP_OK)
         {
@@ -341,18 +412,17 @@ void WifiClass::DeauthenticateDeviceSta(const char* ipAddress)
         {
             ESP_LOGE(TAG, "Failed to deauthenticate device with MAC "MACSTR". Error code: %d", MAC2STR(ClassInstance->HostWifiDevice.MacId), result);
         }
-
-        // Send the deauthenticated device info to the queue (if necessary)
-        BaseType_t higherPriorityTaskWoken = pdFALSE;
-        xQueueSendFromISR(ClassInstance->EspNowDeviceQueue, &ClassInstance->HostWifiDevice, &higherPriorityTaskWoken);
-
-        // Remove the device from the device list
-        memset(&ClassInstance->HostWifiDevice, 0, sizeof(ClassInstance->HostWifiDevice));
     }
-
     else
     {
-        ESP_LOGW(TAG, "Device with IP: %s not found in device list.", ipAddress);
+        ESP_LOGE(TAG, "Device with IP: %s not found in device list.", ipAddress);
+    }
+
+
+    if (ClassInstance->IsRuntimeLoggingEnabled)
+    {
+        ESP_LOGW(TAG, "WI-FI STA TRIGGER DISCONNCETION EVENT COMPLETED");
+        printf("\n");
     }
 }
 
@@ -449,6 +519,12 @@ bool WifiClass::EspNowRegisterDevice(WifiDevice* DeviceToRegister)
 
     DeviceToRegister->IsRegisteredWithEspNow = true;
 
+    if (ClassInstance->IsRuntimeLoggingEnabled)
+    {
+        ESP_LOGW(TAG, "ESP-NOW REGISTER DEVICE COMPLETED");
+        printf("\n");
+    }
+
     return true;
 }
 
@@ -488,6 +564,12 @@ bool WifiClass::EspNowDeleteDevice(WifiDevice* DeviceToDelete)
     }
 
     DeviceToDelete->IsRegisteredWithEspNow = false;
+
+    if (ClassInstance->IsRuntimeLoggingEnabled)
+    {
+        ESP_LOGW(TAG, "ESP-NOW DELETE DEVICE COMPLETED");
+        printf("\n");
+    }
 
     return true;
 }
@@ -840,7 +922,7 @@ void WifiClass::UdpSystemOnSta(uint8_t Counter)
         {
             printf("\n");
             ESP_LOGW(TAG, "UDP STA SYNC SYSTEM");
-            ESP_LOGI(TAG, "Sending UDP Sync Packet to %s...", ClassInstance->AccessPointIp);
+            ESP_LOGI(TAG, "Sending UDP Sync Packet to %s...", ClassInstance->HostWifiDevice.IpAddress);
         }
 
         if (ClassInstance->SendUdpPacket("Sync", ClassInstance->HostWifiDevice.IpAddress, 25000))
@@ -1136,7 +1218,7 @@ bool WifiClass::SetupWifiAP(uint16_t UdpPort, uint16_t Timeout, uint8_t CoreToUs
 
     ESP_LOGI(TAG, "SSID: %s, Password: %s, Channel: %d",
              WIFI_SSID, WIFI_PASS, WIFI_CHANNEL);
-    ESP_LOGI(TAG, "SETUP WI-FI AP SUCCESSFUL");    
+    ESP_LOGW(TAG, "SETUP WI-FI AP SUCCESSFUL");    
     printf("\n");
     return true;
 }
@@ -1370,7 +1452,7 @@ bool WifiClass::SetupWifiSta(uint16_t UdpPort, uint16_t Timeout, uint8_t CoreToU
 
 
     ESP_LOGI(TAG, "Connecting to SSID: %s", WIFI_SSID);
-    ESP_LOGI(TAG, "SETUP WI-FI STATION SUCCESSFUL");     
+    ESP_LOGW(TAG, "SETUP WI-FI STATION SUCCESSFUL");     
     esp_wifi_disconnect();  // Disconnect first, just in case
     esp_wifi_connect();     // Manually trigger the connection
     printf("\n");
@@ -1449,7 +1531,7 @@ bool WifiClass::SetupEspNow(uint8_t CoreToUse)
 bool WifiClass::SetupWifi(uint8_t CoreToUse)
 {
     printf("\n");
-    ESP_LOGI(TAG, "SetupWifi Executed!");
+    ESP_LOGW(TAG, "SetupWifi Executed!");
 
 
     // AP
@@ -1474,7 +1556,7 @@ bool WifiClass::SetupWifi(uint8_t CoreToUse)
     }
 
 
-    ESP_LOGI(TAG, "SetupWifi Successful!");
+    ESP_LOGW(TAG, "SetupWifi Successful!");
     printf("\n");
     return true;
 }
@@ -1564,7 +1646,7 @@ bool WifiClass::GetIsSta()
 
 const char* WifiClass::GetApIpAddress()
 {
-    return AccessPointIp;
+    return HostWifiDevice.IpAddress;
 }
 
 TaskHandle_t WifiClass::GetEspNowTaskHandle()

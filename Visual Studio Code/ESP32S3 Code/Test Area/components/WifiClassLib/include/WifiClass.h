@@ -110,13 +110,12 @@ class WifiClass
         void UdpSystemOnAp(uint8_t Counter);
         void UdpSystemOnSta(uint8_t Counter);
 
-        bool IsRuntimeLoggingEnabled = true;                                            // Print out logs for runtime functions
+        bool IsRuntimeLoggingEnabled = false;                                           // Print out logs for runtime functions
         bool IsAp = false;                                                              // Internal check
         bool IsSta = false;                                                             // Internal check
         bool IsConnectedToAP;                                                           // Is system connected to an Access Point (used when in station mode)
         WifiDevice HostWifiDevice;                                                      // AccessPoint that station is connected to (used when in station mode)
         std::vector<WifiDevice> ClientWifiDeviceList;                                   // List of devices connected to Access Point (used when in AP mode)
-        char AccessPointIp[16];                                                         // IP address of Access Point connected to (used when in station mode)
         const uint16_t UdpPollingTaskCycleTime = 10;                                    // Cycle time of UDP polling task
         const uint16_t UdpSystemTaskCycleTime = 10;                                     // Cycle time of UDP system task
         struct sockaddr_in UdpHostServerAddress;                                        // Address of UDP server
