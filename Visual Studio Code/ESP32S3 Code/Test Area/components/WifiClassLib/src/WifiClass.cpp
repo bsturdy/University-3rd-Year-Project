@@ -196,6 +196,7 @@ void WifiClass::WifiEventHandlerSta(void* arg, esp_event_base_t event_base,
 
         // Tell class it is connected to access point
         ClassInstance->IsConnectedToAP = true;
+        ClassInstance->WifiConnectionCounter = ClassInstance->WifiConnectionCounter + 1;
 
 
         // Trigger ESP-NOW task queue to add to ESP-NOW register
@@ -619,7 +620,6 @@ void WifiClass::UdpPollingTask(void* pvParameters)
         ESP_LOGW(TAG, "UDP POLLING TASK BEGIN");
     }
 
-    int PacketLength;
     struct sockaddr_in SourceAddress;
     socklen_t SourceAddressLength = sizeof(SourceAddress);
     UdpPacket ReceivedPacket = {};
@@ -694,23 +694,6 @@ void WifiClass::UdpPollingOnSta(struct sockaddr_in* SourceAddress, socklen_t* So
         memset(SourceAddress, 0, sizeof(struct sockaddr_in));
         memset(ReceivedPacket, 0, sizeof(UdpPacket));
     }
-
-    /**PacketLength = 0;
-
-    *PacketLength = recvfrom(ClassInstance->UdpSocketFD, 
-                            ClassInstance->UdpHostBuffer, 
-                            sizeof(ClassInstance->UdpHostBuffer), 
-                            MSG_DONTWAIT, 
-                            (struct sockaddr*)&ClassInstance->UdpHostServerAddress, 
-                            &ClassInstance->UdpAddressLength);
-
-    if (*PacketLength > 0)
-    {            
-        if ((xQueueSend(ClassInstance->UdpProcessingQueue, PacketLength, 0) != pdPASS) and (ClassInstance->IsRuntimeLoggingEnabled))
-        {
-            ESP_LOGE(TAG, "UDP Processing Queue full!");
-        }
-    }*/
 }
 
 
@@ -726,7 +709,6 @@ void WifiClass::UdpProcessingTask(void* pvParameters)
         ESP_LOGW(TAG, "UDP PROCESSING TASK BEGIN");
     }
 
-    int PacketLength;
     UdpPacket* ReceivedPacket;
 
     while (true)
@@ -1664,11 +1646,14 @@ TaskHandle_t WifiClass::GetUdpProcessingTaskHandle()
     return UdpProcessingTaskHandle;
 }
 
+uint64_t WifiClass::GetConenctionEventCounter()
+{
+    return WifiConnectionCounter;
+}
+
 void WifiClass::SetRuntimeLogging(bool EnableRuntimeLogging)
 {
     IsRuntimeLoggingEnabled = EnableRuntimeLogging;
 }
-
-
 
 

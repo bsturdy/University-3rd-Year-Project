@@ -66,12 +66,12 @@ class TimerClass
 
         bool SetupCyclicTask(void (*TaskToRun)(void*), 
                             uint8_t CoreToUse);                         // Takes a task input and converts it into a cyclically executed task with watchdog protection
+        void SetWatchdogOnOff(bool IsWatchdogEnabled);                  // Determines if the Watchdog functionality is used or not 
         uint64_t GetCyclicIsrCounter();
         uint64_t GetCyclicTaskCounter();
         uint64_t GetWatchdogIsrCounter();
         uint64_t GetWatchdogTaskCounter();
         uint64_t GetTimerFrequency();
-        void SetWatchdogOnOff(bool IsWatchdogEnabled);                  // Determines if the Watchdog functionality is used or not 
         TaskHandle_t GetCyclicTaskHandle();
         TaskHandle_t GetWatchdogTaskHandle();
 };

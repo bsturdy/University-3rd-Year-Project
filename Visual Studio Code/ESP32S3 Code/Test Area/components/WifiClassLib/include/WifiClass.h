@@ -114,6 +114,7 @@ class WifiClass
         bool IsAp = false;                                                              // Internal check
         bool IsSta = false;                                                             // Internal check
         bool IsConnectedToAP;                                                           // Is system connected to an Access Point (used when in station mode)
+        uint64_t WifiConnectionCounter = 0;                                             // Number of times a device has connected to a host
         WifiDevice HostWifiDevice;                                                      // AccessPoint that station is connected to (used when in station mode)
         std::vector<WifiDevice> ClientWifiDeviceList;                                   // List of devices connected to Access Point (used when in AP mode)
         const uint16_t UdpPollingTaskCycleTime = 10;                                    // Cycle time of UDP polling task
@@ -145,8 +146,9 @@ class WifiClass
         TaskHandle_t GetEspNowTaskHandle();
         TaskHandle_t GetUdpPollingTaskHandle();
         TaskHandle_t GetUdpProcessingTaskHandle();
+        uint64_t GetConenctionEventCounter();
 
-        void SetRuntimeLogging(bool EnableRuntimeLogging);                           // Produces logs for runtime functions. Useful for debugging
+        void SetRuntimeLogging(bool EnableRuntimeLogging);                              // Produces logs for runtime functions. Useful for debugging
 };
 
 #endif
