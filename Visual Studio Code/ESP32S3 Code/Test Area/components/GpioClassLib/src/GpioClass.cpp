@@ -1,6 +1,11 @@
 #include "GpioClass.h"
 
 // Author - Ben Sturdy
+// This file implements a class 'GPIO Class'. This class should be instantiated
+// only once in a project. This class provides general functions for the GPIO features
+// that are found on the ESP32 S3 board - including control of the on board LED,
+// controlling analog input and output pins, creating PWM functionality and more.
+// This class is a work in progress
 
 
 
@@ -48,10 +53,7 @@ GpioClass::~GpioClass()
     ;
 } 
 
-
-
-
-
+// Configures a TX RMT Channel
 bool GpioClass::SetupRmtTxChannel(gpio_num_t GpioNumber, uint32_t Resolution) 
 {
     if (ClassInstance->IsRuntimeLoggingEnabled)
@@ -100,37 +102,6 @@ bool GpioClass::SetupRmtTxChannel(gpio_num_t GpioNumber, uint32_t Resolution)
 }
 
 
-void IRAM_ATTR GpioClass::ConvertByteToWS2812b(rmt_symbol_word_t* Symbols, uint8_t Byte) 
-{
-    for (int i = 0; i < 8; i++) 
-    {
-        // If the bit is 1
-        if (Byte & (1 << (7 - i)))  
-        {
-            Symbols[i] = (rmt_symbol_word_t) 
-            {
-                .duration0 = WS2812_TICKS_1_HIGH,
-                .level0 = 1,  // High level
-                .duration1 = WS2812_TICKS_1_LOW,
-                .level1 = 0   // Low level
-            };
-        }
-
-        // If the bit is 0
-        else 
-        {
-            Symbols[i] = (rmt_symbol_word_t) 
-            {
-                .duration0 = WS2812_TICKS_0_HIGH,
-                .level0 = 1,  // High level
-                .duration1 = WS2812_TICKS_0_LOW,
-                .level1 = 0   // Low level
-            };
-        }
-    }
-}
-
-
 
 
 
@@ -140,6 +111,7 @@ void IRAM_ATTR GpioClass::ConvertByteToWS2812b(rmt_symbol_word_t* Symbols, uint8
 //                                                                              //
 //==============================================================================// 
 
+// Configures an RMT channel to communicate with the LED pin
 bool GpioClass::SetupOnboardLed()
 {
     if (ClassInstance->IsRuntimeLoggingEnabled)
@@ -155,6 +127,8 @@ bool GpioClass::SetupOnboardLed()
         return false;
     }
 
+
+    // Configure then create a byte encoder for the RMT peripheral
     rmt_bytes_encoder_config_t EncoderConfig = 
     {
         .bit0 = 
@@ -176,7 +150,6 @@ bool GpioClass::SetupOnboardLed()
             .msb_first = 1,
         }
     };
-
     esp_err_t err = rmt_new_bytes_encoder(&EncoderConfig, &RmtLedEncoder);
     if (err != ESP_OK) 
     {
@@ -203,11 +176,14 @@ bool GpioClass::SetupOnboardLed()
 //                                                                              //
 //==============================================================================//
 
+// Changes the colour of the onboard LED
 bool GpioClass::ChangeOnboardLedColour(uint8_t Red, uint8_t Green, uint8_t Blue)
 {
+    // GRB for neopixels
     uint8_t LedData[3] = {Green, Red, Blue};
 
 
+    // Reset pulse
     rmt_symbol_word_t ResetData = 
     {
         .duration0 = WS2812_RESET_TICKS,
@@ -248,3 +224,11 @@ bool GpioClass::ChangeOnboardLedColour(uint8_t Red, uint8_t Green, uint8_t Blue)
 //                             Get / Set                                        //
 //                                                                              //
 //==============================================================================//
+
+// Produces logs for runtime functions. Useful for debugging
+void GpioClass::SetRuntimeLogging(bool EnableRuntimeLogging)
+{
+    IsRuntimeLoggingEnabled = EnableRuntimeLogging;
+} 
+
+
