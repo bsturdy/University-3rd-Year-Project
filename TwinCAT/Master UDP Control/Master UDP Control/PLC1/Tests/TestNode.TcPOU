@@ -1,0 +1,80 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<TcPlcObject Version="1.1.0.1">
+  <POU Name="TestNode" Id="{0bcb7e1e-127a-43ae-bea2-b98dab94b334}" SpecialFunc="None">
+    <Declaration><![CDATA[{attribute 'enable_dynamic_creation'}
+FUNCTION_BLOCK TestNode IMPLEMENTS ITF_Node
+VAR
+	_next : ITF_Node;
+    _prev : ITF_Node;
+    _pos  : UINT;
+END_VAR
+]]></Declaration>
+    <Implementation>
+      <ST><![CDATA[]]></ST>
+    </Implementation>
+    <Method Name="GetLastNode" Id="{253d8c54-70d8-4367-86f8-d532631c4b16}">
+      <Declaration><![CDATA[METHOD GetLastNode : ITF_Node
+]]></Declaration>
+      <Implementation>
+        <ST><![CDATA[GetLastNode := _prev;]]></ST>
+      </Implementation>
+    </Method>
+    <Method Name="GetMyPointer" Id="{19e406ff-acf2-4b69-bccb-f8bd4ad3075d}">
+      <Declaration><![CDATA[METHOD GetMyPointer : PVOID
+]]></Declaration>
+      <Implementation>
+        <ST><![CDATA[GetMyPointer := ADR(THIS^);]]></ST>
+      </Implementation>
+    </Method>
+    <Method Name="GetNextNode" Id="{5d013b56-826c-404c-8b9a-ffb51d84435b}">
+      <Declaration><![CDATA[METHOD GetNextNode : ITF_Node
+]]></Declaration>
+      <Implementation>
+        <ST><![CDATA[GetNextNode := _next;]]></ST>
+      </Implementation>
+    </Method>
+    <Method Name="GetPositionInList" Id="{7676de77-38f7-4e44-a0a5-02e4079f2f99}">
+      <Declaration><![CDATA[METHOD GetPositionInList : UINT
+]]></Declaration>
+      <Implementation>
+        <ST><![CDATA[GetPositionInList := _pos;]]></ST>
+      </Implementation>
+    </Method>
+    <Method Name="SetLastNode" Id="{b28a873d-7080-434a-b3b7-113729e08fe4}">
+      <Declaration><![CDATA[METHOD SetLastNode : BOOL
+VAR_INPUT
+	Node	: ITF_Node;
+END_VAR
+]]></Declaration>
+      <Implementation>
+        <ST><![CDATA[_prev := Node; 
+
+SetLastNode := TRUE;]]></ST>
+      </Implementation>
+    </Method>
+    <Method Name="SetNextNode" Id="{6f500d5a-1898-4f98-a0f9-160b1b0fe1de}">
+      <Declaration><![CDATA[METHOD SetNextNode : BOOL
+VAR_INPUT
+	Node	: ITF_Node;
+END_VAR
+]]></Declaration>
+      <Implementation>
+        <ST><![CDATA[_next := Node; 
+
+SetNextNode := TRUE;]]></ST>
+      </Implementation>
+    </Method>
+    <Method Name="SetPositionInList" Id="{887ab231-72a1-41d8-901a-3cdbe41f8e5a}">
+      <Declaration><![CDATA[METHOD SetPositionInList : BOOL
+VAR_INPUT
+	Index	: UINT;
+END_VAR
+]]></Declaration>
+      <Implementation>
+        <ST><![CDATA[_pos := Index; 
+
+SetPositionInList := TRUE;]]></ST>
+      </Implementation>
+    </Method>
+  </POU>
+</TcPlcObject>

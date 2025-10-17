@@ -1,0 +1,13 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<TcPlcObject Version="1.1.0.1">
+  <POU Name="Tests" Id="{5ebf9a52-e6c9-4043-9013-26b310600035}" SpecialFunc="None">
+    <Declaration><![CDATA[PROGRAM Tests
+VAR
+END_VAR
+]]></Declaration>
+    <Implementation>
+      <ST><![CDATA[Tests_ListAndFactory();
+Tests_Udp();]]></ST>
+    </Implementation>
+  </POU>
+</TcPlcObject>

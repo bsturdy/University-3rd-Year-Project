@@ -181,13 +181,13 @@ extern "C" void app_main()
 { 
     esp_log_level_set("*", ESP_LOG_INFO);
 
-    if (!Wifi.SetupWifi(0))
+    if (Wifi.SetupWifi(0, 10) != ESP_OK)
     {
         ESP_LOGE(TAG, "SetupWifi Failed!");
         return;
     }
 
-    if (!Wifi.SetupEspNow(0))
+    if (Wifi.SetupEspNow(0) != ESP_OK)
     {
         ESP_LOGE(TAG, "SetupEspNow Failed!");
         return;
@@ -225,3 +225,29 @@ extern "C" void app_main()
 
 
 
+void BeckhoffTest(void* pvParameters)
+{
+    uint8_t State = 0;
+    while(1)
+    {
+        switch(State)
+        {
+            case 0:
+                ;
+
+            case 1:
+                ;
+
+            case 2:
+                ;
+
+            default:
+                ;
+        }
+
+
+
+
+        vTaskDelay(10);
+    }
+}

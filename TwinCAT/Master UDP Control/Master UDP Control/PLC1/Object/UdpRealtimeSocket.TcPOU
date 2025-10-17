@@ -1,0 +1,215 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<TcPlcObject Version="1.1.0.1">
+  <POU Name="UdpRealtimeSocket" Id="{ab1714dd-0b40-4321-ad0b-710d804233e1}" SpecialFunc="None">
+    <Declaration><![CDATA[{attribute 'c++_compatible'}
+FUNCTION_BLOCK UdpRealtimeSocket IMPLEMENTS ITF_UdpConnection, ITcIoUdpProtocolRecv
+VAR
+	{attribute 'TcInitSymbol'}
+    oid:              OTCID; 
+    ipUdp:            ITcIoUdpProtocol;
+    nUdpPort:         UINT := 10000;
+    nReceivedPakets:  UINT;
+    hrInit :          HRESULT;
+    hrSend :          HRESULT;
+END_VAR
+]]></Declaration>
+    <Implementation>
+      <ST><![CDATA[]]></ST>
+    </Implementation>
+    <Method Name="CyclicUpdate" Id="{e112ef9d-52a3-4d70-a5c2-2cd822099325}">
+      <Declaration><![CDATA[{warning 'Add method implementation '}
+METHOD CyclicUpdate : BOOL
+]]></Declaration>
+      <Implementation>
+        <ST><![CDATA[
+IF ipUdp <> 0 THEN
+    ipUdp.CheckReceived();
+END_IF]]></ST>
+      </Implementation>
+    </Method>
+    <Method Name="FB_Exit" Id="{4f9289f4-96ed-4e0d-8ffc-098a764ff1e5}">
+      <Declaration><![CDATA[//FB_Exit must be implemented explicitly. If there is an implementation, then the
+//method is called before the controller removes the code of the function block instance
+//(implicit call). The return value is not evaluated.
+METHOD FB_Exit: BOOL
+VAR_INPUT
+    bInCopyCode: BOOL;  // TRUE: the exit method is called in order to leave the instance which will be copied afterwards (online change).  
+END_VAR]]></Declaration>
+      <Implementation>
+        <ST><![CDATA[IF (NOT bInCopyCode AND ipUdp <> 0) THEN //Shutdown
+     ipUdp.UnregisterReceiver(nUpdPort);
+    FW_SafeRelease(ADR(ipUdp));
+     FB_exit := TRUE;
+ELSE
+     FB_exit := FALSE;
+END_IF]]></ST>
+      </Implementation>
+    </Method>
+    <Method Name="FB_Init" Id="{3590a708-a514-4f19-93e3-e300ecc0642e}">
+      <Declaration><![CDATA[//FB_Init is always available implicitly and it is used primarily for initialization.
+//The return value is not evaluated. For a specific influence, you can also declare the
+//methods explicitly and provide additional code there with the standard initialization
+//code. You can evaluate the return value.
+METHOD FB_Init: BOOL
+VAR_INPUT
+    bInitRetains: BOOL; // TRUE: the retain variables are initialized (reset warm / reset cold)
+    bInCopyCode: BOOL;  // TRUE: the instance will be copied to the copy code afterward (online change)  
+END_VAR
+VAR
+    ipSrv: ITComObjectServer;
+END_VAR]]></Declaration>
+      <Implementation>
+        <ST><![CDATA[IF NOT bInCopyCode THEN // no online change
+    IF ipUdp = 0 AND oid <> 0 THEN
+     hrInit := FW_ObjMgr_GetObjectInstance(oid:=oid, iid:=TC_GLOBAL_IID_LIST.IID_ITcIoUdpProtocol, pipUnk:=ADR(ipUdp) );
+        IF SUCCEEDED(hrInit) THEN 
+            IF SUCCEEDED(ipUdp.RegisterReceiver(nUdpPort, THIS^)) THEN //open port
+                FB_init := TRUE;
+            ELSE 
+                FB_init := FALSE; 
+                FW_SafeRelease(ADR(ipUdp));
+            END_IF
+        END_IF
+    ELSIF oid = 0 THEN 
+        FB_init := FALSE; 
+        hrInit := ERR_INVALID_PARAM;                 
+    END_IF
+END_IF]]></ST>
+      </Implementation>
+    </Method>
+    <Method Name="FB_Reinit" Id="{ef885175-bf44-4f1a-b7ee-b0dadd2da80b}">
+      <Declaration><![CDATA[METHOD FB_Reinit: BOOL
+VAR_INPUT   
+END_VAR]]></Declaration>
+      <Implementation>
+        <ST><![CDATA[IF (ipUdp <> 0) THEN 
+ipUdp.RegisterReceiver(nUpdPort, THIS^);
+FB_reinit := TRUE; 
+END_IF]]></ST>
+      </Implementation>
+    </Method>
+    <Method Name="IsConnected" Id="{f2f02b27-d3ec-451e-a9f3-87cff9e011cf}">
+      <Declaration><![CDATA[{warning 'Add method implementation '}
+METHOD IsConnected : BOOL
+]]></Declaration>
+      <Implementation>
+        <ST><![CDATA[]]></ST>
+      </Implementation>
+    </Method>
+    <Method Name="IsSending" Id="{5985ffc7-5d68-4bb3-bc71-bdfc6784fd2e}">
+      <Declaration><![CDATA[{warning 'Add method implementation '}
+METHOD IsSending : BOOL
+]]></Declaration>
+      <Implementation>
+        <ST><![CDATA[]]></ST>
+      </Implementation>
+    </Method>
+    <Property Name="ReceiveBufferReference" Id="{65c8eebb-9452-429f-98f5-6384960f8a06}">
+      <Declaration><![CDATA[{warning 'Add property implementation'}
+PROPERTY ReceiveBufferReference : REFERENCE TO ARRAY [0..(TCPADS_MAXUDP_BUFFSIZE - 1)] OF BYTE
+]]></Declaration>
+      <Get Name="Get" Id="{ef398ec6-65d3-4d45-8abb-1cfb90e7f696}">
+        <Declaration><![CDATA[VAR
+END_VAR
+]]></Declaration>
+        <Implementation>
+          <ST><![CDATA[]]></ST>
+        </Implementation>
+      </Get>
+    </Property>
+    <Method Name="ReceiveData" Id="{c2e918ff-ea03-4c6d-a954-6febead6aa90}">
+      <Declaration><![CDATA[{attribute 'TcTypeSystem'}
+{attribute 'c++_compatible'}
+{attribute 'minimal_input_size' := '4'}
+{attribute 'pack_mode' := '4'}
+{warning 'Add method implementation '}
+METHOD ReceiveData : Global.HRESULT
+VAR_INPUT
+	ipAddr	: UDINT;
+	udpDestPort	: UINT;
+	udpSrcPort	: UINT;
+	nData	: UDINT;
+	pData	: Global.PVOID;
+	pVlan	: POINTER TO Global.ETYPE_VLAN_HEADER := 0;
+END_VAR
+]]></Declaration>
+      <Implementation>
+        <ST><![CDATA[
+nReceivedPakets := nReceivedPakets+1;
+IF ipUdp <> 0 THEN
+    hrSend := ipUdp.SendData(ipAddr, udpSrcPort, udpDestPort, nData, pData, TRUE, 0); // send data back
+END_IF]]></ST>
+      </Implementation>
+    </Method>
+    <Method Name="TcAddRef" Id="{ef0915ff-292e-4640-934c-492b0ff1261b}">
+      <Declaration><![CDATA[{attribute 'TcTypeSystem'}
+{attribute 'c++_compatible'}
+{attribute 'minimal_input_size' := '4'}
+{attribute 'pack_mode' := '4'}
+{warning 'Add method implementation '}
+METHOD TcAddRef : UDINT
+]]></Declaration>
+      <Implementation>
+        <ST><![CDATA[]]></ST>
+      </Implementation>
+    </Method>
+    <Method Name="TcQueryInterface" Id="{0bc5e976-1440-4cdc-a00e-dc8a766d056e}">
+      <Declaration><![CDATA[{attribute 'TcTypeSystem'}
+{attribute 'c++_compatible'}
+{attribute 'minimal_input_size' := '4'}
+{attribute 'pack_mode' := '4'}
+{warning 'Add method implementation '}
+METHOD TcQueryInterface : Global.HRESULT
+VAR_INPUT
+	iid	: REFERENCE TO Global.IID;
+	pipItf	: POINTER TO Global.PVOID;
+END_VAR
+]]></Declaration>
+      <Implementation>
+        <ST><![CDATA[]]></ST>
+      </Implementation>
+    </Method>
+    <Method Name="TcRelease" Id="{80acbdde-5520-4ff9-9952-cc7082f099e8}">
+      <Declaration><![CDATA[{attribute 'TcTypeSystem'}
+{attribute 'c++_compatible'}
+{attribute 'minimal_input_size' := '4'}
+{attribute 'pack_mode' := '4'}
+{warning 'Add method implementation '}
+METHOD TcRelease : UDINT
+]]></Declaration>
+      <Implementation>
+        <ST><![CDATA[]]></ST>
+      </Implementation>
+    </Method>
+    <Method Name="TryCloseConnection" Id="{4a48c0fd-0e86-4d18-ada9-f36add373cbe}">
+      <Declaration><![CDATA[{warning 'Add method implementation '}
+METHOD TryCloseConnection : HRESULT
+]]></Declaration>
+      <Implementation>
+        <ST><![CDATA[]]></ST>
+      </Implementation>
+    </Method>
+    <Method Name="TryOpenConnection" Id="{d77100fc-0565-41b1-9c48-f8b4ceb892b4}">
+      <Declaration><![CDATA[{warning 'Add method implementation '}
+METHOD TryOpenConnection : HRESULT
+]]></Declaration>
+      <Implementation>
+        <ST><![CDATA[]]></ST>
+      </Implementation>
+    </Method>
+    <Method Name="TrySendData" Id="{6fe1786f-7b93-486d-9624-b328cefbc242}">
+      <Declaration><![CDATA[{warning 'Add method implementation '}
+METHOD TrySendData : HRESULT
+VAR_INPUT
+	IpAddress	: T_IPv4Addr;
+	Port	: UDINT;
+	DataAddress	: PVOID;
+	DataLength	: UDINT;
+END_VAR
+]]></Declaration>
+      <Implementation>
+        <ST><![CDATA[]]></ST>
+      </Implementation>
+    </Method>
+  </POU>
+</TcPlcObject>

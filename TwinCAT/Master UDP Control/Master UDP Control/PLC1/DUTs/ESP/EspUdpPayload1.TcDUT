@@ -1,0 +1,22 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<TcPlcObject Version="1.1.0.1">
+  <DUT Name="EspUdpPayload1" Id="{ef51e125-1897-4069-8b9c-11c1984c8035}">
+    <Declaration><![CDATA[{attribute 'pack_mode' := '0'} 
+TYPE EspUdpPayload1 :
+STRUCT
+	Start			: EspUdpStart;
+	TestData1		: BYTE;
+	TestData2		: BYTE;
+	TestData3		: BYTE;
+	TestData4		: BYTE;
+	TestData5		: BYTE;
+	TestData6		: BYTE;
+	TestData7		: BYTE;
+	TestData8		: BYTE;
+	TestData9		: ARRAY [1..8] OF BYTE;
+	End				: EspUdpEnd;
+END_STRUCT
+END_TYPE
+]]></Declaration>
+  </DUT>
+</TcPlcObject>

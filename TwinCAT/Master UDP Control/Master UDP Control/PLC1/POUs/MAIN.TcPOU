@@ -1,0 +1,67 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<TcPlcObject Version="1.1.0.1">
+  <POU Name="MAIN" Id="{85dee3db-2224-4778-955d-df7bd8df7b99}" SpecialFunc="None">
+    <Declaration><![CDATA[PROGRAM MAIN
+VAR
+	Test					: BOOL := FALSE;
+	Udp						: UdpWindowsSocket('192.168.137.1', 10050);
+	UdpRt					: UdpRealtimeSocket;
+	EspFactory				: EspNodeFactory;
+	EspList					: List(EspFactory);
+	EspPacketProcessor		: EspPacketProcessor(Udp, EspList);
+	Counter					: UINT;
+	P1	: EspUdpPayload1;
+	P2	: EspUdpEnd;
+	P3	: EspUdpPayload1;
+	Size1, Size2, Size3 	: BYTE;
+	c	: UDINT;
+	d	: BYTE;
+	Go	: BOOL;
+	hr	: HRESULT;
+END_VAR
+]]></Declaration>
+    <Implementation>
+      <ST><![CDATA[
+IF Test THEN
+	
+	Tests();
+	
+	RETURN;
+	
+END_IF
+
+EspPacketProcessor.CyclicUpdate();
+
+Counter := Counter + 1;
+
+P1.Start.CRC32 := 1234567;
+P1.Start.ChainDistance := 123;
+P1.Start.Flags := 123;
+P1.Start.HeaderVersion := 123;
+P1.Start.JumpsToLive := 123;
+P1.Start.MessageCounter := 1234567890123;
+P1.Start.MessageType := 123;
+P1.Start.NetworkId := 123;
+P1.Start.NumberOfChainedSLaves := 123;
+//a1.PayloadSize := 12345;
+P1.Start.SendersTimestamp := 1234567890123;
+P1.Start.SlaveUid := 1234567890123;
+P1.Start.TimeDifference := 1234567; 
+
+IF Go THEN
+	
+	hr := Udp.TrySendData('192.168.137.104', 10050, ADR(P1), SIZEOF(P1));
+
+END_IF
+
+
+Size1 := SIZEOF(EspUdpStart);
+Size2 := SIZEOF(EspUdpEnd);
+Size3 := SIZEOF(EspUdpPayload1);
+
+
+
+]]></ST>
+    </Implementation>
+  </POU>
+</TcPlcObject>

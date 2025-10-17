@@ -1,0 +1,24 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<TcPlcObject Version="1.1.0.1">
+  <POU Name="HeaderEndianSwap" Id="{ceabc220-fd15-4dc0-b93e-ab2b6f583046}" SpecialFunc="None">
+    <Declaration><![CDATA[FUNCTION HeaderEndianSwap : EspUdpStart
+VAR_INPUT
+	In	: EspUdpStart;
+END_VAR
+VAR
+END_VAR
+]]></Declaration>
+    <Implementation>
+      <ST><![CDATA[In.StartDelimiter        := BE16_TO_HOST(In.StartDelimiter);
+In.PayloadSize           := BE16_TO_HOST(In.PayloadSize);
+In.SlaveUid              := BE64_TO_HOSTEX(In.SlaveUid);
+In.MessageCounter        := BE64_TO_HOSTEX(In.MessageCounter);
+In.SendersTimestamp      := BE64_TO_HOSTEX(In.SendersTimestamp);
+In.TimeDifference        := BE32_TO_HOST(In.TimeDifference);
+In.CRC32                 := BE32_TO_HOST(In.CRC32);
+
+HeaderEndianSwap := In;
+]]></ST>
+    </Implementation>
+  </POU>
+</TcPlcObject>

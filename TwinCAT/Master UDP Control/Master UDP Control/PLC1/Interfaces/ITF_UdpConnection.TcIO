@@ -1,0 +1,46 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<TcPlcObject Version="1.1.0.1">
+  <Itf Name="ITF_UdpConnection" Id="{94303b2c-fab7-40fd-a3af-21426bd39a97}">
+    <Declaration><![CDATA[INTERFACE ITF_UdpConnection EXTENDS ITF_Cyclic
+]]></Declaration>
+    <Method Name="IsConnected" Id="{7d024eb6-e212-4edc-bc9d-ebb6925af72c}">
+      <Declaration><![CDATA[METHOD IsConnected : BOOL
+VAR_INPUT
+END_VAR
+]]></Declaration>
+    </Method>
+    <Method Name="IsSending" Id="{4a057512-f722-4737-be05-87be5a8c18a8}">
+      <Declaration><![CDATA[METHOD IsSending : BOOL
+VAR_INPUT
+END_VAR
+]]></Declaration>
+    </Method>
+    <Property Name="ReceiveBufferReference" Id="{c42e4fae-ab30-4073-bdff-c9d721aed2a4}">
+      <Declaration><![CDATA[PROPERTY ReceiveBufferReference : REFERENCE TO ARRAY [0..TCPADS_MAXUDP_BUFFSIZE - 1] OF BYTE;]]></Declaration>
+      <Get Name="Get" Id="{d15e6cd2-50b2-4e14-ae3f-231b8211d661}">
+        <Declaration><![CDATA[]]></Declaration>
+      </Get>
+    </Property>
+    <Method Name="TryCloseConnection" Id="{23fdee8e-f6c9-4523-af56-7d00a02774a6}">
+      <Declaration><![CDATA[METHOD TryCloseConnection : HRESULT
+VAR_INPUT
+END_VAR
+]]></Declaration>
+    </Method>
+    <Method Name="TryOpenConnection" Id="{1124eedc-b83d-4b70-a9f5-afd5bd113767}">
+      <Declaration><![CDATA[METHOD TryOpenConnection : HRESULT
+VAR_INPUT
+END_VAR
+]]></Declaration>
+    </Method>
+    <Method Name="TrySendData" Id="{6796c252-d973-40c6-9a54-4cbc36b15f3b}">
+      <Declaration><![CDATA[METHOD TrySendData : HRESULT
+VAR_INPUT
+	IpAddress		: T_IPv4Addr;
+	Port			: UDINT;
+	DataAddress		: PVOID;
+	DataLength		: UDINT;
+END_VAR]]></Declaration>
+    </Method>
+  </Itf>
+</TcPlcObject>

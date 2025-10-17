@@ -1,0 +1,250 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<TcPlcObject Version="1.1.0.1">
+  <POU Name="List" Id="{5fb34eef-8c3f-451b-8f58-6309cc830480}" SpecialFunc="None">
+    <Declaration><![CDATA[FUNCTION_BLOCK List IMPLEMENTS ITF_LinkedList
+VAR
+	
+	NodeFactory		: ITF_NodeFactory;
+	
+	HeadNode		: ITF_Node;
+	
+	TailNode		: ITF_Node;
+	
+	ListLength		: UINT;
+	
+END_VAR
+]]></Declaration>
+    <Implementation>
+      <ST><![CDATA[]]></ST>
+    </Implementation>
+    <Method Name="CreateNode" Id="{379726d8-7b4e-4dbf-8b49-f4410ae243a4}">
+      <Declaration><![CDATA[METHOD CreateNode : BOOL
+VAR
+	NewNode		: ITF_Node;
+	WorkingNode	: ITF_Node;
+	EndNode		: ITF_Node;
+	i			: UINT;
+END_VAR]]></Declaration>
+      <Implementation>
+        <ST><![CDATA[
+NewNode := NodeFactory.CreateNode();
+
+IF NewNode = 0 THEN
+	
+	CreateNode := FALSE;
+
+ELSE
+	
+	IF HeadNode = 0 THEN
+		
+		NewNode.SetPositionInList(1);
+		
+		HeadNode := NewNode;
+	
+		TailNode := HeadNode;
+		
+		ListLength := 1;
+	
+	ELSE
+		
+		WorkingNode := HeadNode;
+		
+		REPEAT
+		
+			EndNode := WorkingNode;
+			
+			WorkingNode := WorkingNode.GetNextNode();			
+			
+			i := i + 1;
+	
+		UNTIL
+		
+			WorkingNode = 0 OR i > 1024
+		
+		END_REPEAT
+		
+		NewNode.SetPositionInList(i + 1);
+		
+		TailNode := NewNode;
+		
+		TailNode.SetLastNode(EndNode);
+		
+		EndNode.SetNextNode(TailNode);
+		
+		ListLength := ListLength + 1;
+		
+	END_IF
+	
+	CreateNode := TRUE;
+	
+END_IF
+
+RETURN;
+]]></ST>
+      </Implementation>
+    </Method>
+    <Method Name="DestroyNode" Id="{216fbb3b-0855-4f51-b0a4-5be3bec81e16}">
+      <Declaration><![CDATA[METHOD DestroyNode : BOOL
+VAR_INPUT
+	Index			: UINT;
+END_VAR
+VAR
+	i				: UINT := 1;
+	PrevNode		: ITF_Node;
+	CurrentNode		: ITF_Node;
+	NextNode		: ITF_Node;
+	Walker     		: ITF_Node;
+	TempPtr			: PVOID;
+END_VAR]]></Declaration>
+      <Implementation>
+        <ST><![CDATA[
+IF (HeadNode = 0) OR (Index < 1) OR (Index > ListLength) OR ListLength = 0 THEN
+	
+    DestroyNode := FALSE;
+    
+	RETURN;
+
+END_IF
+
+
+// find node at position Index
+CurrentNode := HeadNode;
+
+WHILE i < Index DO
+	
+    PrevNode := CurrentNode;
+	
+    CurrentNode := CurrentNode.GetNextNode();
+	
+    i := i + 1;
+	
+END_WHILE
+
+NextNode := CurrentNode.GetNextNode();
+
+
+// unlink: prev and next
+
+IF PrevNode = 0 THEN
+	
+    // removing head
+	
+    HeadNode := NextNode;
+	
+ELSE
+	
+    PrevNode.SetNextNode(NextNode);
+	
+END_IF
+
+IF NextNode = 0 THEN
+	
+    // removing tail
+	
+    TailNode := PrevNode;
+	
+ELSE
+	
+    NextNode.SetLastNode(PrevNode);
+	
+END_IF
+
+
+// renumber nodes after the removed one 
+
+Walker := NextNode;
+
+WHILE Walker <> 0 DO
+	
+    Walker.SetPositionInList(Walker.GetPositionInList() - 1);
+	
+    Walker := Walker.GetNextNode();
+	
+END_WHILE
+
+ListLength := ListLength - 1;
+
+
+// delete concrete object via factory
+
+TempPtr := CurrentNode.GetMyPointer(); 
+
+CurrentNode := 0;
+
+IF NodeFactory.DestroyNode(TempPtr) THEN
+	
+    DestroyNode := TRUE;
+	
+ELSE
+	
+    // unlinked but not freed
+	
+    DestroyNode := FALSE;
+	
+END_IF
+]]></ST>
+      </Implementation>
+    </Method>
+    <Method Name="FB_Init" Id="{fa9104f1-fd53-45d3-9150-2e96ded9f53e}">
+      <Declaration><![CDATA[//FB_Init is always available implicitly and it is used primarily for initialization.
+//The return value is not evaluated. For a specific influence, you can also declare the
+//methods explicitly and provide additional code there with the standard initialization
+//code. You can evaluate the return value.
+METHOD FB_Init: BOOL
+VAR_INPUT
+    bInitRetains: BOOL; // TRUE: the retain variables are initialized (reset warm / reset cold)
+    bInCopyCode: BOOL;  // TRUE: the instance will be copied to the copy code afterward (online change)   
+	NodeFactory	: ITF_NodeFactory;
+END_VAR]]></Declaration>
+      <Implementation>
+        <ST><![CDATA[THIS^.NodeFactory := NodeFactory;]]></ST>
+      </Implementation>
+    </Method>
+    <Method Name="GetListLength" Id="{eecb00b2-846f-4a05-abbf-3b78cc264d30}">
+      <Declaration><![CDATA[METHOD GetListLength : UINT
+]]></Declaration>
+      <Implementation>
+        <ST><![CDATA[GetListLength := ListLength;]]></ST>
+      </Implementation>
+    </Method>
+    <Method Name="GetNode" Id="{483ff250-30a0-46db-99dc-49a91b910d6d}">
+      <Declaration><![CDATA[METHOD GetNode : ITF_Node
+VAR_INPUT
+	Index	: UINT;
+END_VAR
+VAR
+	TempNode	: ITF_Node;
+	i			: UINT;
+END_VAR]]></Declaration>
+      <Implementation>
+        <ST><![CDATA[IF ListLength = 0 THEN
+
+	GetNode := 0;
+
+	RETURN;	
+
+END_IF
+
+IF Index > ListLength OR Index = 0 THEN
+	
+	GetNode := 0;
+
+ELSE
+	
+	TempNode := HeadNode;
+
+	WHILE i + 1 < Index DO
+		
+		TempNode := TempNode.GetNextNode();
+		
+		i := i + 1;
+		
+	END_WHILE
+	
+	GetNode := TempNode;
+	
+END_IF]]></ST>
+      </Implementation>
+    </Method>
+  </POU>
+</TcPlcObject>

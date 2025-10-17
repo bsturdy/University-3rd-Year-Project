@@ -91,26 +91,27 @@ class WifiClass
         QueueHandle_t EspNowDeviceQueue;                                                // Queue handle
         QueueHandle_t UdpProcessingQueue;                                               // Queue handle
 
-        void DeauthenticateDeviceAp(const char* ipAddress);
-        void DeauthenticateDeviceSta(const char* ipAddress);
-        bool EspNowRegisterDevice(WifiDevice* DeviceToRegister);                        // Function to register a device to ESP NOW
-        bool EspNowDeleteDevice(WifiDevice* DeviceToDelete);                            // Function to deregister / delete a device from ESP NOW
-        bool SetupUdpSocket(uint16_t UdpPort);                                          // Function to establish a UDP socket on a given port
-        bool SetupWifiAP(uint16_t UdpPort, uint16_t Timeout, uint8_t CoreToUse);        // Sets up system as an Access Point. Parameters are configured through the Menu Config
-        bool SetupWifiSta(uint16_t UdpPort, uint16_t Timeout, uint8_t CoreToUse);       // Sets up system as a station and polls for available Access Points. Parameters are configured through the Menu Config
+        esp_err_t DeauthenticateDeviceAp(const char* ipAddress);
+        esp_err_t DeauthenticateDeviceSta(const char* ipAddress);
+        esp_err_t EspNowRegisterDevice(WifiDevice* DeviceToRegister);                        // Function to register a device to ESP NOW
+        esp_err_t EspNowDeleteDevice(WifiDevice* DeviceToDelete);                            // Function to deregister / delete a device from ESP NOW
+        esp_err_t SetupUdpSocket(uint16_t UdpPort);                                          // Function to establish a UDP socket on a given port
+        esp_err_t SetupWifiAP(uint16_t UdpPort, uint16_t Timeout, uint8_t CoreToUse);        // Sets up system as an Access Point. Parameters are configured through the Menu Config
+        esp_err_t SetupWifiSta(uint16_t UdpPort, uint16_t Timeout, uint8_t CoreToUse);       // Sets up system as a station and polls for available Access Points. Parameters are configured through the Menu Config
         
-        void UdpPollingOnAp(struct sockaddr_in* SourceAddress, 
+        esp_err_t UdpPollingOnAp(struct sockaddr_in* SourceAddress, 
                             socklen_t* SourceAddressLength, 
                             UdpPacket* ReceivedPacket);
-        void UdpPollingOnSta(struct sockaddr_in* SourceAddress, 
+        esp_err_t UdpPollingOnSta(struct sockaddr_in* SourceAddress, 
                             socklen_t* SourceAddressLength, 
                             UdpPacket* ReceivedPacket);
-        void UdpProcessOnAp(UdpPacket* ReceivedPacket);
-        void UdpProcessOnSta(UdpPacket* ReceivedPacket);
-        void UdpSystemOnAp(uint8_t Counter);
-        void UdpSystemOnSta(uint8_t Counter);
+        esp_err_t UdpProcessOnAp(UdpPacket* ReceivedPacket);
+        esp_err_t UdpProcessOnSta(UdpPacket* ReceivedPacket);
+        esp_err_t UdpSystemOnAp(uint8_t Counter);
+        esp_err_t UdpSystemOnSta(uint8_t Counter);
 
-        bool IsRuntimeLoggingEnabled = false;                                           // Print out logs for runtime functions
+        esp_err_t Error;                                                                // Error var
+        bool IsRuntimeLoggingEnabled = true;                                            // Print out logs for runtime functions
         bool IsAp = false;                                                              // Internal check
         bool IsSta = false;                                                             // Internal check
         bool IsConnectedToAP;                                                           // Is system connected to an Access Point (used when in station mode)
@@ -134,9 +135,9 @@ class WifiClass
         WifiClass();
         ~WifiClass();
 
-        bool SetupWifi(uint8_t CoreToUse);                                              // Sets up system according to Menu Configuration
-        bool SetupEspNow(uint8_t CoreToUse);                                            // Sets up ESP-NOW configuration and detection
-        bool SendUdpPacket(const char* data, const char* dest_ip, uint16_t dest_port);  // Sends a UDP packet to a given IP address and Port
+        esp_err_t SetupWifi(uint8_t CoreToUse, uint16_t Timeout);                               // Sets up system according to Menu Configuration
+        esp_err_t SetupEspNow(uint8_t CoreToUse);                                               // Sets up ESP-NOW configuration and detection
+        esp_err_t SendUdpPacket(const char* data, const char* dest_ip, uint16_t dest_port);     // Sends a UDP packet to a given IP address and Port
 
         size_t GetNumClientsConnected();
         bool GetIsConnectedToHost();

@@ -1,0 +1,313 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<TcPlcObject Version="1.1.0.1">
+  <POU Name="UdpWindowsSocket" Id="{ad35c0b7-db8d-4688-9112-1457484c5200}" SpecialFunc="None">
+    <Declaration><![CDATA[FUNCTION_BLOCK UdpWindowsSocket IMPLEMENTS ITF_UdpConnection
+VAR
+	IpAddress			: T_IPv4Addr;
+	Port				: UDINT;
+	ReceiveBuffer		: ARRAY [0..TCPADS_MAXUDP_BUFFSIZE - 1] OF BYTE;
+	
+	OpenSocket			: FB_SocketUdpCreate;
+	Receive				: FB_SocketUdpReceiveFrom;
+	Send				: FB_SocketUdpSendTo;
+	SendState			: BYTE;
+	Sending 			: BOOL;
+	PacketsSent			: ULINT;
+	CloseSocket			: FB_SocketClose;
+	
+	IsConnectionOpen	: BOOL;
+END_VAR
+]]></Declaration>
+    <Implementation>
+      <ST><![CDATA[]]></ST>
+    </Implementation>
+    <Method Name="CyclicUpdate" Id="{b6d2a984-cd64-4493-bdc6-c52c97bcd1ff}">
+      <Declaration><![CDATA[METHOD CyclicUpdate : BOOL
+VAR
+	i	: BYTE;
+END_VAR]]></Declaration>
+      <Implementation>
+        <ST><![CDATA[OpenSocket
+(
+	sSrvNetId 	:= '', 
+	sLocalHost	:= IpAddress, 
+	nLocalPort	:= Port, 
+);
+
+Send
+(
+	sSrvNetId	:= '', 
+	hSocket		:= OpenSocket.hSocket, 
+);
+
+FOR i := 0 TO 9 BY 1 DO
+	
+	Receive
+	(
+		sSrvNetId	:= '', 
+		hSocket		:= OpenSocket.hSocket, 
+		cbLen		:= SIZEOF(ReceiveBuffer), 
+		pDest		:= ADR(ReceiveBuffer) 
+	);
+	
+	IF IsSending() OR NOT IsConnectionOpen THEN
+	
+		Receive(bExecute := FALSE);
+		
+	ELSE
+		
+		Receive(bExecute := NOT(Receive.bExecute));
+	
+	END_IF
+
+END_FOR
+
+
+CloseSocket
+(
+	sSrvNetId	:= '', 
+	hSocket		:= OpenSocket.hSocket, 
+);
+
+IF OpenSocket.hSocket.handle <> 0 AND OpenSocket.bExecute THEN
+	
+	IsConnectionOpen := TRUE;
+	
+ELSE
+
+	IsConnectionOpen := FALSE;
+
+END_IF
+]]></ST>
+      </Implementation>
+    </Method>
+    <Method Name="FB_Exit" Id="{09fa55a5-0e45-4172-ae61-55feadab3ce8}">
+      <Declaration><![CDATA[//FB_Exit must be implemented explicitly. If there is an implementation, then the
+//method is called before the controller removes the code of the function block instance
+//(implicit call). The return value is not evaluated.
+METHOD FB_Exit: BOOL
+VAR_INPUT
+    bInCopyCode: BOOL;  // TRUE: the exit method is called in order to leave the instance which will be copied afterwards (online change).  
+END_VAR]]></Declaration>
+      <Implementation>
+        <ST><![CDATA[TryCloseConnection();]]></ST>
+      </Implementation>
+    </Method>
+    <Method Name="FB_Init" Id="{15efff28-c652-4b7e-9b7c-7c0e8ce42ddc}">
+      <Declaration><![CDATA[//FB_Init is always available implicitly and it is used primarily for initialization.
+//The return value is not evaluated. For a specific influence, you can also declare the
+//methods explicitly and provide additional code there with the standard initialization
+//code. You can evaluate the return value.
+METHOD FB_Init: BOOL
+VAR_INPUT
+    bInitRetains: BOOL; // TRUE: the retain variables are initialized (reset warm / reset cold)
+    bInCopyCode: BOOL;  // TRUE: the instance will be copied to the copy code afterward (online change) 
+	IpAddress	: T_IPv4Addr;
+	Port		: UDINT;  
+END_VAR]]></Declaration>
+      <Implementation>
+        <ST><![CDATA[THIS^.IpAddress := IpAddress;
+THIS^.Port := Port;]]></ST>
+      </Implementation>
+    </Method>
+    <Method Name="IsConnected" Id="{8f4c16ee-1759-41ca-9d3c-5334496d7d18}">
+      <Declaration><![CDATA[METHOD IsConnected : BOOL
+]]></Declaration>
+      <Implementation>
+        <ST><![CDATA[IsConnected := IsConnectionOpen;
+
+RETURN;]]></ST>
+      </Implementation>
+    </Method>
+    <Method Name="IsSending" Id="{13e6fe11-2ce9-4072-a618-52bebb948349}">
+      <Declaration><![CDATA[METHOD IsSending : BOOL
+]]></Declaration>
+      <Implementation>
+        <ST><![CDATA[IsSending := Sending;
+
+RETURN;]]></ST>
+      </Implementation>
+    </Method>
+    <Property Name="ReceiveBufferReference" Id="{f4d6b744-2f99-48da-b241-cf7eb4cefdcd}">
+      <Declaration><![CDATA[{warning 'Add property implementation'}
+PROPERTY ReceiveBufferReference : REFERENCE TO ARRAY [0..(TCPADS_MAXUDP_BUFFSIZE - 1)] OF BYTE
+]]></Declaration>
+      <Get Name="Get" Id="{a0b1ba46-ae51-4579-baf6-f1a850ff7a54}">
+        <Declaration><![CDATA[VAR
+END_VAR
+]]></Declaration>
+        <Implementation>
+          <ST><![CDATA[ReceiveBufferReference REF= ReceiveBuffer;]]></ST>
+        </Implementation>
+      </Get>
+    </Property>
+    <Method Name="TryCloseConnection" Id="{752fc699-79a0-4dfb-92d8-5930e09a3363}">
+      <Declaration><![CDATA[METHOD TryCloseConnection : HRESULT
+]]></Declaration>
+      <Implementation>
+        <ST><![CDATA[TryCloseConnection := S_PENDING;
+
+OpenSocket(bExecute := FALSE);
+
+CloseSocket(bExecute := TRUE);
+
+IF OpenSocket.hSocket.handle = 0 THEN
+	
+	TryCloseConnection := S_OK;
+
+ELSIF OpenSocket.bError THEN
+
+	TryCloseConnection := -1;	
+
+END_IF
+
+RETURN;]]></ST>
+      </Implementation>
+    </Method>
+    <Method Name="TryOpenConnection" Id="{638b00cb-58aa-4579-8647-331293c7c671}">
+      <Declaration><![CDATA[METHOD TryOpenConnection : HRESULT
+]]></Declaration>
+      <Implementation>
+        <ST><![CDATA[TryOpenConnection := S_PENDING;
+
+CloseSocket(bExecute := FALSE);
+
+OpenSocket(bExecute := TRUE);
+
+IF OpenSocket.hSocket.handle <> 0 THEN
+	
+	TryOpenConnection := S_OK;
+
+ELSIF OpenSocket.bError THEN
+
+	TryOpenConnection := -1;	
+
+END_IF
+
+RETURN;]]></ST>
+      </Implementation>
+    </Method>
+    <Method Name="TryReadReceiveBuffer" Id="{93010522-48e9-47c9-83a5-b0a64bd21a0c}">
+      <Declaration><![CDATA[METHOD TryReadReceiveBuffer : HRESULT
+VAR_INPUT
+	DataBuffer		: REFERENCE TO ARRAY [0..TCPADS_MAXUDP_BUFFSIZE - 1] OF BYTE;
+END_VAR
+VAR
+	i				: UDINT;
+END_VAR]]></Declaration>
+      <Implementation>
+        <ST><![CDATA[TryReadReceiveBuffer := S_PENDING;
+
+IF ReceiveBuffer[0] = 0 THEN
+	
+	TryReadReceiveBuffer := -1;
+
+	RETURN;	
+
+END_IF
+
+FOR i := 0 TO TCPADS_MAXUDP_BUFFSIZE BY 1 DO
+	
+	IF ReceiveBuffer[i] = 0 THEN
+		
+		EXIT;
+		
+	END_IF
+
+	DataBuffer[i] := ReceiveBuffer[i];
+
+END_FOR
+
+IF ReceiveBuffer[0] <> 0 THEN
+	
+	TryReadReceiveBuffer := S_OK;
+
+ELSE
+
+	TryReadReceiveBuffer := -2;
+
+END_IF
+
+RETURN;
+]]></ST>
+      </Implementation>
+    </Method>
+    <Method Name="TrySendData" Id="{910c1629-032b-4b69-b3a6-02b4be236a07}">
+      <Declaration><![CDATA[METHOD TrySendData : HRESULT
+VAR_INPUT
+	IpAddress		: T_IPv4Addr;
+	Port			: UDINT;
+	DataAddress		: PVOID;
+	DataLength		: UDINT;
+END_VAR
+]]></Declaration>
+      <Implementation>
+        <ST><![CDATA[TrySendData := S_PENDING;
+
+IF NOT IsConnectionOpen THEN
+	
+	TrySendData := -1;
+	
+	RETURN;
+
+END_IF
+
+Send
+(
+	sRemoteHost	:= IpAddress, 
+	nRemotePort	:= Port, 
+	cbLen		:= DataLength, 
+	pSrc		:= DataAddress, 
+	bExecute	:= TRUE, 
+);
+
+Sending := TRUE;
+
+CASE SendState OF
+	
+	0:
+	
+		IF Send.bBusy THEN
+			
+			SendState := 1;
+			
+		END_IF
+
+
+
+	1:
+	
+		IF Send.bError THEN
+			
+			Send(bExecute := FALSE);
+			
+			TrySendData := -1;
+			
+			SendState := 0;
+			
+			Sending := FALSE;
+			
+			RETURN;
+		
+		ELSIF NOT Send.bBusy THEN
+			
+			Send(bExecute := FALSE);
+		
+			TrySendData := S_OK;
+			
+			PacketsSent := PacketsSent + 1;
+			
+			SendState := 0;
+			
+			Sending := FALSE;
+			
+			RETURN;
+		
+		END_IF
+END_CASE
+
+]]></ST>
+      </Implementation>
+    </Method>
+  </POU>
+</TcPlcObject>

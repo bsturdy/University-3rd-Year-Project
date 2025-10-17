@@ -1,0 +1,15 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<TcPlcObject Version="1.1.0.1">
+  <POU Name="BytesToUint" Id="{9bf4e454-9ed4-49a3-bd75-928b49e5b1ac}" SpecialFunc="None">
+    <Declaration><![CDATA[FUNCTION BytesToUint : UINT
+VAR_INPUT
+	b1	: BYTE;
+	b2	: BYTE;
+END_VAR
+]]></Declaration>
+    <Implementation>
+      <ST><![CDATA[BytesToUint := TO_UINT(b2) 
+			+ TO_UINT(b1) * 256;]]></ST>
+    </Implementation>
+  </POU>
+</TcPlcObject>

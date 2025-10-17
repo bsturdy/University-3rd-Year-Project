@@ -1,0 +1,298 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<TcPlcObject Version="1.1.0.1">
+  <POU Name="EspPacketProcessor" Id="{05be571e-be20-46fc-9aa3-6f0e1c571904}" SpecialFunc="None">
+    <Declaration><![CDATA[FUNCTION_BLOCK EspPacketProcessor IMPLEMENTS ITF_Cyclic
+VAR
+	
+	Udp							: ITF_UdpConnection;
+	UdpReceiveBuffer			: REFERENCE TO ARRAY [0..TCPADS_MAXUDP_BUFFSIZE - 1] OF BYTE;
+	LastCheckedIndex			: UDINT;
+	List						: ITF_LinkedList;
+	PacketsReceived				: ULINT;
+	
+	ReceivedPacketType			: BYTE;
+	ReceivedPacketLocation		: PVOID;
+	ReceivedPacketLength		: UINT;
+	
+	hr1							: HRESULT;
+	hr2							: HRESULT;
+	hr3							: HRESULT;
+	
+	TestPacket					: EspUdpPayload1;
+	CurrentEsp32				: ITF_EspHost;
+	
+END_VAR
+VAR CONSTANT
+	StartDelimiter1				: BYTE := 2;
+	StartDelimiter2				: BYTE := 181;
+	EndDelimiter1				: BYTE := 91;
+	EndDelimiter2				: BYTE := 03;
+	PacketTypePosition			: BYTE := 37;
+END_VAR]]></Declaration>
+    <Implementation>
+      <ST><![CDATA[]]></ST>
+    </Implementation>
+    <Method Name="ClearBufferAtLocation" Id="{d451c427-ca4e-4e53-86c8-cf78b23bc920}">
+      <Declaration><![CDATA[METHOD ClearBufferAtLocation : BOOL
+VAR_INPUT
+	PayloadLength			: UINT;
+	PayloadLocation			: PVOID;
+END_VAR
+VAR
+	i	: UDINT;
+END_VAR]]></Declaration>
+      <Implementation>
+        <ST><![CDATA[
+IF MEMSET(PayloadLocation, 0, PayloadLength) > 0 THEN
+
+	ClearBufferAtLocation := TRUE;
+	
+ELSE
+	
+	ClearBufferAtLocation := FALSE;
+	
+END_IF
+
+RETURN;
+]]></ST>
+      </Implementation>
+    </Method>
+    <Method Name="ClearEntireBuffer" Id="{5b97cea3-6cfc-44ef-848d-da951801b59a}">
+      <Declaration><![CDATA[METHOD ClearEntireBuffer : BOOL
+VAR_INPUT
+END_VAR
+VAR
+	i	: UDINT;
+END_VAR]]></Declaration>
+      <Implementation>
+        <ST><![CDATA[
+FOR i := 0 TO TCPADS_MAXUDP_BUFFSIZE - 1 BY 1 DO
+
+	UdpReceiveBuffer[i] := 0;
+
+END_FOR]]></ST>
+      </Implementation>
+    </Method>
+    <Method Name="CopyPacketIntoStructure" Id="{a7cd640b-c057-4e56-87b7-444786445c11}">
+      <Declaration><![CDATA[METHOD CopyPacketIntoStructure : BOOL
+VAR_INPUT
+	PayloadType				: BYTE;
+	PayloadLength			: UINT;
+	PayloadLocation			: PVOID;
+END_VAR
+]]></Declaration>
+      <Implementation>
+        <ST><![CDATA[CASE PayloadType OF
+	
+	1:
+	
+		MEMCPY(ADR(TestPacket), PayloadLocation, PayloadLength); 
+		
+		TestPacket.Start := HeaderEndianSwap(TestPacket.Start);
+		
+		TestPacket.End := TailEndianSwap(TestPacket.End);
+		
+		CopyPacketIntoStructure := TRUE;
+		
+		
+		
+	2:
+	
+		//
+	
+	
+	
+	3:
+		
+		//
+	
+	
+	
+END_CASE
+
+]]></ST>
+      </Implementation>
+    </Method>
+    <Method Name="CyclicUpdate" Id="{be97351d-5c68-4a8e-a83d-1e093e85b384}">
+      <Declaration><![CDATA[METHOD CyclicUpdate : BOOL
+VAR
+	Override	: BOOL;
+	TempNode	: ITF_Node;
+	TempPtr		: POINTER TO EspHost;
+END_VAR]]></Declaration>
+      <Implementation>
+        <ST><![CDATA[Udp.CyclicUpdate();
+
+Udp.TryOpenConnection();
+
+UdpReceiveBuffer REF= Udp.ReceiveBufferReference;
+
+hr1 := TryFindAPacketInBuffer(ReceivedPacketType, ReceivedPacketLength, ReceivedPacketLocation);
+
+IF hr1 = S_OK THEN
+	
+	IF CopyPacketIntoStructure(ReceivedPacketType, ReceivedPacketLength, ReceivedPacketLocation) THEN
+		
+		ClearBufferAtLocation(ReceivedPacketLength, ReceivedPacketLocation);
+		
+	END_IF
+
+END_IF
+
+]]></ST>
+      </Implementation>
+    </Method>
+    <Method Name="FB_Init" Id="{de930b98-4376-4a46-92a0-2be25d257ea9}">
+      <Declaration><![CDATA[//FB_Init is always available implicitly and it is used primarily for initialization.
+//The return value is not evaluated. For a specific influence, you can also declare the
+//methods explicitly and provide additional code there with the standard initialization
+//code. You can evaluate the return value.
+METHOD FB_Init: BOOL
+VAR_INPUT
+    bInitRetains: BOOL; // TRUE: the retain variables are initialized (reset warm / reset cold)
+    bInCopyCode: BOOL;  // TRUE: the instance will be copied to the copy code afterward (online change)   
+	UdpSocket	: ITF_UdpConnection;
+	EspList		: ITF_LinkedList;
+END_VAR]]></Declaration>
+      <Implementation>
+        <ST><![CDATA[Udp := UdpSocket;
+UdpReceiveBuffer REF= Udp.ReceiveBufferReference;
+List := EspList;]]></ST>
+      </Implementation>
+    </Method>
+    <Method Name="IsAcceptingData" Id="{a8556bb5-22ae-4069-9b97-75360e7225b8}">
+      <Declaration><![CDATA[METHOD IsAcceptingData : BOOL
+VAR_INPUT
+END_VAR
+]]></Declaration>
+      <Implementation>
+        <ST><![CDATA[IsAcceptingData := Udp.IsConnected();
+
+RETURN;]]></ST>
+      </Implementation>
+    </Method>
+    <Method Name="MatchUidToNode" Id="{a5acbb1d-0874-4cfb-aa5b-ecd39f0e29a6}">
+      <Declaration><![CDATA[METHOD MatchUidToNode : ITF_EspHost
+VAR_INPUT
+	Header	: EspUdpStart;
+END_VAR
+VAR
+	Length	: UINT;
+	i		: UINT;
+	Node	: ITF_Node;
+	Ptr		: POINTER TO EspHost;
+	Esp		: ITF_EspHost;
+	Uid		: ULINT;
+END_VAR]]></Declaration>
+      <Implementation>
+        <ST><![CDATA[
+Length := List.GetListLength();
+
+IF Length = 0 THEN
+	
+	MatchUidToNode := 0;
+		
+	RETURN;
+
+END_IF
+
+FOR i := 1 TO Length BY 1 DO
+
+	Node := List.GetNode(i);	
+	
+	Ptr := Node.GetMyPointer();
+	
+	Esp := Ptr^;
+	
+	IF Esp = 0 THEN
+		
+		MatchUidToNode := 0;
+		
+		RETURN;
+		
+	END_IF
+	
+	Uid := Esp.Uid;
+	
+	IF Uid = Header.SlaveUid THEN // = uid in buffer 
+		
+		MatchUidToNode := Esp;
+		
+		RETURN;
+		
+	END_IF
+
+END_FOR]]></ST>
+      </Implementation>
+    </Method>
+    <Method Name="TryFindAPacketInBuffer" Id="{b0962c32-b620-4d2c-8983-6c2de1d66f22}">
+      <Declaration><![CDATA[METHOD TryFindAPacketInBuffer : HRESULT
+VAR_INPUT
+	PayloadType				: REFERENCE TO BYTE;
+	PayloadLength			: REFERENCE TO UINT;
+	PayloadLocation			: REFERENCE TO PVOID;
+END_VAR
+VAR
+	i						: UDINT;
+	Good					: BOOL;
+END_VAR]]></Declaration>
+      <Implementation>
+        <ST><![CDATA[TryFindAPacketInBuffer := S_PENDING;
+
+FOR i := LastCheckedIndex TO TCPADS_MAXUDP_BUFFSIZE - 1 BY 1 DO
+	
+	IF UdpReceiveBuffer[i] = StartDelimiter1 AND_THEN UdpReceiveBuffer[i + 1] = StartDelimiter2 THEN
+		
+		PayloadLength := BytesToUint(UdpReceiveBuffer[i + 2], UdpReceiveBuffer[i + 3]) + 50;
+					
+		PayloadType := UdpReceiveBuffer[i + PacketTypePosition];
+		
+		PayloadLocation := ADR(UdpReceiveBuffer[i]);
+					
+		IF PayloadLength = 0 OR PayloadType = 0 THEN
+			
+			TryFindAPacketInBuffer := -1;
+					
+		ELSIF UdpReceiveBuffer[i + PayloadLength - 2] <> EndDelimiter1 OR UdpReceiveBuffer[i + PayloadLength - 1] <> EndDelimiter2 THEN
+			
+			TryFindAPacketInBuffer := S_PENDING;
+			
+		ELSE
+			
+			PacketsReceived := PacketsReceived + 1;
+			
+			Good := TRUE;
+			
+		END_IF
+		
+		EXIT;
+					
+	END_IF
+
+END_FOR
+
+IF LastCheckedIndex > TCPADS_MAXUDP_BUFFSIZE - 1 THEN
+	
+	LastCheckedIndex := 0;
+	
+ELSE
+	
+	LastCheckedIndex := i;
+
+END_IF
+
+IF Good THEN
+	
+	TryFindAPacketInBuffer := S_OK;
+	
+ELSE
+	
+	TryFindAPacketInBuffer := S_PENDING;
+
+END_IF
+
+RETURN;]]></ST>
+      </Implementation>
+    </Method>
+  </POU>
+</TcPlcObject>

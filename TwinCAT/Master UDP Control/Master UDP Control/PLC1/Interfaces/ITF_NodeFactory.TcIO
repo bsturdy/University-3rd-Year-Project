@@ -1,0 +1,20 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<TcPlcObject Version="1.1.0.1">
+  <Itf Name="ITF_NodeFactory" Id="{fd4acf5c-33a2-4b48-8a41-f5b4f908e772}">
+    <Declaration><![CDATA[INTERFACE ITF_NodeFactory
+]]></Declaration>
+    <Method Name="CreateNode" Id="{a6cb453f-cc77-4858-9fe4-aa79b626eb32}">
+      <Declaration><![CDATA[METHOD CreateNode : ITF_Node
+VAR_INPUT
+END_VAR
+]]></Declaration>
+    </Method>
+    <Method Name="DestroyNode" Id="{acc9f66b-ee62-4043-b5a8-6b28b2c750fa}">
+      <Declaration><![CDATA[METHOD DestroyNode : BOOL
+VAR_INPUT
+	Ptr		: PVOID;
+END_VAR
+]]></Declaration>
+    </Method>
+  </Itf>
+</TcPlcObject>

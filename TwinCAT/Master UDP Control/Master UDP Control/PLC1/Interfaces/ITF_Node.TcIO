@@ -1,0 +1,51 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<TcPlcObject Version="1.1.0.1">
+  <Itf Name="ITF_Node" Id="{ce730fea-0410-4f82-be09-48838bf80d7d}">
+    <Declaration><![CDATA[INTERFACE ITF_Node
+]]></Declaration>
+    <Method Name="GetLastNode" Id="{d049d641-fad6-4de4-940f-5381d88de601}">
+      <Declaration><![CDATA[METHOD GetLastNode : ITF_Node
+VAR_INPUT
+END_VAR
+]]></Declaration>
+    </Method>
+    <Method Name="GetMyPointer" Id="{91ea8946-01ec-4f63-900f-b472806387f9}">
+      <Declaration><![CDATA[METHOD GetMyPointer : PVOID
+
+]]></Declaration>
+    </Method>
+    <Method Name="GetNextNode" Id="{c50ec64b-e253-4640-a8c4-d08f97ec3a30}">
+      <Declaration><![CDATA[METHOD GetNextNode : ITF_Node
+VAR_INPUT
+END_VAR
+]]></Declaration>
+    </Method>
+    <Method Name="GetPositionInList" Id="{40bf4a88-7fbd-4518-9f62-0d4880200513}">
+      <Declaration><![CDATA[METHOD GetPositionInList : UINT
+VAR_INPUT
+END_VAR
+]]></Declaration>
+    </Method>
+    <Method Name="SetLastNode" Id="{16b6a02a-d638-456d-b67c-3f8cac31805a}">
+      <Declaration><![CDATA[METHOD SetLastNode : BOOL
+VAR_INPUT
+	Node	: ITF_Node;
+END_VAR
+]]></Declaration>
+    </Method>
+    <Method Name="SetNextNode" Id="{25af4737-91ba-4cc5-b030-0922a7c4b529}">
+      <Declaration><![CDATA[METHOD SetNextNode : BOOL
+VAR_INPUT
+	Node	: ITF_Node;
+END_VAR
+]]></Declaration>
+    </Method>
+    <Method Name="SetPositionInList" Id="{c27435fc-812e-464b-9e22-f1c5ef8a5103}">
+      <Declaration><![CDATA[METHOD SetPositionInList : BOOL
+VAR_INPUT
+	Index		: UINT;
+END_VAR
+]]></Declaration>
+    </Method>
+  </Itf>
+</TcPlcObject>

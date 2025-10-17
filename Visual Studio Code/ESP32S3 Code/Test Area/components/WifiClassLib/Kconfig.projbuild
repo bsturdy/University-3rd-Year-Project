@@ -44,4 +44,15 @@ menu "Wifi Class Configuration"
         help
             The port that UDP uses
 
+    config ESP_SYNC_SYSTEM
+        int "Wifi Sync System"
+        range 0 1
+        default 1
+        help
+            Enable or Disable the sync system that manages the wifi disconenctions quickly
+
+                0 = Disable
+            
+                1 = Enable
+
 endmenu

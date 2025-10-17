@@ -23,6 +23,7 @@
 #define MAX_STA_CONN                CONFIG_ESP_MAX_STA_CONN
 #define WIFI_MODE                   CONFIG_ESP_DEVICE_MODE
 #define UDP_PORT                    CONFIG_ESP_UDP_PORT
+#define SYNC_SYSTEM                 CONFIG_ESP_SYNC_SYSTEM
 
 #define EspNowTaskPriority          24
 #define UdpPollingTaskPriority      1
@@ -333,12 +334,8 @@ void WifiClass::IpEventHandlerSta(void* arg, esp_event_base_t event_base,
     }
 }
 
-
-
-
-
 // Function that deauthenticates a device
-void WifiClass::DeauthenticateDeviceAp(const char* ipAddress)
+esp_err_t WifiClass::DeauthenticateDeviceAp(const char* ipAddress)
 {
     if (ClassInstance->IsRuntimeLoggingEnabled)
     {
@@ -364,19 +361,21 @@ void WifiClass::DeauthenticateDeviceAp(const char* ipAddress)
         TempDevice.IsRegisteredWithEspNow = true;
 
         // Deauthenticate the device from wifi - triggers wifi disconnection event
-        esp_err_t result = esp_wifi_deauth_sta(TempDevice.aid);
-        if (result == ESP_OK && ClassInstance->IsRuntimeLoggingEnabled)
+        ClassInstance->Error = esp_wifi_deauth_sta(TempDevice.aid);
+        if (ClassInstance->Error == ESP_OK && ClassInstance->IsRuntimeLoggingEnabled)
         {
             ESP_LOGI(TAG, "Device with MAC "MACSTR" deauthenticated.", MAC2STR(TempDevice.MacId));
         }
         else
         {
-            ESP_LOGE(TAG, "Failed to deauthenticate device with MAC "MACSTR"! Error code: %d", MAC2STR(TempDevice.MacId), result);
+            ESP_LOGE(TAG, "Failed to deauthenticate device with MAC "MACSTR"! Error code: %d", MAC2STR(TempDevice.MacId), ClassInstance->Error);
+            return ClassInstance->Error;
         }
     }
     else
     {
         ESP_LOGE(TAG, "Device with IP: %s not found in device list!", ipAddress);
+        return ESP_FAIL;
     }
 
 
@@ -385,10 +384,11 @@ void WifiClass::DeauthenticateDeviceAp(const char* ipAddress)
         ESP_LOGW(TAG, "WI-FI AP TRIGGER DISCONNCETION EVENT COMPLETED");
         printf("\n");
     }
+    return ESP_OK;
 }
 
 // Function that deauthenticates a device
-void WifiClass::DeauthenticateDeviceSta(const char* ipAddress)
+esp_err_t WifiClass::DeauthenticateDeviceSta(const char* ipAddress)
 {
     if (ClassInstance->IsRuntimeLoggingEnabled)
     {
@@ -404,19 +404,21 @@ void WifiClass::DeauthenticateDeviceSta(const char* ipAddress)
         ClassInstance->HostWifiDevice.IsRegisteredWithEspNow = true;
 
         // Deauthenticate the device from wifi - triggers wifi disconnection event
-        esp_err_t result = esp_wifi_disconnect();
-        if (result == ESP_OK)
+        ClassInstance->Error = esp_wifi_disconnect();
+        if (ClassInstance->Error == ESP_OK)
         {
             ESP_LOGI(TAG, "Device with MAC "MACSTR" deauthenticated.", MAC2STR(ClassInstance->HostWifiDevice.MacId));
         }
         else
         {
-            ESP_LOGE(TAG, "Failed to deauthenticate device with MAC "MACSTR". Error code: %d", MAC2STR(ClassInstance->HostWifiDevice.MacId), result);
+            ESP_LOGE(TAG, "Failed to deauthenticate device with MAC "MACSTR". Error code: %d", MAC2STR(ClassInstance->HostWifiDevice.MacId), ClassInstance->Error);
+            return ClassInstance->Error;
         }
     }
     else
     {
         ESP_LOGE(TAG, "Device with IP: %s not found in device list.", ipAddress);
+        return ESP_FAIL;
     }
 
 
@@ -425,7 +427,12 @@ void WifiClass::DeauthenticateDeviceSta(const char* ipAddress)
         ESP_LOGW(TAG, "WI-FI STA TRIGGER DISCONNCETION EVENT COMPLETED");
         printf("\n");
     }
+    return ESP_OK;
 }
+
+
+
+
 
 // Task that connects and disconnects devices from ESP-NOW registery
 void WifiClass::EspNowTask(void *pvParameters)
@@ -478,7 +485,7 @@ void WifiClass::EspNowTask(void *pvParameters)
 }
 
 // Function that registers device with ESP-NOW
-bool WifiClass::EspNowRegisterDevice(WifiDevice* DeviceToRegister)
+esp_err_t WifiClass::EspNowRegisterDevice(WifiDevice* DeviceToRegister)
 {
     if (ClassInstance->IsRuntimeLoggingEnabled)
     {
@@ -511,11 +518,11 @@ bool WifiClass::EspNowRegisterDevice(WifiDevice* DeviceToRegister)
     peerInfo.channel = 0; 
     peerInfo.encrypt = false; 
 
-    esp_err_t add_peer_status = esp_now_add_peer(&peerInfo);
-    if (add_peer_status != ESP_OK) 
+    ClassInstance->Error = esp_now_add_peer(&peerInfo);
+    if (ClassInstance->Error != ESP_OK) 
     {
-        ESP_LOGE(TAG, "Failed to add peer: %s", esp_err_to_name(add_peer_status));
-        return false;
+        ESP_LOGE(TAG, "Failed to add peer: %s", esp_err_to_name(ClassInstance->Error));
+        return ClassInstance->Error;
     }
 
     DeviceToRegister->IsRegisteredWithEspNow = true;
@@ -525,12 +532,11 @@ bool WifiClass::EspNowRegisterDevice(WifiDevice* DeviceToRegister)
         ESP_LOGW(TAG, "ESP-NOW REGISTER DEVICE COMPLETED");
         printf("\n");
     }
-
-    return true;
+    return ESP_OK;
 }
 
 // Function that deregisters device with ESP-NOW
-bool WifiClass::EspNowDeleteDevice(WifiDevice* DeviceToDelete)
+esp_err_t WifiClass::EspNowDeleteDevice(WifiDevice* DeviceToDelete)
 {
     if (ClassInstance->IsRuntimeLoggingEnabled)
     {
@@ -557,11 +563,11 @@ bool WifiClass::EspNowDeleteDevice(WifiDevice* DeviceToDelete)
     }
 
     // Call the ESP-NOW deletion function.
-    esp_err_t del_peer_status = esp_now_del_peer(peerMacAddr);
-    if (del_peer_status != ESP_OK)
+    ClassInstance->Error = esp_now_del_peer(peerMacAddr);
+    if (ClassInstance->Error != ESP_OK)
     {
-        ESP_LOGE(TAG, "Failed to delete peer: %s", esp_err_to_name(del_peer_status));
-        return false;
+        ESP_LOGE(TAG, "Failed to delete peer: %s", esp_err_to_name(ClassInstance->Error));
+        return ClassInstance->Error;
     }
 
     DeviceToDelete->IsRegisteredWithEspNow = false;
@@ -571,44 +577,12 @@ bool WifiClass::EspNowDeleteDevice(WifiDevice* DeviceToDelete)
         ESP_LOGW(TAG, "ESP-NOW DELETE DEVICE COMPLETED");
         printf("\n");
     }
-
-    return true;
+    return ESP_OK;
 }
 
 
 
 
-
-// Function that sets up a UDP socket
-bool WifiClass::SetupUdpSocket(uint16_t UdpPort)
-{
-    if (ClassInstance->IsRuntimeLoggingEnabled)
-    {
-        printf("\n");
-        ESP_LOGW(TAG, "UDP SOCKET BINDING");
-    }
-
-    UdpSocketFD = socket(AF_INET, SOCK_DGRAM, 0);
-    if (UdpSocketFD < 0)
-    {
-        ESP_LOGE(TAG, "Failed to create UDP socket");
-        return false; 
-    }
-
-    memset(&UdpHostServerAddress, 0, sizeof(UdpHostServerAddress));
-    UdpHostServerAddress.sin_family = AF_INET;
-    UdpHostServerAddress.sin_addr.s_addr = htonl(INADDR_ANY);
-    UdpHostServerAddress.sin_port = htons(UdpPort);
-
-    if (bind(UdpSocketFD, (struct sockaddr *)&UdpHostServerAddress, sizeof(UdpHostServerAddress)) < 0) 
-    {
-        ESP_LOGE(TAG, "Failed to bind UDP socket");
-        close(UdpSocketFD);
-        return false;
-    }
-
-    return true;
-}
 
 // Task that polls for new UDP data received
 void WifiClass::UdpPollingTask(void* pvParameters)
@@ -646,7 +620,7 @@ void WifiClass::UdpPollingTask(void* pvParameters)
 }
 
 // Function to poll for UDP data on the AP
-void WifiClass::UdpPollingOnAp(struct sockaddr_in* SourceAddress, socklen_t* SourceAddressLength, UdpPacket* ReceivedPacket)
+esp_err_t WifiClass::UdpPollingOnAp(struct sockaddr_in* SourceAddress, socklen_t* SourceAddressLength, UdpPacket* ReceivedPacket)
 {
     ReceivedPacket->PacketLength = recvfrom(ClassInstance->UdpSocketFD, 
                                             ReceivedPacket->Data, 
@@ -667,11 +641,15 @@ void WifiClass::UdpPollingOnAp(struct sockaddr_in* SourceAddress, socklen_t* Sou
 
         memset(SourceAddress, 0, sizeof(struct sockaddr_in));
         memset(ReceivedPacket, 0, sizeof(UdpPacket));
+
+        return ESP_OK;
     }
+
+    return ESP_ERR_INVALID_STATE;
 }
 
 // Function to poll for UDP data on the STA
-void WifiClass::UdpPollingOnSta(struct sockaddr_in* SourceAddress, socklen_t* SourceAddressLength, UdpPacket* ReceivedPacket)
+esp_err_t WifiClass::UdpPollingOnSta(struct sockaddr_in* SourceAddress, socklen_t* SourceAddressLength, UdpPacket* ReceivedPacket)
 {
 
     ReceivedPacket->PacketLength = recvfrom(ClassInstance->UdpSocketFD, 
@@ -693,7 +671,11 @@ void WifiClass::UdpPollingOnSta(struct sockaddr_in* SourceAddress, socklen_t* So
 
         memset(SourceAddress, 0, sizeof(struct sockaddr_in));
         memset(ReceivedPacket, 0, sizeof(UdpPacket));
+
+        return ESP_OK;
     }
+
+    return ESP_ERR_INVALID_STATE;
 }
 
 
@@ -737,7 +719,7 @@ void WifiClass::UdpProcessingTask(void* pvParameters)
 }
 
 // Function to process UDP data on the AP
-void WifiClass::UdpProcessOnAp(UdpPacket* ReceivedPacket)
+esp_err_t WifiClass::UdpProcessOnAp(UdpPacket* ReceivedPacket)
 {
     if (ClassInstance->IsRuntimeLoggingEnabled)
     {
@@ -753,7 +735,8 @@ void WifiClass::UdpProcessOnAp(UdpPacket* ReceivedPacket)
     {
         // Find the device in ClientWifiDeviceList using the sender's IP
         auto deviceIt = std::find_if(ClassInstance->ClientWifiDeviceList.begin(), ClassInstance->ClientWifiDeviceList.end(),
-            [&](const WifiDevice& device) {
+            [&](const WifiDevice& device) 
+            {
                 return strcmp(device.IpAddress, ReceivedPacket->SenderIp) == 0;
             });
 
@@ -764,6 +747,7 @@ void WifiClass::UdpProcessOnAp(UdpPacket* ReceivedPacket)
             if (deviceIt->SyncPacketCheckCounter <= 3)
             {
                 deviceIt->SyncPacketCheckCounter = deviceIt->SyncPacketCheckCounter + 1;
+                return ESP_OK;
             }
         }
         else
@@ -772,13 +756,16 @@ void WifiClass::UdpProcessOnAp(UdpPacket* ReceivedPacket)
             if (ClassInstance->IsRuntimeLoggingEnabled)
             {
                 ESP_LOGE(TAG, "Sync packet received from unknown device: %s", ReceivedPacket->SenderIp);
+                return ESP_ERR_INVALID_MAC;
             }
         }
     }
+
+    return ESP_ERR_INVALID_STATE;
 }
 
 // Function to process UDP data on the STA
-void WifiClass::UdpProcessOnSta(UdpPacket* ReceivedPacket)
+esp_err_t WifiClass::UdpProcessOnSta(UdpPacket* ReceivedPacket)
 {
     // Start Processing
     if (ClassInstance->IsRuntimeLoggingEnabled)
@@ -797,8 +784,11 @@ void WifiClass::UdpProcessOnSta(UdpPacket* ReceivedPacket)
         if (ClassInstance->HostWifiDevice.SyncPacketCheckCounter <= 3)
         {
             ClassInstance->HostWifiDevice.SyncPacketCheckCounter = ClassInstance->HostWifiDevice.SyncPacketCheckCounter + 1;
+            return ESP_OK;
         }
     }
+
+    return ESP_ERR_INVALID_STATE;
 }
 
 
@@ -839,105 +829,117 @@ void WifiClass::UdpSystemTask(void* pvParameters)
 }
 
 // Function to control UDP System on AP
-void WifiClass::UdpSystemOnAp(uint8_t Counter)
+esp_err_t WifiClass::UdpSystemOnAp(uint8_t Counter)
 {
-    // Send Sync Packets
-    if (Counter % (200 / UdpSystemTaskCycleTime) == 0)
+    // Sync system
+    if (SYNC_SYSTEM)
     {
-        if (ClassInstance->IsRuntimeLoggingEnabled)
-        {    
-            printf("\n");
-            ESP_LOGW(TAG, "UDP AP SYNC SYSTEM");  
-        }
-        for (int i = 0; i < ClassInstance->ClientWifiDeviceList.size(); i++)
+        // Send Sync Packets
+        if (Counter % (200 / UdpSystemTaskCycleTime) == 0)
         {
             if (ClassInstance->IsRuntimeLoggingEnabled)
-            {
-                ESP_LOGI(TAG, "Sending UDP Sync Packet to %s...", ClassInstance->ClientWifiDeviceList[i].IpAddress);
+            {    
+                printf("\n");
+                ESP_LOGW(TAG, "UDP AP SYNC SYSTEM");  
             }
-
-            if (ClassInstance->SendUdpPacket("Sync", ClassInstance->ClientWifiDeviceList[i].IpAddress, 25000))
+            for (int i = 0; i < ClassInstance->ClientWifiDeviceList.size(); i++)
             {
                 if (ClassInstance->IsRuntimeLoggingEnabled)
                 {
-                    ESP_LOGI(TAG, "Sent UDP Sync Packet!");
+                    ESP_LOGI(TAG, "Sending UDP Sync Packet to %s...", ClassInstance->ClientWifiDeviceList[i].IpAddress);
+                }
+
+                if (ClassInstance->SendUdpPacket("Sync", ClassInstance->ClientWifiDeviceList[i].IpAddress, 25000) == ESP_OK)
+                {
+                    if (ClassInstance->IsRuntimeLoggingEnabled)
+                    {
+                        ESP_LOGI(TAG, "Sent UDP Sync Packet!");
+                    }
+                }
+            }
+        }
+
+        // Measure Received Sync Packets
+        if (Counter % (250 / UdpSystemTaskCycleTime) == 0)
+        {
+            for (int i = 0; i < ClassInstance->ClientWifiDeviceList.size(); i++)
+            {
+                if (ClassInstance->ClientWifiDeviceList[i].IsSyncSystemRunning)
+                {
+                    ClassInstance->ClientWifiDeviceList[i].SyncPacketCheckCounter = ClassInstance->ClientWifiDeviceList[i].SyncPacketCheckCounter - 1; 
+
+                    if (ClassInstance->ClientWifiDeviceList[i].SyncPacketCheckCounter <= 0)
+                    {
+                        printf("\n");
+                        ESP_LOGE(TAG, "DEVICE TIMEOUT, DE-AUTHENTICATING");
+                        ClassInstance->DeauthenticateDeviceAp(ClassInstance->ClientWifiDeviceList[i].IpAddress);
+                    }
+                }
+
+                else
+                {
+                    if (ClassInstance->IsRuntimeLoggingEnabled)
+                    {
+                        ESP_LOGI(TAG, "Sync system not running on %s", ClassInstance->ClientWifiDeviceList[i].IpAddress);
+                    }
                 }
             }
         }
     }
 
-    // Measure Received Sync Packets
-    if (Counter % (250 / UdpSystemTaskCycleTime) == 0)
-    {
-        for (int i = 0; i < ClassInstance->ClientWifiDeviceList.size(); i++)
-        {
-            if (ClassInstance->ClientWifiDeviceList[i].IsSyncSystemRunning)
-            {
-                ClassInstance->ClientWifiDeviceList[i].SyncPacketCheckCounter = ClassInstance->ClientWifiDeviceList[i].SyncPacketCheckCounter - 1; 
+    return ESP_OK;
+}
 
-                if (ClassInstance->ClientWifiDeviceList[i].SyncPacketCheckCounter <= 0)
+// Function to control UDP System on STA
+esp_err_t WifiClass::UdpSystemOnSta(uint8_t Counter)
+{
+    // Sync system
+    if (SYNC_SYSTEM)
+    {
+        // Send Sync Packets
+        if (Counter % (200 / UdpSystemTaskCycleTime) == 0)
+        {
+            if (ClassInstance->IsRuntimeLoggingEnabled)
+            {
+                printf("\n");
+                ESP_LOGW(TAG, "UDP STA SYNC SYSTEM");
+                ESP_LOGI(TAG, "Sending UDP Sync Packet to %s...", ClassInstance->HostWifiDevice.IpAddress);
+            }
+
+            if (ClassInstance->SendUdpPacket("Sync", ClassInstance->HostWifiDevice.IpAddress, 25000) == ESP_OK)
+            {
+                if (ClassInstance->IsRuntimeLoggingEnabled)
+                {
+                    ESP_LOGI(TAG, "Sent UDP Sync Packet!");  
+                }
+            }
+        }
+
+        // Measure Received Sync Packets
+        if (Counter % (250 / UdpSystemTaskCycleTime) == 0)
+        {
+            if (ClassInstance->HostWifiDevice.IsSyncSystemRunning)
+            {
+                ClassInstance->HostWifiDevice.SyncPacketCheckCounter = ClassInstance->HostWifiDevice.SyncPacketCheckCounter - 1; 
+
+                if (ClassInstance->HostWifiDevice.SyncPacketCheckCounter <= 0)
                 {
                     printf("\n");
                     ESP_LOGE(TAG, "DEVICE TIMEOUT, DE-AUTHENTICATING");
-                    ClassInstance->DeauthenticateDeviceAp(ClassInstance->ClientWifiDeviceList[i].IpAddress);
+                    ClassInstance->DeauthenticateDeviceSta(ClassInstance->HostWifiDevice.IpAddress);
                 }
             }
-
             else
             {
                 if (ClassInstance->IsRuntimeLoggingEnabled)
                 {
-                    ESP_LOGI(TAG, "Sync system not running on %s", ClassInstance->ClientWifiDeviceList[i].IpAddress);
+                    ESP_LOGI(TAG, "Sync system not running on %s", ClassInstance->HostWifiDevice.IpAddress);
                 }
             }
         }
     }
-}
-
-// Function to control UDP System on STA
-void WifiClass::UdpSystemOnSta(uint8_t Counter)
-{
-    // Send Sync Packets
-    if (Counter % (200 / UdpSystemTaskCycleTime) == 0)
-    {
-        if (ClassInstance->IsRuntimeLoggingEnabled)
-        {
-            printf("\n");
-            ESP_LOGW(TAG, "UDP STA SYNC SYSTEM");
-            ESP_LOGI(TAG, "Sending UDP Sync Packet to %s...", ClassInstance->HostWifiDevice.IpAddress);
-        }
-
-        if (ClassInstance->SendUdpPacket("Sync", ClassInstance->HostWifiDevice.IpAddress, 25000))
-        {
-            if (ClassInstance->IsRuntimeLoggingEnabled)
-            {
-                ESP_LOGI(TAG, "Sent UDP Sync Packet!");  
-            }
-        }
-    }
-
-    // Measure Received Sync Packets
-    if (Counter % (250 / UdpSystemTaskCycleTime) == 0)
-    {
-        if (ClassInstance->HostWifiDevice.IsSyncSystemRunning)
-        {
-            ClassInstance->HostWifiDevice.SyncPacketCheckCounter = ClassInstance->HostWifiDevice.SyncPacketCheckCounter - 1; 
-
-            if (ClassInstance->HostWifiDevice.SyncPacketCheckCounter <= 0)
-            {
-                printf("\n");
-                ESP_LOGE(TAG, "DEVICE TIMEOUT, DE-AUTHENTICATING");
-                ClassInstance->DeauthenticateDeviceSta(ClassInstance->HostWifiDevice.IpAddress);
-            }
-        }
-        else
-        {
-            if (ClassInstance->IsRuntimeLoggingEnabled)
-            {
-                ESP_LOGI(TAG, "Sync system not running on %s", ClassInstance->HostWifiDevice.IpAddress);
-            }
-        }
-    }
+    
+    return ESP_OK;
 }
 
 
@@ -945,46 +947,59 @@ void WifiClass::UdpSystemOnSta(uint8_t Counter)
 
 
 // Function that sets up the system as an Access Point
-bool WifiClass::SetupWifiAP(uint16_t UdpPort, uint16_t Timeout, uint8_t CoreToUse)
+esp_err_t WifiClass::SetupWifiAP(uint16_t UdpPort, uint16_t Timeout, uint8_t CoreToUse)
 {
-    printf("\n");
-    ESP_LOGW(TAG, "SETUP WI-FI AP");
+
+    if (ClassInstance->IsRuntimeLoggingEnabled)
+    {
+        printf("\n");
+        ESP_LOGW(TAG, "SETUP WI-FI AP");  
+    }
     IsAp = true;
 
 
     //Initialize NVS
-    esp_err_t ret = nvs_flash_init();
-    if (ret == ESP_ERR_NVS_NO_FREE_PAGES || ret == ESP_ERR_NVS_NEW_VERSION_FOUND) 
+    ClassInstance->Error = nvs_flash_init();
+    if (ClassInstance->Error == ESP_ERR_NVS_NO_FREE_PAGES || ClassInstance->Error == ESP_ERR_NVS_NEW_VERSION_FOUND) 
     {
       ESP_ERROR_CHECK(nvs_flash_erase());
-      ret = nvs_flash_init();
+      ClassInstance->Error = nvs_flash_init();
     }
-    if (ret != ESP_OK) 
+    if (ClassInstance->Error != ESP_OK) 
     {
-        ESP_LOGE(TAG, "Failed to initialize NVS: %s", esp_err_to_name(ret));
-        return false; 
+        ESP_LOGE(TAG, "Failed to initialize NVS: %s", esp_err_to_name(ClassInstance->Error));
+        return ClassInstance->Error; 
     }
-    ESP_LOGI(TAG, "1 - NVS Ready!");
+    if (ClassInstance->IsRuntimeLoggingEnabled)
+    {
+        ESP_LOGI(TAG, "1 - NVS Ready!");
+    }
 
 
     // Initialize network interface
-    ret = esp_netif_init();
-    if (ret != ESP_OK) 
+    ClassInstance->Error = esp_netif_init();
+    if (ClassInstance->Error != ESP_OK) 
     {
-        ESP_LOGE(TAG, "Failed to initialize network interface: %s", esp_err_to_name(ret));
-        return false;
+        ESP_LOGE(TAG, "Failed to initialize network interface: %s", esp_err_to_name(ClassInstance->Error));
+        return ClassInstance->Error;
     }
-    ESP_LOGI(TAG, "2 - Network Interface Ready!");
-
+    if (ClassInstance->IsRuntimeLoggingEnabled)
+    {
+        ESP_LOGI(TAG, "2 - Network Interface Ready!");
+    }
+   
 
     // Create event loop
-    ret = esp_event_loop_create_default();
-    if (ret != ESP_OK) 
+    ClassInstance->Error = esp_event_loop_create_default();
+    if (ClassInstance->Error != ESP_OK) 
     {
-        ESP_LOGE(TAG, "Failed to create event loop: %s", esp_err_to_name(ret));
-        return false;
+        ESP_LOGE(TAG, "Failed to create event loop: %s", esp_err_to_name(ClassInstance->Error));
+        return ClassInstance->Error;
     }
-    ESP_LOGI(TAG, "3 - Event Loop Ready!");
+    if (ClassInstance->IsRuntimeLoggingEnabled)
+    {
+        ESP_LOGI(TAG, "3 - Event Loop Ready!");
+    }
 
 
     // Set up the AP interface
@@ -992,20 +1007,26 @@ bool WifiClass::SetupWifiAP(uint16_t UdpPort, uint16_t Timeout, uint8_t CoreToUs
     if (netif == nullptr) 
     {
         ESP_LOGE(TAG, "Failed to create default Wi-Fi AP interface");
-        return false;
+        return ESP_ERR_WIFI_NOT_CONNECT;
     }
-    ESP_LOGI(TAG, "4 - AP Interface Ready!");
-
+    if (ClassInstance->IsRuntimeLoggingEnabled)
+    {
+        ESP_LOGI(TAG, "4 - AP Interface Ready!");
+    }
+    
 
     // Initialize wifi stack with default configuration
     wifi_init_config_t cfg = WIFI_INIT_CONFIG_DEFAULT();
-    ret = esp_wifi_init(&cfg);
-    if (ret != ESP_OK) 
+    ClassInstance->Error = esp_wifi_init(&cfg);
+    if (ClassInstance->Error != ESP_OK) 
     {
-        ESP_LOGE(TAG, "Failed to initialize Wi-Fi stack: %s", esp_err_to_name(ret));
-        return false;
+        ESP_LOGE(TAG, "Failed to initialize Wi-Fi stack: %s", esp_err_to_name(ClassInstance->Error));
+        return ClassInstance->Error;
     }
-    ESP_LOGI(TAG, "5 - Wi-Fi Stack Ready!");
+    if (ClassInstance->IsRuntimeLoggingEnabled)
+    {
+        ESP_LOGI(TAG, "5 - Wi-Fi Stack Ready!");
+    }
 
 
     // Set the country region before initializing Wi-Fi
@@ -1016,41 +1037,50 @@ bool WifiClass::SetupWifiAP(uint16_t UdpPort, uint16_t Timeout, uint8_t CoreToUs
         .nchan = 13,       // Number of channels available
         .max_tx_power = 20 // Max TX power (can vary based on the region)
     };
-    ret = esp_wifi_set_country(&country);
-    if (ret != ESP_OK) 
+    ClassInstance->Error = esp_wifi_set_country(&country);
+    if (ClassInstance->Error != ESP_OK) 
     {
-        ESP_LOGE(TAG, "Failed to set country: %s", esp_err_to_name(ret));
-        return false;
+        ESP_LOGE(TAG, "Failed to set country: %s", esp_err_to_name(ClassInstance->Error));
+        return ClassInstance->Error;
     }
-    ESP_LOGI(TAG, "6 - Country Set To GB!");
-
+    if (ClassInstance->IsRuntimeLoggingEnabled)
+    {
+        ESP_LOGI(TAG, "6 - Country Set To GB!");
+    }
+    
 
     // Register event handler
-    ret = (esp_event_handler_instance_register(WIFI_EVENT,
+    ClassInstance->Error = (esp_event_handler_instance_register(WIFI_EVENT,
                                                 ESP_EVENT_ANY_ID,
                                                 &WifiClass::WifiEventHandlerAp,
                                                 ClassInstance,
                                                 NULL));
-    if (ret != ESP_OK) 
+    if (ClassInstance->Error != ESP_OK) 
     {
-        ESP_LOGE(TAG, "Failed to register wifi event handler: %s", esp_err_to_name(ret));
-        return false;
+        ESP_LOGE(TAG, "Failed to register wifi event handler: %s", esp_err_to_name(ClassInstance->Error));
+        return ClassInstance->Error;
     }
-    ESP_LOGI(TAG, "7 - Wifi Event Handler Ready!");
+    if (ClassInstance->IsRuntimeLoggingEnabled)
+    {
+        ESP_LOGI(TAG, "7 - Wifi Event Handler Ready!");
+    }
 
 
     // Register event handler
-    ret = esp_event_handler_instance_register(IP_EVENT,
+    ClassInstance->Error = esp_event_handler_instance_register(IP_EVENT,
                                                 ESP_EVENT_ANY_ID,
                                                 &WifiClass::IpEventHandlerAp,
                                                 ClassInstance,
                                                 NULL);
-    if (ret != ESP_OK)
+    if (ClassInstance->Error != ESP_OK)
     {
-    ESP_LOGE(TAG, "Failed to register event handler: %s", esp_err_to_name(ret));
-    return false;       
+    ESP_LOGE(TAG, "Failed to register event handler: %s", esp_err_to_name(ClassInstance->Error));
+    return ClassInstance->Error;       
     }
-    ESP_LOGI(TAG, "8 - IP Event Handler Ready!");
+    if (ClassInstance->IsRuntimeLoggingEnabled)
+    {
+        ESP_LOGI(TAG, "8 - IP Event Handler Ready!");        
+    }
 
 
     // Configure AP settings
@@ -1086,50 +1116,65 @@ bool WifiClass::SetupWifiAP(uint16_t UdpPort, uint16_t Timeout, uint8_t CoreToUs
         wifi_config.ap.authmode = WIFI_AUTH_OPEN;
     }
     // Set the wifi mode to AP
-    ret = esp_wifi_set_mode(WIFI_MODE_AP);
-    if (ret != ESP_OK) 
+    ClassInstance->Error = esp_wifi_set_mode(WIFI_MODE_AP);
+    if (ClassInstance->Error != ESP_OK) 
     {
-        ESP_LOGE(TAG, "Failed to set Wi-Fi mode: %s", esp_err_to_name(ret));
-        return false;
+        ESP_LOGE(TAG, "Failed to set Wi-Fi mode: %s", esp_err_to_name(ClassInstance->Error));
+        return ClassInstance->Error;
     }
-    ESP_LOGI(TAG, "9 - Wi-Fi Mode Set To AP!");
+    if (ClassInstance->IsRuntimeLoggingEnabled)
+    {
+        ESP_LOGI(TAG, "9 - Wi-Fi Mode Set To AP!");
+    }
 
 
     // Apply previously made configuration
-    ret = esp_wifi_set_config(WIFI_IF_AP, &wifi_config);
-    if (ret != ESP_OK) 
+    ClassInstance->Error = esp_wifi_set_config(WIFI_IF_AP, &wifi_config);
+    if (ClassInstance->Error != ESP_OK) 
     {
-        ESP_LOGE(TAG, "Failed to apply Wi-Fi configuration: %s", esp_err_to_name(ret));
-        return false;
+        ESP_LOGE(TAG, "Failed to apply Wi-Fi configuration: %s", esp_err_to_name(ClassInstance->Error));
+        return ClassInstance->Error;
     }
-    ESP_LOGI(TAG, "10 - Wi-Fi Configuration Applied!");
-
+    if (ClassInstance->IsRuntimeLoggingEnabled)
+    {
+        ESP_LOGI(TAG, "10 - Wi-Fi Configuration Applied!");
+    }
+    
 
     // Start wifi AP
-    ret = esp_wifi_start();
-    if (ret != ESP_OK) 
+    ClassInstance->Error = esp_wifi_start();
+    if (ClassInstance->Error != ESP_OK) 
     {
-        ESP_LOGE(TAG, "Failed to start Wi-Fi AP: %s", esp_err_to_name(ret));
-        return false;
+        ESP_LOGE(TAG, "Failed to start Wi-Fi AP: %s", esp_err_to_name(ClassInstance->Error));
+        return ClassInstance->Error;
     }
-    ESP_LOGI(TAG, "11 - Wi-Fi AP Started!");
-
-
-    ret = esp_wifi_set_inactive_time(WIFI_IF_AP, Timeout);
-    if (ret != ESP_OK)
+    if (ClassInstance->IsRuntimeLoggingEnabled)
     {
-        ESP_LOGE(TAG, "Failed to set Inactive Timer: %s", esp_err_to_name(ret));
-        return false;
+        ESP_LOGI(TAG, "11 - Wi-Fi AP Started!");
     }
-    ESP_LOGI(TAG, "12 - Inactive Timer Set To 10s!");
 
 
-    if (!SetupUdpSocket(UdpPort))
+    ClassInstance->Error = esp_wifi_set_inactive_time(WIFI_IF_AP, Timeout);
+    if (ClassInstance->Error != ESP_OK)
+    {
+        ESP_LOGE(TAG, "Failed to set Inactive Timer: %s", esp_err_to_name(ClassInstance->Error));
+        return ClassInstance->Error;
+    }
+    if (ClassInstance->IsRuntimeLoggingEnabled)
+    {
+        ESP_LOGI(TAG, "12 - Inactive Timer Set To 10s!");
+    }
+    
+
+    if (SetupUdpSocket(UdpPort) != ESP_OK)
     {
         ESP_LOGE(TAG, "Failed to bind UDP socket");
-        return false;
+        return ESP_FAIL;
     }
-    ESP_LOGI(TAG, "13 - UDP Socket Bound!");
+    if (ClassInstance->IsRuntimeLoggingEnabled)
+    {
+        ESP_LOGI(TAG, "13 - UDP Socket Bound!");
+    }
 
 
     UdpPollingTaskHandle = xTaskCreateStaticPinnedToCore
@@ -1146,19 +1191,25 @@ bool WifiClass::SetupWifiAP(uint16_t UdpPort, uint16_t Timeout, uint8_t CoreToUs
     if (UdpPollingTaskHandle == NULL)
     {
         ESP_LOGE(TAG, "Failed to create UDP polling task");
-        return false;
+        return ESP_FAIL;
     }
-    ESP_LOGI(TAG, "14 - UDP Polling Task Created!");
-
+    if (ClassInstance->IsRuntimeLoggingEnabled)
+    {
+        ESP_LOGI(TAG, "14 - UDP Polling Task Created!");
+    }
+    
 
     UdpProcessingQueue = xQueueCreate(10, sizeof(UdpPacket*)); 
     if (UdpProcessingQueue == NULL) 
     {
         ESP_LOGE(TAG, "Failed to create UDP queue");
-        return false;
+        return ESP_FAIL;
     }
-    ESP_LOGI(TAG, "15 - UdpProcessingQueue Ready!");
-
+    if (ClassInstance->IsRuntimeLoggingEnabled)
+    {
+        ESP_LOGI(TAG, "15 - UdpProcessingQueue Ready!");
+    }
+   
 
     UdpProcessingTaskHandle = xTaskCreateStaticPinnedToCore
     (
@@ -1174,9 +1225,12 @@ bool WifiClass::SetupWifiAP(uint16_t UdpPort, uint16_t Timeout, uint8_t CoreToUs
     if (UdpProcessingTaskHandle == NULL)
     {
         ESP_LOGE(TAG, "Failed to create UDP processing task");
-        return false;
+        return ESP_FAIL;
     }
-    ESP_LOGI(TAG, "16 - UDP Processing Task Created!");
+    if (ClassInstance->IsRuntimeLoggingEnabled)
+    {
+        ESP_LOGI(TAG, "16 - UDP Processing Task Created!");
+    }
 
 
     UdpSystemTaskHandle = xTaskCreateStaticPinnedToCore
@@ -1193,81 +1247,105 @@ bool WifiClass::SetupWifiAP(uint16_t UdpPort, uint16_t Timeout, uint8_t CoreToUs
     if (UdpProcessingTaskHandle == NULL)
     {
         ESP_LOGE(TAG, "Failed to create UDP System task");
-        return false;
+        return ESP_FAIL;
     }
-    ESP_LOGI(TAG, "17 - UDP System Task Created!");
+    if (ClassInstance->IsRuntimeLoggingEnabled)
+    {
+        ESP_LOGI(TAG, "17 - UDP System Task Created!");
+    }
 
 
-    ESP_LOGI(TAG, "SSID: %s, Password: %s, Channel: %d",
-             WIFI_SSID, WIFI_PASS, WIFI_CHANNEL);
-    ESP_LOGW(TAG, "SETUP WI-FI AP SUCCESSFUL");    
-    printf("\n");
-    return true;
+    if (ClassInstance->IsRuntimeLoggingEnabled)
+    {
+        ESP_LOGI(TAG, "SSID: %s, Password: %s, Channel: %d",
+            WIFI_SSID, WIFI_PASS, WIFI_CHANNEL);
+        ESP_LOGW(TAG, "SETUP WI-FI AP SUCCESSFUL");  
+        printf("\n");
+    }
+    return ESP_OK;
 }
 
 // Function that sets up the system as a Station
-bool WifiClass::SetupWifiSta(uint16_t UdpPort, uint16_t Timeout, uint8_t CoreToUse)
+esp_err_t WifiClass::SetupWifiSta(uint16_t UdpPort, uint16_t Timeout, uint8_t CoreToUse)
 {
-    printf("\n");
-    ESP_LOGW(TAG, "SETUP WI-FI STATION");
+    if (ClassInstance->IsRuntimeLoggingEnabled)
+    {
+        printf("\n");
+        ESP_LOGW(TAG, "SETUP WI-FI STATION");
+    }
     IsSta = true;
 
 
     //Initialize NVS
-    esp_err_t ret = nvs_flash_init();
-    if (ret == ESP_ERR_NVS_NO_FREE_PAGES || ret == ESP_ERR_NVS_NEW_VERSION_FOUND) 
+    ClassInstance->Error = nvs_flash_init();
+    if (ClassInstance->Error == ESP_ERR_NVS_NO_FREE_PAGES || ClassInstance->Error == ESP_ERR_NVS_NEW_VERSION_FOUND) 
     {
       ESP_ERROR_CHECK(nvs_flash_erase());
-      ret = nvs_flash_init();
+      ClassInstance->Error = nvs_flash_init();
     }
-    if (ret != ESP_OK) 
+    if (ClassInstance->Error != ESP_OK) 
     {
-        ESP_LOGE(TAG, "Failed to initialize NVS: %s", esp_err_to_name(ret));
-        return false; // Early return if the error occurs
+        ESP_LOGE(TAG, "Failed to initialize NVS: %s", esp_err_to_name(ClassInstance->Error));
+        return ClassInstance->Error; // Early return if the error occurs
     }
-    ESP_LOGI(TAG, "1 - NVS Ready!");
+    if (ClassInstance->IsRuntimeLoggingEnabled)
+    {
+        ESP_LOGI(TAG, "1 - NVS Ready!");
+    }
 
 
     // Initialize network interface
-    ret = esp_netif_init();
-    if (ret != ESP_OK) 
+    ClassInstance->Error = esp_netif_init();
+    if (ClassInstance->Error != ESP_OK) 
     {
-        ESP_LOGE(TAG, "Failed to initialize network interface: %s", esp_err_to_name(ret));
-        return false;
+        ESP_LOGE(TAG, "Failed to initialize network interface: %s", esp_err_to_name(ClassInstance->Error));
+        return ClassInstance->Error;
     }
-    ESP_LOGI(TAG, "2 - Network Interface Ready!");
-
+    if (ClassInstance->IsRuntimeLoggingEnabled)
+    {
+        ESP_LOGI(TAG, "2 - Network Interface Ready!");
+    }
+    
 
     // Create event loop
-    ret = esp_event_loop_create_default();
-    if (ret != ESP_OK) 
+    ClassInstance->Error = esp_event_loop_create_default();
+    if (ClassInstance->Error != ESP_OK) 
     {
-        ESP_LOGE(TAG, "Failed to create event loop: %s", esp_err_to_name(ret));
-        return false;
+        ESP_LOGE(TAG, "Failed to create event loop: %s", esp_err_to_name(ClassInstance->Error));
+        return ClassInstance->Error;
     }
-    ESP_LOGI(TAG, "3 - Event Loop Ready!");
-
+    if (ClassInstance->IsRuntimeLoggingEnabled)
+    {
+        ESP_LOGI(TAG, "3 - Event Loop Ready!");
+    }
+    
 
     // Set up the Station interface
     esp_netif_t* netif = esp_netif_create_default_wifi_sta();
     if (netif == nullptr) 
     {
         ESP_LOGE(TAG, "Failed to create default Wi-Fi Station interface");
-        return false;
+        return ESP_ERR_WIFI_NOT_CONNECT;
     }
-    ESP_LOGI(TAG, "4 - Station Interface Ready!");
-
+    if (ClassInstance->IsRuntimeLoggingEnabled)
+    {
+        ESP_LOGI(TAG, "4 - Station Interface Ready!");
+    }
+    
 
     // Initialize Wi-Fi stack with default configuration
     wifi_init_config_t cfg = WIFI_INIT_CONFIG_DEFAULT();
-    ret = esp_wifi_init(&cfg);
-    if (ret != ESP_OK) 
+    ClassInstance->Error = esp_wifi_init(&cfg);
+    if (ClassInstance->Error != ESP_OK) 
     {
-        ESP_LOGE(TAG, "Failed to initialize Wi-Fi stack: %s", esp_err_to_name(ret));
-        return false;
+        ESP_LOGE(TAG, "Failed to initialize Wi-Fi stack: %s", esp_err_to_name(ClassInstance->Error));
+        return ClassInstance->Error;
     }
-    ESP_LOGI(TAG, "5 - Wi-Fi Stack Ready!");
-
+    if (ClassInstance->IsRuntimeLoggingEnabled)
+    {
+        ESP_LOGI(TAG, "5 - Wi-Fi Stack Ready!");
+    }
+    
 
     // Set the country region before initializing Wi-Fi
     wifi_country_t country = 
@@ -1277,41 +1355,50 @@ bool WifiClass::SetupWifiSta(uint16_t UdpPort, uint16_t Timeout, uint8_t CoreToU
         .nchan = 13,       // Number of channels available
         .max_tx_power = 20 // Max TX power (can vary based on the region)
     };
-    ret = esp_wifi_set_country(&country);
-    if (ret != ESP_OK) {
-        ESP_LOGE(TAG, "Failed to set country: %s", esp_err_to_name(ret));
-        return false;
+    ClassInstance->Error = esp_wifi_set_country(&country);
+    if (ClassInstance->Error != ESP_OK) {
+        ESP_LOGE(TAG, "Failed to set country: %s", esp_err_to_name(ClassInstance->Error));
+        return ClassInstance->Error;
     }
-    ESP_LOGI(TAG, "6 - Country Set To GB!");
-
+    if (ClassInstance->IsRuntimeLoggingEnabled)
+    {
+        ESP_LOGI(TAG, "6 - Country Set To GB!");
+    }
+    
 
     // Register event handler
-    ret = esp_event_handler_instance_register(WIFI_EVENT,
+    ClassInstance->Error = esp_event_handler_instance_register(WIFI_EVENT,
                                               ESP_EVENT_ANY_ID,
                                               &WifiClass::WifiEventHandlerSta,
                                               ClassInstance,
                                               NULL);
-    if (ret != ESP_OK) 
+    if (ClassInstance->Error != ESP_OK) 
     {
-        ESP_LOGE(TAG, "Failed to register event handler: %s", esp_err_to_name(ret));
-        return false;
+        ESP_LOGE(TAG, "Failed to register event handler: %s", esp_err_to_name(ClassInstance->Error));
+        return ClassInstance->Error;
     }
-    ESP_LOGI(TAG, "7 - Wifi Event Handler Ready!");
-
+    if (ClassInstance->IsRuntimeLoggingEnabled)
+    {
+        ESP_LOGI(TAG, "7 - Wifi Event Handler Ready!");
+    }
+    
 
     // Register event handler
-    ret = esp_event_handler_instance_register(IP_EVENT,
+    ClassInstance->Error = esp_event_handler_instance_register(IP_EVENT,
                                               ESP_EVENT_ANY_ID,
                                               &WifiClass::IpEventHandlerSta,
                                               ClassInstance,
                                               NULL);
-    if (ret != ESP_OK)
+    if (ClassInstance->Error != ESP_OK)
     {
-        ESP_LOGE(TAG, "Failed to register event handler: %s", esp_err_to_name(ret));
-        return false;       
+        ESP_LOGE(TAG, "Failed to register event handler: %s", esp_err_to_name(ClassInstance->Error));
+        return ClassInstance->Error;       
     }
-    ESP_LOGI(TAG, "8 - IP Event Handler Ready!");
-
+    if (ClassInstance->IsRuntimeLoggingEnabled)
+    {
+        ESP_LOGI(TAG, "8 - IP Event Handler Ready!");
+    }
+    
 
     // Configure Station settings
     wifi_config_t wifi_config = {};
@@ -1321,51 +1408,66 @@ bool WifiClass::SetupWifiSta(uint16_t UdpPort, uint16_t Timeout, uint8_t CoreToU
 
 
     // Set the Wi-Fi mode to Station
-    ret = esp_wifi_set_mode(WIFI_MODE_STA);
-    if (ret != ESP_OK) 
+    ClassInstance->Error = esp_wifi_set_mode(WIFI_MODE_STA);
+    if (ClassInstance->Error != ESP_OK) 
     {
-        ESP_LOGE(TAG, "Failed to set Wi-Fi mode: %s", esp_err_to_name(ret));
-        return false;
+        ESP_LOGE(TAG, "Failed to set Wi-Fi mode: %s", esp_err_to_name(ClassInstance->Error));
+        return ClassInstance->Error;
     }
-    ESP_LOGI(TAG, "9 - Wi-Fi Mode Set To Station!");
-
+    if (ClassInstance->IsRuntimeLoggingEnabled)
+    {
+        ESP_LOGI(TAG, "9 - Wi-Fi Mode Set To Station!");
+    }
+    
 
     // Apply Wi-Fi configuration
-    ret = esp_wifi_set_config(WIFI_IF_STA, &wifi_config);
-    if (ret != ESP_OK) 
+    ClassInstance->Error = esp_wifi_set_config(WIFI_IF_STA, &wifi_config);
+    if (ClassInstance->Error != ESP_OK) 
     {
-        ESP_LOGE(TAG, "Failed to apply Wi-Fi configuration: %s", esp_err_to_name(ret));
-        return false;
+        ESP_LOGE(TAG, "Failed to apply Wi-Fi configuration: %s", esp_err_to_name(ClassInstance->Error));
+        return ClassInstance->Error;
     }
-    ESP_LOGI(TAG, "10 - Wi-Fi Configuration Applied!");
-
+    if (ClassInstance->IsRuntimeLoggingEnabled)
+    {
+        ESP_LOGI(TAG, "10 - Wi-Fi Configuration Applied!");
+    }
+    
 
     // Start Wi-Fi in Station mode
-    ret = esp_wifi_start();
-    if (ret != ESP_OK) 
+    ClassInstance->Error = esp_wifi_start();
+    if (ClassInstance->Error != ESP_OK) 
     {
-        ESP_LOGE(TAG, "Failed to start Wi-Fi Station: %s", esp_err_to_name(ret));
-        return false;
+        ESP_LOGE(TAG, "Failed to start Wi-Fi Station: %s", esp_err_to_name(ClassInstance->Error));
+        return ClassInstance->Error;
     }
-    ESP_LOGI(TAG, "11 - Wi-Fi Station Started!");
-
-
-    ret = esp_wifi_set_inactive_time(WIFI_IF_STA, Timeout);
-    if (ret != ESP_OK)
+    if (ClassInstance->IsRuntimeLoggingEnabled)
     {
-        ESP_LOGE(TAG, "Failed to set Inactive Timer: %s", esp_err_to_name(ret));
-        return false;
+        ESP_LOGI(TAG, "11 - Wi-Fi Station Started!");
     }
-    ESP_LOGI(TAG, "12 - Inactive Timer Set To 10s!");
+    
 
+    ClassInstance->Error = esp_wifi_set_inactive_time(WIFI_IF_STA, Timeout);
+    if (ClassInstance->Error != ESP_OK)
+    {
+        ESP_LOGE(TAG, "Failed to set Inactive Timer: %s", esp_err_to_name(ClassInstance->Error));
+        return ClassInstance->Error;
+    }
+    if (ClassInstance->IsRuntimeLoggingEnabled)
+    {
+        ESP_LOGI(TAG, "12 - Inactive Timer Set To 10s!");
+    }
+    
 
-    if (!SetupUdpSocket(UdpPort))
+    if (SetupUdpSocket(UdpPort) != ESP_OK)
     {
         ESP_LOGE(TAG, "Failed to bind UDP socket");
-        return false;
+        return ESP_FAIL;
     }
-    ESP_LOGI(TAG, "13 - UDP Socket Bound!");
-
+    if (ClassInstance->IsRuntimeLoggingEnabled)
+    {
+        ESP_LOGI(TAG, "13 - UDP Socket Bound!");
+    }
+    
 
     UdpPollingTaskHandle = xTaskCreateStaticPinnedToCore
     (
@@ -1381,19 +1483,25 @@ bool WifiClass::SetupWifiSta(uint16_t UdpPort, uint16_t Timeout, uint8_t CoreToU
     if (UdpPollingTaskHandle == NULL)
     {
         ESP_LOGE(TAG, "Failed to create UDP polling task");
-        return false;
+        return ESP_FAIL;
     }
-    ESP_LOGI(TAG, "14 - UDP Polling Task Created!");
+    if (ClassInstance->IsRuntimeLoggingEnabled)
+    {
+        ESP_LOGI(TAG, "14 - UDP Polling Task Created!");
+    }
 
 
     UdpProcessingQueue = xQueueCreate(10, sizeof(int)); 
     if (UdpProcessingQueue == NULL) 
     {
         ESP_LOGE(TAG, "Failed to create UDP queue");
-        return false;
+        return ESP_FAIL;
     }
-    ESP_LOGI(TAG, "15 - UdpProcessingQueue Ready!");
-
+    if (ClassInstance->IsRuntimeLoggingEnabled)
+    {
+        ESP_LOGI(TAG, "15 - UdpProcessingQueue Ready!");
+    }
+    
 
     UdpProcessingTaskHandle = xTaskCreateStaticPinnedToCore
     (
@@ -1409,10 +1517,13 @@ bool WifiClass::SetupWifiSta(uint16_t UdpPort, uint16_t Timeout, uint8_t CoreToU
     if (UdpProcessingTaskHandle == NULL)
     {
         ESP_LOGE(TAG, "Failed to create UDP processing task");
-        return false;
+        return ESP_FAIL;
     }
-    ESP_LOGI(TAG, "16 - UDP Processing Task Created!");
-
+    if (ClassInstance->IsRuntimeLoggingEnabled)
+    {
+        ESP_LOGI(TAG, "16 - UDP Processing Task Created!");
+    }
+    
 
     UdpSystemTaskHandle = xTaskCreateStaticPinnedToCore
     (
@@ -1428,17 +1539,56 @@ bool WifiClass::SetupWifiSta(uint16_t UdpPort, uint16_t Timeout, uint8_t CoreToU
     if (UdpProcessingTaskHandle == NULL)
     {
         ESP_LOGE(TAG, "Failed to create UDP System task");
-        return false;
+        return ESP_FAIL;
     }
-    ESP_LOGI(TAG, "17 - UDP System Task Created!");
+    if (ClassInstance->IsRuntimeLoggingEnabled)
+    {
+        ESP_LOGI(TAG, "17 - UDP System Task Created!");
+    }
+    
 
-
-    ESP_LOGI(TAG, "Connecting to SSID: %s", WIFI_SSID);
-    ESP_LOGW(TAG, "SETUP WI-FI STATION SUCCESSFUL");     
     esp_wifi_disconnect();  // Disconnect first, just in case
     esp_wifi_connect();     // Manually trigger the connection
-    printf("\n");
-    return true;
+
+
+    if (ClassInstance->IsRuntimeLoggingEnabled)
+    {
+        ESP_LOGI(TAG, "Connecting to SSID: %s", WIFI_SSID);
+        ESP_LOGW(TAG, "SETUP WI-FI STATION SUCCESSFUL"); 
+        printf("\n");
+    }    
+    return ESP_OK;
+}
+
+// Function that sets up a UDP socket
+esp_err_t WifiClass::SetupUdpSocket(uint16_t UdpPort)
+{
+    if (ClassInstance->IsRuntimeLoggingEnabled)
+    {
+        printf("\n");
+        ESP_LOGW(TAG, "UDP SOCKET BINDING");
+    }
+
+    UdpSocketFD = socket(AF_INET, SOCK_DGRAM, 0);
+    if (UdpSocketFD < 0)
+    {
+        ESP_LOGE(TAG, "Failed to create UDP socket");
+        return ESP_FAIL; 
+    }
+
+    memset(&UdpHostServerAddress, 0, sizeof(UdpHostServerAddress));
+    UdpHostServerAddress.sin_family = AF_INET;
+    UdpHostServerAddress.sin_addr.s_addr = htonl(INADDR_ANY);
+    UdpHostServerAddress.sin_port = htons(UdpPort);
+
+    if (bind(UdpSocketFD, (struct sockaddr *)&UdpHostServerAddress, sizeof(UdpHostServerAddress)) < 0) 
+    {
+        ESP_LOGE(TAG, "Failed to bind UDP socket");
+        close(UdpSocketFD);
+        return ESP_ERR_INVALID_RESPONSE;
+    }
+
+    return ESP_OK;
 }
 
 
@@ -1452,42 +1602,54 @@ bool WifiClass::SetupWifiSta(uint16_t UdpPort, uint16_t Timeout, uint8_t CoreToU
 //==============================================================================// 
 
 // Function that sets up ESP-NOW
-bool WifiClass::SetupEspNow(uint8_t CoreToUse)
+esp_err_t WifiClass::SetupEspNow(uint8_t CoreToUse)
 {
-    printf("\n");
-    ESP_LOGI(TAG, "SetupEspNow Executed!");
-
+    if (ClassInstance->IsRuntimeLoggingEnabled)
+    {
+        printf("\n");
+        ESP_LOGW(TAG, "SETUP ESP NOW EXECUTED!");
+    }
+    
 
     //Initialize NVS
-    esp_err_t ret = nvs_flash_init();
-    if (ret == ESP_ERR_NVS_NO_FREE_PAGES || ret == ESP_ERR_NVS_NEW_VERSION_FOUND) 
+    ClassInstance->Error = nvs_flash_init();
+    if (ClassInstance->Error == ESP_ERR_NVS_NO_FREE_PAGES || ClassInstance->Error == ESP_ERR_NVS_NEW_VERSION_FOUND) 
     {
       ESP_ERROR_CHECK(nvs_flash_erase());
-      ret = nvs_flash_init();
+      ClassInstance->Error = nvs_flash_init();
     }
-    ESP_ERROR_CHECK(ret);
-    ESP_LOGI(TAG, "NVS Ready!");
+    ESP_ERROR_CHECK(ClassInstance->Error);
+    if (ClassInstance->IsRuntimeLoggingEnabled)
+    {
+        ESP_LOGI(TAG, "1 - NVS Ready!");
+    }
 
 
     // Initialize ESP-NOW
-    esp_err_t init_status = esp_now_init();
-    if (init_status != ESP_OK) 
+    ClassInstance->Error = esp_now_init();
+    if (ClassInstance->Error != ESP_OK) 
     {
-        ESP_LOGE(TAG, "ESP-NOW initialization failed: %s", esp_err_to_name(init_status));
-        return false;
+        ESP_LOGE(TAG, "ESP-NOW initialization failed: %s", esp_err_to_name(ClassInstance->Error));
+        return ClassInstance->Error;
     }
-    ESP_LOGI(TAG, "ESP-Now Ready!");
-
+    if (ClassInstance->IsRuntimeLoggingEnabled)
+    {
+        ESP_LOGI(TAG, "2 - ESP-Now Ready!");
+    }
+    
 
     // Create a queue for handling ESP-NOW device registration
     EspNowDeviceQueue = xQueueCreate(10, sizeof(WifiDevice));
     if (EspNowDeviceQueue == NULL)
     {
         ESP_LOGE(TAG, "Failed to create deviceQueue!");
-        return false;
+        return ESP_FAIL;
     }
-    ESP_LOGI(TAG, "EspNowDeviceQueue Ready!");
-
+    if (ClassInstance->IsRuntimeLoggingEnabled)
+    {
+        ESP_LOGI(TAG, "3 - EspNowDeviceQueue Ready!");
+    }
+    
 
     // Create a FreeRTOS task to handle ESP-NOW registration
     EspNowTaskHandle = xTaskCreateStaticPinnedToCore
@@ -1501,28 +1663,32 @@ bool WifiClass::SetupEspNow(uint8_t CoreToUse)
         &EspNowTaskTCB,
         CoreToUse
     );
-    ESP_LOGI(TAG, "EspNowTask Ready!");
-
-    
-    ESP_LOGI(TAG, "SetupEspNow Successful!");
-    printf("\n");
-    return true;
+    if (ClassInstance->IsRuntimeLoggingEnabled)
+    {
+        ESP_LOGI(TAG, "4 - EspNowTask Ready!");
+        ESP_LOGW(TAG, "SETUP ESP NOW SUCCESSFUL!");
+        printf("\n");
+    }
+    return ESP_OK;
 }
 
 // Function that sets up the wifi system based on the menu configuration
-bool WifiClass::SetupWifi(uint8_t CoreToUse)
+esp_err_t WifiClass::SetupWifi(uint8_t CoreToUse, uint16_t Timeout)
 {
-    printf("\n");
-    ESP_LOGW(TAG, "SetupWifi Executed!");
-
+    if (ClassInstance->IsRuntimeLoggingEnabled)
+    {
+        printf("\n");
+        ESP_LOGW(TAG, "SETUP WIFI EXECUTED!");
+    }
+    
 
     // AP
     if (WIFI_MODE == 0)
     {
-        if (!SetupWifiAP(UDP_PORT, 10, CoreToUse))
+        if (SetupWifiAP(UDP_PORT, Timeout, CoreToUse) != ESP_OK)
         {
-            ESP_LOGI(TAG, "SetupWifiAP Failed!");
-            return false;
+            ESP_LOGE(TAG, "SETUP WIFI AP FAILED!");
+            return ESP_FAIL;
         }
     }
 
@@ -1530,17 +1696,20 @@ bool WifiClass::SetupWifi(uint8_t CoreToUse)
     // Station
     if (WIFI_MODE == 1)
     {
-        if (!SetupWifiSta(UDP_PORT, 10, CoreToUse))
+        if (SetupWifiSta(UDP_PORT, Timeout, CoreToUse) != ESP_OK)
         {
-            ESP_LOGI(TAG, "SetupWifiSta Failed!");
-            return false;
+            ESP_LOGI(TAG, "SETUP WIFI STA FAILED!");
+            return ESP_FAIL;
         }
     }
 
 
-    ESP_LOGW(TAG, "SetupWifi Successful!");
-    printf("\n");
-    return true;
+    if (ClassInstance->IsRuntimeLoggingEnabled)
+    {
+        ESP_LOGW(TAG, "SETUP WIFI SUCCESSFUL!");
+        printf("\n");
+    }
+    return ESP_OK;
 }
 
 
@@ -1554,16 +1723,16 @@ bool WifiClass::SetupWifi(uint8_t CoreToUse)
 //==============================================================================//
 
 // Function that sends a message as a UDP packet to a destination
-bool WifiClass::SendUdpPacket(const char* Data, const char* DestinationIP, uint16_t DestinationPort)
+esp_err_t WifiClass::SendUdpPacket(const char* Data, const char* DestinationIP, uint16_t DestinationPort)
 {
-    if ((IsAp and (GetNumClientsConnected() == 0)) or
-         (IsSta and !GetIsConnectedToHost()))
+    if ((IsAp && (GetNumClientsConnected() == 0)) or
+         (IsSta && !GetIsConnectedToHost()))
     {
         if (IsRuntimeLoggingEnabled)
         {
             ESP_LOGE(TAG, "Not Connected");
         }
-        return false;
+        return ESP_FAIL;
     }
 
     struct sockaddr_in DestinationAddress;
@@ -1578,7 +1747,7 @@ bool WifiClass::SendUdpPacket(const char* Data, const char* DestinationIP, uint1
         {
             ESP_LOGE(TAG, "Invalid IP address: %s", DestinationIP);
         }
-        return false;
+        return ESP_ERR_INVALID_MAC;
     }
 
     DestinationAddress.sin_port = htons(DestinationPort);
@@ -1591,9 +1760,10 @@ bool WifiClass::SendUdpPacket(const char* Data, const char* DestinationIP, uint1
         {
             ESP_LOGE(TAG, "Failed to send UDP packet, error = %d", errno);
         }
-        return false;
+        return ESP_ERR_NOT_FINISHED;
     }
-    return true;
+
+    return ESP_OK;
 }
 
 

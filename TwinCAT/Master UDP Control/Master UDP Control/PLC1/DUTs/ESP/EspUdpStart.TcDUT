@@ -1,0 +1,26 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<TcPlcObject Version="1.1.0.1">
+  <DUT Name="EspUdpStart" Id="{7619e575-9c28-4376-aefd-1b848b7eb091}">
+    <Declaration><![CDATA[TYPE EspUdpStart :
+STRUCT
+	StartDelimiter			: UINT := 693;
+	PayloadSize				: UINT;
+	Reserved1				: ARRAY [1..4] OF BYTE;
+	SlaveUid				: ULINT;
+	MessageCounter			: ULINT;
+	SendersTimestamp		: ULINT;
+	TimeDifference			: UDINT;
+	NumberOfChainedSLaves	: BYTE;
+	MessageType				: BYTE;
+	Flags					: BYTE;
+	HeaderVersion			: BYTE;
+	NetworkId				: BYTE;
+	ChainDistance			: BYTE;
+	JumpsToLive				: BYTE;
+	Reserved2				: BYTE;
+	CRC32					: UDINT;
+END_STRUCT
+END_TYPE
+]]></Declaration>
+  </DUT>
+</TcPlcObject>

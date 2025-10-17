@@ -1,0 +1,60 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<TcPlcObject Version="1.1.0.1">
+  <POU Name="TestHarness" Id="{fe2f4f26-4df0-4adf-910a-6d052233beb9}" SpecialFunc="None">
+    <Declaration><![CDATA[FUNCTION_BLOCK TestHarness
+VAR
+	Pass    : UDINT;
+    Fail    : UDINT;
+    Lines   : ARRAY[1..200] OF STRING(255);
+    LineIdx : UDINT;
+END_VAR
+]]></Declaration>
+    <Implementation>
+      <ST><![CDATA[]]></ST>
+    </Implementation>
+    <Method Name="AssertTrue" Id="{f0f7f023-e373-441a-be94-b2c83ce23265}">
+      <Declaration><![CDATA[METHOD AssertTrue : BOOL
+VAR_INPUT
+	Condition	: BOOL;
+	Name		: STRING;
+END_VAR
+]]></Declaration>
+      <Implementation>
+        <ST><![CDATA[IF Condition THEN
+    Logger(CONCAT('PASS: ', Name));
+    Pass := Pass + 1;
+ELSE
+    Logger(CONCAT('FAIL: ', Name));
+    Fail := Fail + 1;
+END_IF
+AssertTrue := Condition;]]></ST>
+      </Implementation>
+    </Method>
+    <Method Name="Clear" Id="{dbe7a9da-87f3-4b93-8561-a31d9c598000}">
+      <Declaration><![CDATA[METHOD Clear : BOOL
+VAR_INPUT
+END_VAR
+]]></Declaration>
+      <Implementation>
+        <ST><![CDATA[Pass := 0; 
+Fail := 0; 
+LineIdx := 0;
+Clear := TRUE;]]></ST>
+      </Implementation>
+    </Method>
+    <Method Name="Logger" Id="{d471a513-3a33-4cd9-9d50-b6c9db120c2e}">
+      <Declaration><![CDATA[METHOD PRIVATE Logger : BOOL
+VAR_INPUT
+	StringIn	: STRING;
+END_VAR
+]]></Declaration>
+      <Implementation>
+        <ST><![CDATA[IF LineIdx < UPPER_BOUND(Lines, 1) THEN
+    LineIdx := LineIdx + 1;
+    Lines[LineIdx] := StringIn;
+END_IF
+Logger := TRUE;]]></ST>
+      </Implementation>
+    </Method>
+  </POU>
+</TcPlcObject>

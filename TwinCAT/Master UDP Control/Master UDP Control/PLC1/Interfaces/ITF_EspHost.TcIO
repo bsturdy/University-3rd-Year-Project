@@ -1,0 +1,37 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<TcPlcObject Version="1.1.0.1">
+  <Itf Name="ITF_EspHost" Id="{abc0fd08-8675-407a-972a-8d22e58329f4}">
+    <Declaration><![CDATA[INTERFACE ITF_EspHost
+]]></Declaration>
+    <Method Name="CyclicUpdate" Id="{54038f61-fd98-4d8d-846d-aa9ba39adb0e}">
+      <Declaration><![CDATA[METHOD CyclicUpdate : BOOL
+VAR_INPUT
+END_VAR
+]]></Declaration>
+    </Method>
+    <Method Name="HasTimedOut" Id="{d2b1e08d-b6db-4415-8ef2-87cf9616a599}">
+      <Declaration><![CDATA[METHOD HasTimedOut : BOOL
+VAR_INPUT
+END_VAR
+]]></Declaration>
+    </Method>
+    <Property Name="PacketsReceived" Id="{63060259-1f1b-46eb-b4f2-8a41fa8b4509}">
+      <Declaration><![CDATA[PROPERTY PacketsReceived : ULINT]]></Declaration>
+      <Get Name="Get" Id="{77538af4-39dc-4377-8fa2-77c8ad35ea2c}">
+        <Declaration><![CDATA[]]></Declaration>
+      </Get>
+      <Set Name="Set" Id="{46305997-310f-4b91-bd04-d208c1c35e62}">
+        <Declaration><![CDATA[]]></Declaration>
+      </Set>
+    </Property>
+    <Property Name="Uid" Id="{42e2b9b4-be55-4d58-9068-905f7e39593b}">
+      <Declaration><![CDATA[PROPERTY Uid : ULINT]]></Declaration>
+      <Get Name="Get" Id="{58940bcb-cded-41bc-8b3b-338ef233e20e}">
+        <Declaration><![CDATA[]]></Declaration>
+      </Get>
+      <Set Name="Set" Id="{ba81bfb7-eb32-43ad-bc4e-dadda5364d4d}">
+        <Declaration><![CDATA[]]></Declaration>
+      </Set>
+    </Property>
+  </Itf>
+</TcPlcObject>

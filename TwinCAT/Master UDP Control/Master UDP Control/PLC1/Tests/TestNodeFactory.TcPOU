@@ -1,0 +1,61 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<TcPlcObject Version="1.1.0.1">
+  <POU Name="TestNodeFactory" Id="{86dfbdba-ea10-4f54-a634-e4ef1602d238}" SpecialFunc="None">
+    <Declaration><![CDATA[FUNCTION_BLOCK TestNodeFactory IMPLEMENTS ITF_NodeFactory
+VAR
+	CreatedCount : UDINT;
+    DeletedCount : UDINT;
+END_VAR
+]]></Declaration>
+    <Implementation>
+      <ST><![CDATA[]]></ST>
+    </Implementation>
+    <Method Name="CreateNode" Id="{e296f237-3883-49e8-b1f5-9aa807fd0b08}">
+      <Declaration><![CDATA[METHOD CreateNode : ITF_Node
+VAR
+	p : POINTER TO TestNode;
+END_VAR]]></Declaration>
+      <Implementation>
+        <ST><![CDATA[p := __NEW(TestNode);
+IF p <> 0 THEN
+    CreatedCount := CreatedCount + 1;
+    CreateNode := p^;   // return as ITF_Node
+END_IF]]></ST>
+      </Implementation>
+    </Method>
+    <Method Name="DestroyNode" Id="{2134458c-6bdc-4c71-9dcf-e0fcb06b1cac}">
+      <Declaration><![CDATA[METHOD DestroyNode : BOOL
+VAR_INPUT
+	Ptr	: PVOID;
+END_VAR
+VAR 
+	p : POINTER TO TestNode; 
+END_VAR]]></Declaration>
+      <Implementation>
+        <ST><![CDATA[p := Ptr;
+IF p <> 0 THEN
+    __DELETE(p);
+    DeletedCount := DeletedCount + 1;
+    DestroyNode := TRUE;
+END_IF]]></ST>
+      </Implementation>
+    </Method>
+    <Method Name="DoesCreateEqualDestroy" Id="{61858ddc-b7b1-4c6e-847d-092222fb0e5f}">
+      <Declaration><![CDATA[METHOD DoesCreateEqualDestroy : BOOL
+VAR_INPUT
+END_VAR
+]]></Declaration>
+      <Implementation>
+        <ST><![CDATA[IF CreatedCount = DeletedCount THEN
+
+	DoesCreateEqualDestroy := TRUE;
+
+ELSE
+
+	DoesCreateEqualDestroy := FALSE;	
+
+END_IF]]></ST>
+      </Implementation>
+    </Method>
+  </POU>
+</TcPlcObject>

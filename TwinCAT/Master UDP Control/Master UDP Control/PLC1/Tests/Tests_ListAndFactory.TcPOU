@@ -1,0 +1,163 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<TcPlcObject Version="1.1.0.1">
+  <POU Name="Tests_ListAndFactory" Id="{3d222a90-a942-4acc-9ba6-0e1958b96a1d}" SpecialFunc="None">
+    <Declaration><![CDATA[PROGRAM Tests_ListAndFactory
+VAR
+    T 			: TestHarness;
+	f1			: TestNodeFactory;
+	f2			: EspNodeFactory;
+	Factory 	: ITF_NodeFactory := f2;
+	List		: List(Factory);
+    UUT 		: ITF_LinkedList := List;          
+    Done	 	: BOOL := FALSE;
+
+    ok 			: BOOL;
+    len 		: UINT;
+
+	p1, p2, i		: UINT;
+    n1, n2, n3, tmp : ITF_Node;     
+END_VAR
+]]></Declaration>
+    <Implementation>
+      <ST><![CDATA[IF NOT Done THEN
+
+	// --- Fresh harness ----------------------------------------------------------------------------------------------------
+	
+	T.Clear();
+
+
+
+	// --- Delete on empty --------------------------------------------------------------------------------------------------
+	
+	ok := UUT.DestroyNode(1);							T.AssertTrue(NOT ok, 'delete on empty returns FALSE');
+
+
+
+	// --- Create and delete node -------------------------------------------------------------------------------------------
+	
+	ok := UUT.CreateNode();								T.AssertTrue(ok, 'CreateNode #1 ok');
+	len := UUT.GetListLength(); 						T.AssertTrue(len = 1, 'len=1 after first create');
+	n1 := UUT.GetNode(Index := 1); 						T.AssertTrue(n1 <> 0, 'GetNode(1) not null');
+
+	ok := UUT.DestroyNode(Index := 1); 					T.AssertTrue(ok, 'delete index 1 ok');
+	len := UUT.GetListLength(); 						T.AssertTrue(len = 0, 'len=0 after delete last');
+	tmp := UUT.GetNode(Index := 1);						T.AssertTrue(tmp = 0, 'GetNode(1) null after delete');
+
+
+
+	// --- Create three nodes and check pointers ----------------------------------------------------------------------------
+	
+	ok := UUT.CreateNode();								T.AssertTrue(ok, 'CreateNode #1 ok');
+	ok := UUT.CreateNode();								T.AssertTrue(ok, 'CreateNode #2 ok');
+	ok := UUT.CreateNode();								T.AssertTrue(ok, 'CreateNode #3 ok');
+	len := UUT.GetListLength();							T.AssertTrue(len = 3, 'len=3 after three creates');
+
+	n1 := UUT.GetNode(1);
+	n2 := UUT.GetNode(2); 
+	n3 := UUT.GetNode(3);								T.AssertTrue(n1 <> 0 AND n2 <> 0 AND n3 <> 0, 'nodes 1..3 exist');
+	
+	tmp := n1.GetLastNode();							T.AssertTrue(tmp = 0, '1.prev = NULL');
+	tmp := n1.GetNextNode();							T.AssertTrue(tmp = n2, '1.next = 2');
+	tmp := n2.GetLastNode();							T.AssertTrue(tmp = n1, '2.prev = 1');
+	tmp := n2.GetNextNode();							T.AssertTrue(tmp = n3, '2.next = 3');
+	tmp := n3.GetLastNode();							T.AssertTrue(tmp = n2, '3.prev = 2');
+	tmp := n3.GetNextNode();							T.AssertTrue(tmp = 0, '3.next = NULL');
+	
+	len := UUT.GetListLength();							T.AssertTrue(len = 3, 'pre: len=3');
+	
+	
+	
+	// --- Test invalid nodes ------------------------------------------------------------------------------------------
+	
+	tmp := UUT.GetNode(0);								T.AssertTrue(tmp = 0, 'GetNode(0)=0');
+	tmp := UUT.GetNode(-1);								T.AssertTrue(tmp = 0, 'GetNode(-1)=0');
+	tmp := UUT.GetNode(4);								T.AssertTrue(tmp = 0, 'GetNode(4)=0');
+	
+	
+	ok := UUT.DestroyNode(0);							T.AssertTrue(NOT ok, 'delete on 0 returns FALSE');
+	ok := UUT.DestroyNode(-1);							T.AssertTrue(NOT ok, 'delete on negative returns FALSE');
+	ok := UUT.DestroyNode(4);							T.AssertTrue(NOT ok, 'delete on 4 (outside list) returns FALSE');
+
+
+
+	// --- Delete middle (index 2) ------------------------------------------------------------------------------------------
+	
+	ok := UUT.DestroyNode(Index := 2);					T.AssertTrue(ok, 'delete middle ok');
+	len := UUT.GetListLength();							T.AssertTrue(len = 2, 'len=2 after middle delete');
+
+	n1 := UUT.GetNode(1);
+	n2 := UUT.GetNode(2);
+	tmp := n1.GetNextNode();							T.AssertTrue(tmp = n2, 'after delete: 1.next = 2');
+	tmp := n2.GetLastNode();							T.AssertTrue(tmp = n1, 'after delete: 2.prev = 1');
+
+	p1 := n1.GetPositionInList();						T.AssertTrue(p1 = 1, 'pos(1)=1 after delete');
+	p2 := n2.GetPositionInList();						T.AssertTrue(p2 = 2, 'pos(2)=2 after delete');
+	
+
+
+	// --- Delete head on 2-node list ---------------------------------------------------------------------------------------
+	
+	ok := UUT.DestroyNode(Index := 1);					T.AssertTrue(ok, 'delete head ok');
+	len := UUT.GetListLength();							T.AssertTrue(len = 1, 'len=1 after delete head');
+
+	n1 := UUT.GetNode(1);								T.AssertTrue(n1 <> 0, 'single node exists');
+	tmp := n1.GetLastNode();							T.AssertTrue(tmp = 0, 'single.prev = 0');
+	tmp := n1.GetNextNode();							T.AssertTrue(tmp = 0, 'single.next = 0');
+	p1 := n1.GetPositionInList();						T.AssertTrue(p1 = 1, 'single pos=1');   
+
+
+
+	// --- Delete last remaining node ---------------------------------------------------------------------------------------
+	
+	ok := UUT.DestroyNode(Index := 1);					T.AssertTrue(ok, 'delete last ok');
+	len := UUT.GetListLength();							T.AssertTrue(len = 0, 'len=0 at end');
+	tmp := UUT.GetNode(1);								T.AssertTrue(tmp = 0, 'no nodes remain');
+	
+	
+	
+	// --- Create list of 3 and destroy by tails ----------------------------------------------------------------------------
+	
+	UUT.CreateNode(); 
+	UUT.CreateNode(); 
+	UUT.CreateNode();
+	ok := UUT.DestroyNode(3);							T.AssertTrue(ok, 'delete tail ok');
+	len := UUT.GetListLength();							T.AssertTrue(len = 2, 'len=2 after tail delete');
+
+	n1 := UUT.GetNode(1); 
+	n2 := UUT.GetNode(2);
+	tmp := n1.GetNextNode();							T.AssertTrue(tmp = n2, '1.next=2 after tail delete');
+	tmp := n2.GetNextNode();							T.AssertTrue(tmp = 0, 'new tail.next=0');
+	ok := UUT.DestroyNode(3);							T.AssertTrue(NOT ok, 'do not delete null pointer ok');
+	ok := UUT.DestroyNode(2);							T.AssertTrue(ok, 'delete pos=2');
+	ok := UUT.DestroyNode(1);							T.AssertTrue(ok, 'delete pos=1');
+
+
+
+	// --- Create 100 entries -----------------------------------------------------------------------------------------------
+	
+	FOR i := 1 TO 100 BY 1 DO
+		UUT.CreateNode();
+	END_FOR
+	len := UUT.GetListLength();							T.AssertTrue(len = 100, 'len=100 after FOR loop creation');
+
+
+
+	// --- Destroy 100 entries by head --------------------------------------------------------------------------------------
+	
+	FOR i := 1 TO 100 BY 1 DO
+		UUT.DestroyNode(1);
+	END_FOR
+	len := UUT.GetListLength();							T.AssertTrue(len = 0, 'len=0 after FOR loop destruction');
+
+
+
+	// --- End --------------------------------------------------------------------------------------------------------------
+
+	Done := TRUE; 
+	
+	
+	
+END_IF]]></ST>
+    </Implementation>
+  </POU>
+</TcPlcObject>

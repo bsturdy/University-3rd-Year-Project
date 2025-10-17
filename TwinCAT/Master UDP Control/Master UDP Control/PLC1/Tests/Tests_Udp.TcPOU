@@ -1,0 +1,139 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<TcPlcObject Version="1.1.0.1">
+  <POU Name="Tests_Udp" Id="{b806c601-de5d-4bd5-96b8-c1ef0c90478d}" SpecialFunc="None">
+    <Declaration><![CDATA[PROGRAM Tests_Udp
+VAR
+	T 			: TestHarness;
+	f1			: UdpWindowsSocket('192.168.1.227', 10050);
+	UUT1		: ITF_UdpConnection := f1;  
+	Cyclic		: ITF_Cyclic := f1;
+	ip			: T_IPv4Addr := '192.168.1.161';     
+	port		: UINT := 10050;
+	SomeData	: STRING := 'Hello World';
+	
+	 
+    Done	 	: BOOL := FALSE;
+	State		: BYTE;
+	Iterations	: ULINT;
+    ok 			: BOOL;
+    len 		: UINT;
+	hr			: HRESULT;
+	p1, p2, i		: UINT;  
+END_VAR
+]]></Declaration>
+    <Implementation>
+      <ST><![CDATA[Cyclic.CyclicUpdate();
+
+
+IF NOT Done THEN
+
+	CASE State OF
+		
+		
+		
+		0:
+		
+			// --- Fresh harness ----------------------------------------------------------------------------------------------------
+		
+			T.Clear();
+
+
+		
+			// --- Test connection and flags BEFORE CONNECTED -----------------------------------------------------------------------
+	
+			ok := UUT1.IsConnected();											T.AssertTrue(NOT ok, 'IsConnected before connected returns FALSE');
+			ok := UUT1.IsSending();												T.AssertTrue(NOT ok, 'IsSending before connected returns FALSE');
+			State := 1;
+			
+			
+			
+		1:
+		
+			// --- Test send BEFORE CONNECTED ---------------------------------------------------------------------------------------
+		
+			hr := UUT1.TrySendData(ip,port,ADR(SomeData),SIZEOF(SomeData));		IF hr <> S_PENDING THEN T.AssertTrue(hr < 0, 'Failed to send data'); END_IF
+			IF hr <> S_PENDING THEN
+				State := 2;
+			END_IF
+		
+		
+		
+		2:
+		
+			// --- Open socket for UDP (does not require external packet-sender) ----------------------------------------------------
+			
+			hr := UUT1.TryOpenConnection();										IF hr <> S_PENDING THEN T.AssertTrue(hr = S_OK, 'UDP socket open'); END_IF
+			IF hr <> S_PENDING THEN
+				State := 3;
+			END_IF
+			
+		
+		
+		3:
+		
+			// --- Test connection AFTER CONNECTED ----------------------------------------------------------------------------------
+	
+			ok := UUT1.IsConnected();											T.AssertTrue(ok, 'IsConnected after connected returns TRUE');
+			State := 4;
+			
+			
+			
+		4:
+		
+			// --- Test send AFTER CONNECTED ----------------------------------------------------------------------------------------
+		
+			hr := UUT1.TrySendData(ip,port,ADR(SomeData),SIZEOF(SomeData));		IF hr <> S_PENDING THEN T.AssertTrue(hr = S_OK, 'Successfully send data'); END_IF
+			IF hr <> S_PENDING THEN
+				State := 5;
+			END_IF
+			
+			
+			
+		5:
+			
+			// --- Close socket for UDP (does not require external packet-sender) ---------------------------------------------------
+			
+			hr := UUT1.TryCloseConnection();									IF hr <> S_PENDING THEN T.AssertTrue(hr = S_OK, 'UDP socket closed'); END_IF
+			IF hr = S_OK THEN
+				State := 6;
+			END_IF
+			
+			State := 6;
+			
+			
+			
+		6:
+		
+			// --- Test connection and flags AFTER DISCONNECT -----------------------------------------------------------------------
+	
+			ok := UUT1.IsConnected();											T.AssertTrue(NOT ok, 'IsConnected before connected returns FALSE');
+			ok := UUT1.IsSending();												T.AssertTrue(NOT ok, 'IsSending before connected returns FALSE');
+			State := 7;
+		
+		
+		
+		7:
+		
+			// --- Test send AFTER DISCONNECTED -------------------------------------------------------------------------------------
+		
+			hr := UUT1.TrySendData(ip,port,ADR(SomeData),SIZEOF(SomeData));		IF hr <> S_PENDING THEN T.AssertTrue(hr < 0, 'Failed to send data'); END_IF
+			IF hr <> S_PENDING THEN
+				State := 8;
+			END_IF
+			
+		
+		
+		8:
+		
+			Done := TRUE;
+			Iterations := Iterations + 1;
+			State := 0; 
+	
+	
+	
+	END_CASE
+		
+END_IF]]></ST>
+    </Implementation>
+  </POU>
+</TcPlcObject>
