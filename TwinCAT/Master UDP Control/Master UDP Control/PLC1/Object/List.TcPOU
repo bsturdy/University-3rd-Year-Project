@@ -17,7 +17,8 @@ END_VAR
     <Implementation>
       <ST><![CDATA[]]></ST>
     </Implementation>
-    <Method Name="CreateNode" Id="{379726d8-7b4e-4dbf-8b49-f4410ae243a4}">
+    <Folder Name="ITF_LinkedList" Id="{14257e6a-2133-4560-95f5-f689ff378f4d}" />
+    <Method Name="CreateNode" Id="{379726d8-7b4e-4dbf-8b49-f4410ae243a4}" FolderPath="ITF_LinkedList\">
       <Declaration><![CDATA[METHOD CreateNode : BOOL
 VAR
 	NewNode		: ITF_Node;
@@ -83,7 +84,7 @@ RETURN;
 ]]></ST>
       </Implementation>
     </Method>
-    <Method Name="DestroyNode" Id="{216fbb3b-0855-4f51-b0a4-5be3bec81e16}">
+    <Method Name="DestroyNode" Id="{216fbb3b-0855-4f51-b0a4-5be3bec81e16}" FolderPath="ITF_LinkedList\">
       <Declaration><![CDATA[METHOD DestroyNode : BOOL
 VAR_INPUT
 	Index			: UINT;
@@ -200,14 +201,14 @@ END_VAR]]></Declaration>
         <ST><![CDATA[THIS^.NodeFactory := NodeFactory;]]></ST>
       </Implementation>
     </Method>
-    <Method Name="GetListLength" Id="{eecb00b2-846f-4a05-abbf-3b78cc264d30}">
+    <Method Name="GetListLength" Id="{eecb00b2-846f-4a05-abbf-3b78cc264d30}" FolderPath="ITF_LinkedList\">
       <Declaration><![CDATA[METHOD GetListLength : UINT
 ]]></Declaration>
       <Implementation>
         <ST><![CDATA[GetListLength := ListLength;]]></ST>
       </Implementation>
     </Method>
-    <Method Name="GetNode" Id="{483ff250-30a0-46db-99dc-49a91b910d6d}">
+    <Method Name="GetNode" Id="{483ff250-30a0-46db-99dc-49a91b910d6d}" FolderPath="ITF_LinkedList\">
       <Declaration><![CDATA[METHOD GetNode : ITF_Node
 VAR_INPUT
 	Index	: UINT;

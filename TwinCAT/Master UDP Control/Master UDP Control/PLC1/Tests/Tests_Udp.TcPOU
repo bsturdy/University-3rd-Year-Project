@@ -5,9 +5,10 @@
 VAR
 	T 			: TestHarness;
 	f1			: UdpWindowsSocket('192.168.1.227', 10050);
-	UUT1		: ITF_UdpConnection := f1;  
+	f2			: UdpRealtimeSocket(10050);
+	UUT1		: ITF_UdpConnection := f2;  
 	Cyclic		: ITF_Cyclic := f1;
-	ip			: T_IPv4Addr := '192.168.1.161';     
+	ip			: T_IPv4Addr := '192.168.0.2';     
 	port		: UINT := 10050;
 	SomeData	: STRING := 'Hello World';
 	

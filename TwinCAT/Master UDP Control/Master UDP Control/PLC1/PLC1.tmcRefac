@@ -1,0 +1,10 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<Refactors>
+  <Renames>
+    <RenamedType>
+      <Type guid="a5acbb1d-0874-4cfb-aa5b-ecd39f0e29a6">MATCHUIDTONODE</Type>
+      <From>MatchUidToNode</From>
+      <To>MatchUidToEsp</To>
+    </RenamedType>
+  </Renames>
+</Refactors>

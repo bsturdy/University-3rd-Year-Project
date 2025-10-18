@@ -1,0 +1,33 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<TcPlcObject Version="1.1.0.1">
+  <POU Name="BytesToIpv4" Id="{8ecba468-c83a-4490-8186-c443d9214b5a}" SpecialFunc="None">
+    <Declaration><![CDATA[FUNCTION BytesToIpv4 : T_IPv4Addr
+VAR_INPUT
+    IpAddress : ARRAY [0..3] OF BYTE;
+END_VAR
+VAR
+	TempStr	: STRING;
+END_VAR
+]]></Declaration>
+    <Implementation>
+      <ST><![CDATA[
+TempStr := CONCAT(TempStr, BYTE_TO_STRING(IpAddress[3]));
+
+TempStr := CONCAT(TempStr, '.');
+
+TempStr := CONCAT(TempStr, BYTE_TO_STRING(IpAddress[2]));
+
+TempStr := CONCAT(TempStr, '.');
+
+TempStr := CONCAT(TempStr, BYTE_TO_STRING(IpAddress[1]));
+
+TempStr := CONCAT(TempStr, '.');
+
+TempStr := CONCAT(TempStr, BYTE_TO_STRING(IpAddress[0]));
+
+BytesToIpv4 := TempStr;
+
+RETURN;]]></ST>
+    </Implementation>
+  </POU>
+</TcPlcObject>

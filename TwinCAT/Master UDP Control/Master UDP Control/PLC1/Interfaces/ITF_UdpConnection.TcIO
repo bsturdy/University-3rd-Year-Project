@@ -15,6 +15,12 @@ VAR_INPUT
 END_VAR
 ]]></Declaration>
     </Method>
+    <Property Name="LastReceivedIp" Id="{2505cbb9-22f0-45ee-89e7-54c097b0e2df}">
+      <Declaration><![CDATA[PROPERTY LastReceivedIp : T_IPv4Addr]]></Declaration>
+      <Get Name="Get" Id="{4e7c209f-71b8-45ba-a67d-aefba7bef9ca}">
+        <Declaration><![CDATA[]]></Declaration>
+      </Get>
+    </Property>
     <Property Name="ReceiveBufferReference" Id="{c42e4fae-ab30-4073-bdff-c9d721aed2a4}">
       <Declaration><![CDATA[PROPERTY ReceiveBufferReference : REFERENCE TO ARRAY [0..TCPADS_MAXUDP_BUFFSIZE - 1] OF BYTE;]]></Declaration>
       <Get Name="Get" Id="{d15e6cd2-50b2-4e14-ae3f-231b8211d661}">
@@ -32,6 +38,12 @@ END_VAR
 VAR_INPUT
 END_VAR
 ]]></Declaration>
+    </Method>
+    <Method Name="TryReadReceiveBuffer" Id="{587f5a12-9070-4242-a02b-9af823b1265b}">
+      <Declaration><![CDATA[METHOD TryReadReceiveBuffer : HRESULT
+VAR_INPUT
+	DataBuffer		: REFERENCE TO ARRAY [0..TCPADS_MAXUDP_BUFFSIZE - 1] OF BYTE;
+END_VAR]]></Declaration>
     </Method>
     <Method Name="TrySendData" Id="{6796c252-d973-40c6-9a54-4cbc36b15f3b}">
       <Declaration><![CDATA[METHOD TrySendData : HRESULT

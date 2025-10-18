@@ -713,7 +713,7 @@
 		</System>
 		<Plc>
 			<Project GUID="{F49AE792-E649-49BA-9C70-F48B3B6B1DCE}" Name="UdpDemoPlc" PrjFilePath="UdpDemoPlc\UdpDemoPlc.plcproj" TmcFilePath="UdpDemoPlc\UdpDemoPlc.tmc" ReloadTmc="true" AmsPort="851" FileArchiveSettings="#x000e">
-				<Instance Id="#x08502000" TcSmClass="TComPlcObjDef" KeepUnrestoredLinks="2" TmcHash="{0816858C-6816-AB6E-FE04-39486A255B90}" TmcPath="UdpDemoPlc\UdpDemoPlc.tmc">
+				<Instance Id="#x08502000" TcSmClass="TComPlcObjDef" KeepUnrestoredLinks="2" TmcHash="{19901DEB-605B-E15B-A67B-F8CC8021B1C0}" TmcPath="UdpDemoPlc\UdpDemoPlc.tmc">
 					<Name>UdpDemoPlc Instance</Name>
 					<CLSID ClassFactory="TcPlc30">{08500001-0000-0000-F000-000000000064}</CLSID>
 					<Contexts>

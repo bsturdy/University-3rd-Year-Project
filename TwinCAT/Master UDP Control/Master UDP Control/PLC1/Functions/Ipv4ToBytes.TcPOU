@@ -1,0 +1,62 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<TcPlcObject Version="1.1.0.1">
+  <POU Name="Ipv4ToBytes" Id="{0ae13546-779f-4691-b876-7f142ee3e35a}" SpecialFunc="None">
+    <Declaration><![CDATA[FUNCTION Ipv4ToBytes : ARRAY [0..3] OF BYTE
+VAR_INPUT
+    IpAddress : T_IPv4Addr;
+END_VAR
+VAR
+    i 		: BYTE := 0;
+	j		: BYTE := 1;
+	t1		: STRING;
+	t2		: STRING;
+	t3		: STRING;
+	t4		: STRING;
+END_VAR
+]]></Declaration>
+    <Implementation>
+      <ST><![CDATA[
+FOR i := 0 TO 16 BY 1 DO
+	
+	IF IpAddress[i] = 0 THEN
+		
+		EXIT;
+		
+	ELSIF IpAddress[i] = 46 THEN // 46 = '.'
+		
+		j := j + 1;
+		
+	ELSE
+
+		CASE j OF
+			
+			1:
+				t1 := CONCAT(t1, F_ToCHR(IpAddress[i]));
+			
+			2:
+				t2 := CONCAT(t2, F_ToCHR(IpAddress[i]));
+				
+			3:
+				t3 := CONCAT(t3, F_ToCHR(IpAddress[i]));
+				
+			4:
+				t4 := CONCAT(t4, F_ToCHR(IpAddress[i]));
+			
+		END_CASE
+	
+	END_IF
+	
+END_FOR
+
+Ipv4ToBytes[0] := STRING_TO_BYTE(t4);
+
+Ipv4ToBytes[1] := STRING_TO_BYTE(t3);
+
+Ipv4ToBytes[2] := STRING_TO_BYTE(t2);
+
+Ipv4ToBytes[3] := STRING_TO_BYTE(t1);
+
+RETURN;]]></ST>
+    </Implementation>
+  </POU>
+</TcPlcObject>

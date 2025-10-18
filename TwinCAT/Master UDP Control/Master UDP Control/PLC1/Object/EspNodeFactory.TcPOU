@@ -10,7 +10,8 @@ END_VAR
     <Implementation>
       <ST><![CDATA[]]></ST>
     </Implementation>
-    <Method Name="CreateNode" Id="{0e6314b5-8d07-4dab-b8a4-2060ddcc3fb0}">
+    <Folder Name="ITF_NodeFactory" Id="{2ddf876b-ed78-4ee8-9e84-44668cee703c}" />
+    <Method Name="CreateNode" Id="{0e6314b5-8d07-4dab-b8a4-2060ddcc3fb0}" FolderPath="ITF_NodeFactory\">
       <Declaration><![CDATA[METHOD CreateNode : ITF_Node
 VAR
 	TempPtr		: POINTER TO EspHost;
@@ -31,7 +32,7 @@ RETURN;
 ]]></ST>
       </Implementation>
     </Method>
-    <Method Name="DestroyNode" Id="{54f21fa2-25e9-4407-a1e0-9190217d917c}">
+    <Method Name="DestroyNode" Id="{54f21fa2-25e9-4407-a1e0-9190217d917c}" FolderPath="ITF_NodeFactory\">
       <Declaration><![CDATA[METHOD DestroyNode : BOOL
 VAR_INPUT
 	Ptr	: PVOID;

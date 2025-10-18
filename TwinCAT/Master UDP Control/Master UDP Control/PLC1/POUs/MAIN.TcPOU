@@ -5,10 +5,10 @@
 VAR
 	Test					: BOOL := FALSE;
 	Udp						: UdpWindowsSocket('192.168.137.1', 10050);
-	UdpRt					: UdpRealtimeSocket;
+	UdpRt					: UdpRealtimeSocket(10050);
 	EspFactory				: EspNodeFactory;
 	EspList					: List(EspFactory);
-	EspPacketProcessor		: EspPacketProcessor(Udp, EspList);
+	EspPacketProcessor		: EspPacketProcessor(UdpRt, EspList);
 	Counter					: UINT;
 	P1	: EspUdpPayload1;
 	P2	: EspUdpEnd;
@@ -30,9 +30,12 @@ IF Test THEN
 	
 END_IF
 
+
 EspPacketProcessor.CyclicUpdate();
 
+
 Counter := Counter + 1;
+
 
 P1.Start.CRC32 := 1234567;
 P1.Start.ChainDistance := 123;
@@ -48,9 +51,10 @@ P1.Start.SendersTimestamp := 1234567890123;
 P1.Start.SlaveUid := 1234567890123;
 P1.Start.TimeDifference := 1234567; 
 
+
 IF Go THEN
 	
-	hr := Udp.TrySendData('192.168.137.104', 10050, ADR(P1), SIZEOF(P1));
+	hr := Udp.TrySendData('192.168.0.2', 10050, ADR(P1), SIZEOF(P1));
 
 END_IF
 

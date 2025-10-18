@@ -27,6 +27,27 @@
     <Compile Include="DUTs\ESP\EspUdpStart.TcDUT">
       <SubType>Code</SubType>
     </Compile>
+    <Compile Include="DUTs\RtUdp\IpAdrUnion.TcDUT">
+      <SubType>Code</SubType>
+    </Compile>
+    <Compile Include="Functions\BytesToIpv4.TcPOU">
+      <SubType>Code</SubType>
+    </Compile>
+    <Compile Include="Functions\BytesToUint.TcPOU">
+      <SubType>Code</SubType>
+    </Compile>
+    <Compile Include="Functions\BytesToUlint.TcPOU">
+      <SubType>Code</SubType>
+    </Compile>
+    <Compile Include="Functions\HeaderEndianSwap.TcPOU">
+      <SubType>Code</SubType>
+    </Compile>
+    <Compile Include="Functions\Ipv4ToBytes.TcPOU">
+      <SubType>Code</SubType>
+    </Compile>
+    <Compile Include="Functions\TailEndianSwap.TcPOU">
+      <SubType>Code</SubType>
+    </Compile>
     <Compile Include="Interfaces\ITF_Cyclic.TcIO">
       <SubType>Code</SubType>
     </Compile>
@@ -63,19 +84,7 @@
     <Compile Include="Object\UdpWindowsSocket.TcPOU">
       <SubType>Code</SubType>
     </Compile>
-    <Compile Include="POUs\BytesToUint.TcPOU">
-      <SubType>Code</SubType>
-    </Compile>
-    <Compile Include="POUs\BytesToUlint.TcPOU">
-      <SubType>Code</SubType>
-    </Compile>
     <Compile Include="POUs\EspNodeController.TcPOU">
-      <SubType>Code</SubType>
-    </Compile>
-    <Compile Include="POUs\HeaderEndianSwap.TcPOU">
-      <SubType>Code</SubType>
-    </Compile>
-    <Compile Include="POUs\TailEndianSwap.TcPOU">
       <SubType>Code</SubType>
     </Compile>
     <Compile Include="POUs\MAIN.TcPOU">
@@ -105,8 +114,10 @@
   </ItemGroup>
   <ItemGroup>
     <Folder Include="DUTs\ESP" />
+    <Folder Include="DUTs\RtUdp" />
     <Folder Include="Interfaces" />
     <Folder Include="DUTs" />
+    <Folder Include="Functions" />
     <Folder Include="Tests">
       <ExcludeFromBuild>false</ExcludeFromBuild>
     </Folder>
