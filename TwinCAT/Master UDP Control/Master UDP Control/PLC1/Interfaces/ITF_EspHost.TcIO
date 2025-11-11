@@ -9,9 +9,27 @@ VAR_INPUT
 END_VAR
 ]]></Declaration>
     </Method>
+    <Property Name="EspType" Id="{82509193-2a51-4363-a922-faea65b44f6c}">
+      <Declaration><![CDATA[PROPERTY EspType : BYTE]]></Declaration>
+      <Get Name="Get" Id="{3e72e1d6-28b3-4b63-9298-12638ba6aee0}">
+        <Declaration><![CDATA[]]></Declaration>
+      </Get>
+      <Set Name="Set" Id="{c6060686-6a71-4a5d-8a16-52ac7e53af77}">
+        <Declaration><![CDATA[]]></Declaration>
+      </Set>
+    </Property>
     <Method Name="HasTimedOut" Id="{d2b1e08d-b6db-4415-8ef2-87cf9616a599}">
       <Declaration><![CDATA[METHOD HasTimedOut : BOOL
 VAR_INPUT
+END_VAR
+]]></Declaration>
+    </Method>
+    <Method Name="InjectPacket" Id="{b9ec20d7-1d36-4c20-8795-46a70a0f05a6}">
+      <Declaration><![CDATA[METHOD InjectPacket : BOOL
+VAR_INPUT
+	PacketType	: BYTE;
+	PacketAdr	: PVOID;
+	PacketLen	: UDINT;
 END_VAR
 ]]></Declaration>
     </Method>
@@ -20,9 +38,6 @@ END_VAR
       <Get Name="Get" Id="{77538af4-39dc-4377-8fa2-77c8ad35ea2c}">
         <Declaration><![CDATA[]]></Declaration>
       </Get>
-      <Set Name="Set" Id="{46305997-310f-4b91-bd04-d208c1c35e62}">
-        <Declaration><![CDATA[]]></Declaration>
-      </Set>
     </Property>
     <Property Name="Uid" Id="{42e2b9b4-be55-4d58-9068-905f7e39593b}">
       <Declaration><![CDATA[PROPERTY Uid : ULINT]]></Declaration>

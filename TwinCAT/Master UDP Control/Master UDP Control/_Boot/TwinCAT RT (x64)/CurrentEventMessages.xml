@@ -1,0 +1,100 @@
+<?xml version="1.0"?>
+<TcEventSources Version="2">
+	<Translations>
+		<Text TxtId="Cooling down time still active, channel {0}">
+			<Text LcId="1031">Abkühlphase noch aktiv, Kanal {0}</Text>
+		</Text>
+		<Text TxtId="EL9227-5500 Overcurrent protection 24V DC, 2Ch., max. 10A (sum), adjustable, extended functionalities">
+			<Text LcId="1031">EL9227-5500 Überstromschutz 24V DC, 2K., max. 10A (Summe), einstellbar, erweiterte Funktionen</Text>
+		</Text>
+		<Text TxtId="exceeding the maximum sum of current  (max. {0} A)">
+			<Text LcId="1031">Überschreitung des maximalen Summenstroms (max. {0} A)</Text>
+		</Text>
+		<Text TxtId="internal hardware error ({0})">
+			<Text LcId="1031">Interner Hardwarefehler ({0})</Text>
+		</Text>
+		<Text TxtId="Overload detected, channel {0} tripped">
+			<Text LcId="1031">Überlast erkannt, Kanal {0} ausgelöst</Text>
+		</Text>
+		<Text TxtId="Overtemperature in device">
+			<Text LcId="1031">Übertemperatur im Gerät</Text>
+		</Text>
+		<Text TxtId="Overvoltage detected, channel {0} tripped">
+			<Text LcId="1031">Überspannung erkannt, Kanal {0} ausgelöst</Text>
+		</Text>
+		<Text TxtId="Parameter-value is not supported by this variant of terminal, channel {0}">
+			<Text LcId="1031">Parameter-Wert wird nicht von dieser Klemmenvariante unterstützt, Kanal {0}</Text>
+		</Text>
+		<Text TxtId="Parameter-value not allowed and was reduced automatically, channel {0}">
+			<Text LcId="1031">Parameter-Wert nicht erlaubt und wurde verkleinert, Kanal {0}</Text>
+		</Text>
+		<Text TxtId="Reverse current detected, channel {0} tripped">
+			<Text LcId="1031">Rückwärtseinspeisung erkannt, Kanal {0} ausgelöst</Text>
+		</Text>
+		<Text TxtId="Short circuit detected, channel {0} tripped">
+			<Text LcId="1031">Kurzschluss erkannt, Kanal {0} ausgelöst</Text>
+		</Text>
+		<Text TxtId="Undervoltage detected, channel {0} ">
+			<Text LcId="1031">Unterspannung erkannt, Kanal {0} </Text>
+		</Text>
+		<Text TxtId="Undervoltage detected, channel {0} tripped">
+			<Text LcId="1031">Unterspannung erkannt, Kanal {0} ausgelöst</Text>
+		</Text>
+	</Translations>
+	<Source>
+		<GUID>{28111931-0002-0000-5230-0B247C151200}</GUID>
+		<Name>EL9227-5500 Overcurrent protection 24V DC, 2Ch., max. 10A (sum), adjustable, extended functionalities</Name>
+		<Event>
+			<Id>5632</Id>
+			<Message>Cooling down time still active, channel {0}</Message>
+		</Event>
+		<Event>
+			<Id>17937</Id>
+			<Message>exceeding the maximum sum of current  (max. {0} A)</Message>
+		</Event>
+		<Event>
+			<Id>17938</Id>
+			<Message>Undervoltage detected, channel {0} </Message>
+		</Event>
+		<Event>
+			<Id>17939</Id>
+			<Message>Parameter-value is not supported by this variant of terminal, channel {0}</Message>
+		</Event>
+		<Event>
+			<Id>17940</Id>
+			<Message>Parameter-value not allowed and was reduced automatically, channel {0}</Message>
+		</Event>
+		<Event>
+			<Id>18190</Id>
+			<Message>Overtemperature in device</Message>
+		</Event>
+		<Event>
+			<Id>33151</Id>
+			<Message>internal hardware error ({0})</Message>
+		</Event>
+		<Event>
+			<Id>34336</Id>
+			<Message>Undervoltage detected, channel {0} tripped</Message>
+		</Event>
+		<Event>
+			<Id>34337</Id>
+			<Message>Overvoltage detected, channel {0} tripped</Message>
+		</Event>
+		<Event>
+			<Id>34338</Id>
+			<Message>Reverse current detected, channel {0} tripped</Message>
+		</Event>
+		<Event>
+			<Id>34339</Id>
+			<Message>Short circuit detected, channel {0} tripped</Message>
+		</Event>
+		<Event>
+			<Id>34340</Id>
+			<Message>Overload detected, channel {0} tripped</Message>
+		</Event>
+		<Property>
+			<Name>DisplayTxtId</Name>
+			<Value>true</Value>
+		</Property>
+	</Source>
+</TcEventSources>

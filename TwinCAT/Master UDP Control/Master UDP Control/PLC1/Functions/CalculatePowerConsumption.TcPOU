@@ -1,0 +1,22 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<TcPlcObject Version="1.1.0.1">
+  <POU Name="CalculatePowerConsumption" Id="{938f53a2-36ae-4a88-826e-6721a845bb4b}" SpecialFunc="None">
+    <Declaration><![CDATA[FUNCTION CalculatePowerConsumption : LREAL
+VAR_INPUT
+	Voltage			: LREAL;
+	Current			: LREAL;
+END_VAR
+VAR
+	TaskIndex		: DINT;	
+	TaskTimeSeconds	: LREAL;
+END_VAR
+]]></Declaration>
+    <Implementation>
+      <ST><![CDATA[TaskIndex := GETCURTASKINDEXEX();
+
+TaskTimeSeconds := _TaskInfo[TaskIndex].CycleTime / 10000000.0;
+
+CalculatePowerConsumption := Voltage * Current * TaskTimeSeconds;]]></ST>
+    </Implementation>
+  </POU>
+</TcPlcObject>

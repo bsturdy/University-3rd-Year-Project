@@ -5,7 +5,7 @@
 VAR
     T 			: TestHarness;
 	f1			: TestNodeFactory;
-	f2			: EspNodeFactory;
+	f2			: EspHostFactory;
 	Factory 	: ITF_NodeFactory := f2;
 	List		: List(Factory);
     UUT 		: ITF_LinkedList := List;          

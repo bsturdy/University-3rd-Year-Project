@@ -16,5 +16,9 @@ VAR_INPUT
 END_VAR
 ]]></Declaration>
     </Method>
+    <Method Name="DoesCreateEqualDestroy" Id="{24c77ef6-1cee-41d2-aeba-33d95bd38a3f}">
+      <Declaration><![CDATA[METHOD DoesCreateEqualDestroy : BOOL
+]]></Declaration>
+    </Method>
   </Itf>
 </TcPlcObject>

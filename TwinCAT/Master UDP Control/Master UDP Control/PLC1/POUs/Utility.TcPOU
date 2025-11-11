@@ -1,0 +1,34 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<TcPlcObject Version="1.1.0.1">
+  <POU Name="Utility" Id="{44da1c63-b243-4a1f-9809-46a9666ca3d8}" SpecialFunc="None">
+    <Declaration><![CDATA[PROGRAM Utility
+VAR
+	LedStrip						: RgbController;
+	Red								: BOOL := TRUE;
+	Green							: BOOL := FALSE;
+	Blue							: BOOL := TRUE;
+	
+	EL9227Ch1						: MDP5001_922_DEB3C1CF;
+	EL9227Ch2						: MDP5001_922_DEB3C1CF;
+	
+	EnergyCalculator				: EnergyCalculator;
+	EnergyConsumptionCostPence		: LREAL;
+	
+END_VAR
+]]></Declaration>
+    <Implementation>
+      <ST><![CDATA[
+EnergyCalculator
+(
+	Voltage						:= EL9227Ch1.MDP5001_922_Input.MDP5001_922_Voltage_In / 10.0, 
+	Current						:= EL9227Ch1.MDP5001_922_Input.MDP5001_922_Current / 100.0,
+	PowerConsumptionAverageW	=> ,
+	EnergyConsumptionTotalJ		=> , 
+	EnergyConsumptionTotalkWh	=> ,
+	EnergyConsumptionCostPence	=> EnergyConsumptionCostPence
+);
+
+LedStrip.SetCustom(Red, Green, Blue);]]></ST>
+    </Implementation>
+  </POU>
+</TcPlcObject>

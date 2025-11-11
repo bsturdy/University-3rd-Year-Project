@@ -21,6 +21,12 @@ END_VAR
         <Declaration><![CDATA[]]></Declaration>
       </Get>
     </Property>
+    <Property Name="LastReceivedPort" Id="{a1deeecd-515d-4cf9-9183-f4a806fea070}">
+      <Declaration><![CDATA[PROPERTY LastReceivedPort : UDINT]]></Declaration>
+      <Get Name="Get" Id="{277e94d2-392d-4506-8a65-1c4cc685aa06}">
+        <Declaration><![CDATA[]]></Declaration>
+      </Get>
+    </Property>
     <Property Name="ReceiveBufferReference" Id="{c42e4fae-ab30-4073-bdff-c9d721aed2a4}">
       <Declaration><![CDATA[PROPERTY ReceiveBufferReference : REFERENCE TO ARRAY [0..TCPADS_MAXUDP_BUFFSIZE - 1] OF BYTE;]]></Declaration>
       <Get Name="Get" Id="{d15e6cd2-50b2-4e14-ae3f-231b8211d661}">

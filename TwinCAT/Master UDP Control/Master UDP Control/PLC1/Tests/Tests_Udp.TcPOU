@@ -4,10 +4,9 @@
     <Declaration><![CDATA[PROGRAM Tests_Udp
 VAR
 	T 			: TestHarness;
-	f1			: UdpWindowsSocket('192.168.1.227', 10050);
+	f1			: UdpWindowsSocket('0.0.0.0', 10050);
 	f2			: UdpRealtimeSocket(10050);
-	UUT1		: ITF_UdpConnection := f2;  
-	Cyclic		: ITF_Cyclic := f1;
+	UUT1		: ITF_UdpConnection := f1;  
 	ip			: T_IPv4Addr := '192.168.0.2';     
 	port		: UINT := 10050;
 	SomeData	: STRING := 'Hello World';
@@ -19,12 +18,12 @@ VAR
     ok 			: BOOL;
     len 		: UINT;
 	hr			: HRESULT;
-	p1, p2, i		: UINT;  
+	p1, p2, i	: UINT;  
 END_VAR
 ]]></Declaration>
     <Implementation>
-      <ST><![CDATA[Cyclic.CyclicUpdate();
-
+      <ST><![CDATA[
+UUT1.CyclicUpdate();
 
 IF NOT Done THEN
 

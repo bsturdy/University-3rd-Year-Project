@@ -1,0 +1,51 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<TcPlcObject Version="1.1.0.1">
+  <POU Name="RgbController" Id="{8c2ea173-7e7f-4e6f-890a-03ebba81d070}" SpecialFunc="None">
+    <Declaration><![CDATA[FUNCTION_BLOCK RgbController
+VAR
+	_Red		AT %Q*	: BOOL;
+	_Green		AT %Q*	: BOOL;
+	_Blue		AT %Q*	: BOOL;
+END_VAR
+]]></Declaration>
+    <Implementation>
+      <ST><![CDATA[]]></ST>
+    </Implementation>
+    <Method Name="SetCustom" Id="{efd4df41-d278-49f1-839f-91a8eacd7959}">
+      <Declaration><![CDATA[METHOD SetCustom : BOOL
+VAR_INPUT
+	Red		: BOOL;
+	Green	: BOOL;
+	Blue	: BOOL;
+END_VAR
+]]></Declaration>
+      <Implementation>
+        <ST><![CDATA[_Red := Red;
+_Green := Green;
+_Blue := Blue;]]></ST>
+      </Implementation>
+    </Method>
+    <Method Name="SetWhite" Id="{cc5e42d6-471d-4be2-858f-e2fbc049f843}">
+      <Declaration><![CDATA[METHOD SetWhite : BOOL
+VAR_INPUT
+END_VAR
+]]></Declaration>
+      <Implementation>
+        <ST><![CDATA[_Red := TRUE;
+_Green := TRUE;
+_Blue := TRUE;]]></ST>
+      </Implementation>
+    </Method>
+    <Method Name="TurnOff" Id="{c8d11621-676e-4fec-a7b3-24bba1f2df69}">
+      <Declaration><![CDATA[METHOD TurnOff : BOOL
+VAR_INPUT
+END_VAR
+]]></Declaration>
+      <Implementation>
+        <ST><![CDATA[_Red := FALSE;
+_Green := FALSE;
+_Blue := FALSE;]]></ST>
+      </Implementation>
+    </Method>
+  </POU>
+</TcPlcObject>

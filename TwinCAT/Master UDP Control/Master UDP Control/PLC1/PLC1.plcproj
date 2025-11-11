@@ -39,6 +39,9 @@
     <Compile Include="Functions\BytesToUlint.TcPOU">
       <SubType>Code</SubType>
     </Compile>
+    <Compile Include="Functions\CalculatePowerConsumption.TcPOU">
+      <SubType>Code</SubType>
+    </Compile>
     <Compile Include="Functions\HeaderEndianSwap.TcPOU">
       <SubType>Code</SubType>
     </Compile>
@@ -47,6 +50,10 @@
     </Compile>
     <Compile Include="Functions\TailEndianSwap.TcPOU">
       <SubType>Code</SubType>
+    </Compile>
+    <Compile Include="GVLs\GVL_Udp.TcGVL">
+      <SubType>Code</SubType>
+      <LinkAlways>true</LinkAlways>
     </Compile>
     <Compile Include="Interfaces\ITF_Cyclic.TcIO">
       <SubType>Code</SubType>
@@ -66,32 +73,51 @@
     <Compile Include="Interfaces\ITF_UdpConnection.TcIO">
       <SubType>Code</SubType>
     </Compile>
-    <Compile Include="Object\EspHost.TcPOU">
-      <SubType>Code</SubType>
-    </Compile>
-    <Compile Include="Object\EspNodeFactory.TcPOU">
+    <Compile Include="Object\ESP Hosts\EspHost.TcPOU">
       <SubType>Code</SubType>
     </Compile>
     <Compile Include="Object\EspPacketProcessor.TcPOU">
       <SubType>Code</SubType>
     </Compile>
+    <Compile Include="Object\Factories\EspHostFactory.TcPOU">
+      <SubType>Code</SubType>
+    </Compile>
+    <Compile Include="Object\IO\RgbController.TcPOU">
+      <SubType>Code</SubType>
+    </Compile>
     <Compile Include="Object\List.TcPOU">
       <SubType>Code</SubType>
     </Compile>
-    <Compile Include="Object\UdpRealtimeSocket.TcPOU">
+    <Compile Include="Object\UDP\UdpRealtimeSocket.TcPOU">
       <SubType>Code</SubType>
     </Compile>
-    <Compile Include="Object\UdpWindowsSocket.TcPOU">
+    <Compile Include="Object\UDP\UdpWindowsSocket.TcPOU">
       <SubType>Code</SubType>
     </Compile>
-    <Compile Include="POUs\EspNodeController.TcPOU">
+    <Compile Include="POUs\Application.TcPOU">
+      <SubType>Code</SubType>
+    </Compile>
+    <Compile Include="POUs\EnergyCalculator.TcPOU">
       <SubType>Code</SubType>
     </Compile>
     <Compile Include="POUs\MAIN.TcPOU">
       <SubType>Code</SubType>
     </Compile>
+    <Compile Include="POUs\Tests.TcPOU">
+      <SubType>Code</SubType>
+    </Compile>
+    <Compile Include="POUs\Utility.TcPOU">
+      <SubType>Code</SubType>
+    </Compile>
     <Compile Include="Tasks\PlcTask.TcTTO">
       <SubType>Code</SubType>
+    </Compile>
+    <Compile Include="Tests\EspNodeController.TcPOU">
+      <SubType>Code</SubType>
+    </Compile>
+    <Compile Include="Tests\GVL_Test.TcGVL">
+      <SubType>Code</SubType>
+      <LinkAlways>true</LinkAlways>
     </Compile>
     <Compile Include="Tests\TestHarness.TcPOU">
       <SubType>Code</SubType>
@@ -100,9 +126,6 @@
       <SubType>Code</SubType>
     </Compile>
     <Compile Include="Tests\TestNodeFactory.TcPOU">
-      <SubType>Code</SubType>
-    </Compile>
-    <Compile Include="Tests\Tests.TcPOU">
       <SubType>Code</SubType>
     </Compile>
     <Compile Include="Tests\Tests_ListAndFactory.TcPOU">
@@ -118,6 +141,11 @@
     <Folder Include="Interfaces" />
     <Folder Include="DUTs" />
     <Folder Include="Functions" />
+    <Folder Include="GVLs" />
+    <Folder Include="Object\Factories" />
+    <Folder Include="Object\ESP Hosts" />
+    <Folder Include="Object\IO" />
+    <Folder Include="Object\UDP" />
     <Folder Include="Tests">
       <ExcludeFromBuild>false</ExcludeFromBuild>
     </Folder>
@@ -156,8 +184,8 @@
   <ProjectExtensions>
     <PlcProjectOptions>
       <XmlArchive>
-  <Data>
-    <o xml:space="preserve" t="OptionKey">
+        <Data>
+          <o xml:space="preserve" t="OptionKey">
       <v n="Name">"&lt;ProjectRoot&gt;"</v>
       <d n="SubKeys" t="Hashtable" ckt="String" cvt="OptionKey">
         <v>{192FAD59-8248-4824-A8DE-9177C94C195A}</v>
@@ -2440,15 +2468,15 @@
       </d>
       <d n="Values" t="Hashtable" />
     </o>
-  </Data>
-  <TypeList>
-    <Type n="Boolean">System.Boolean</Type>
-    <Type n="Hashtable">System.Collections.Hashtable</Type>
-    <Type n="Int32">System.Int32</Type>
-    <Type n="OptionKey">{54dd0eac-a6d8-46f2-8c27-2f43c7e49861}</Type>
-    <Type n="String">System.String</Type>
-  </TypeList>
-</XmlArchive>
+        </Data>
+        <TypeList>
+          <Type n="Boolean">System.Boolean</Type>
+          <Type n="Hashtable">System.Collections.Hashtable</Type>
+          <Type n="Int32">System.Int32</Type>
+          <Type n="OptionKey">{54dd0eac-a6d8-46f2-8c27-2f43c7e49861}</Type>
+          <Type n="String">System.String</Type>
+        </TypeList>
+      </XmlArchive>
     </PlcProjectOptions>
   </ProjectExtensions>
 </Project>

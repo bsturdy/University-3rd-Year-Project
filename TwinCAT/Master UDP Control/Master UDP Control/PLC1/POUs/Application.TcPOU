@@ -1,0 +1,17 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<TcPlcObject Version="1.1.0.1">
+  <POU Name="Application" Id="{e755b4b3-663e-4aba-9984-5644739ccf72}" SpecialFunc="None">
+    <Declaration><![CDATA[PROGRAM Application
+VAR
+	UdpWin10				: UdpWindowsSocket('192.168.137.1', 10050);
+	UdpRt					: UdpRealtimeSocket(10050);
+	EspFactory				: EspHostFactory;
+	EspList					: List(EspFactory);
+	EspPacketProcessor		: EspPacketProcessor(UdpRt, EspList);
+END_VAR
+]]></Declaration>
+    <Implementation>
+      <ST><![CDATA[EspPacketProcessor.CyclicUpdate();]]></ST>
+    </Implementation>
+  </POU>
+</TcPlcObject>

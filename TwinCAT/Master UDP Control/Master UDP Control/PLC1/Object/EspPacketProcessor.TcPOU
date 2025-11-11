@@ -4,48 +4,53 @@
     <Declaration><![CDATA[FUNCTION_BLOCK EspPacketProcessor IMPLEMENTS ITF_Cyclic
 VAR
 	
-	Udp							: ITF_UdpConnection;
-	UdpReceiveBuffer			: REFERENCE TO ARRAY [0..TCPADS_MAXUDP_BUFFSIZE - 1] OF BYTE;
-	LastCheckedIndex			: UDINT;
-	List						: ITF_LinkedList;
-	PacketsReceived				: ULINT;
+	_Udp						: ITF_UdpConnection;
+	_UdpReceiveBuffer			: REFERENCE TO ARRAY [0..TCPADS_MAXUDP_BUFFSIZE - 1] OF BYTE;
+	_LastCheckedIndex			: UDINT;
+	_List						: ITF_LinkedList;
+	_PacketsReceived			: ULINT;
 	
-	ReceivedPacketType			: BYTE;
-	ReceivedPacketLocation		: PVOID;
-	ReceivedPacketLength		: UINT;
+	_ReceivedPacketType			: BYTE;
+	_ReceivedPacketAddress		: PVOID;
+	_ReceivedPacketLength		: UINT;
 	
-	hr1							: HRESULT;
-	OpenUdpConnection			: HRESULT;
-	hr3							: HRESULT;
+	_SendingPacketAddress		: PVOID;
+	_SendingPacketLength		: UINT;
 	
-	TestPacket					: EspUdpPayload1;
-	CurrentEsp32				: ITF_EspHost;
+	_Payload1					: EspUdpPayload1;
+	_CurrentEsp32				: ITF_EspHost;
+	
+	_State						: BYTE;
+	_i							: BYTE;
 	
 END_VAR
+
 VAR CONSTANT
-	StartDelimiter1				: BYTE := 2;
-	StartDelimiter2				: BYTE := 181;
-	EndDelimiter1				: BYTE := 91;
-	EndDelimiter2				: BYTE := 03;
-	PacketTypePosition			: BYTE := 37;
+	
+	_StartDelimiter1			: BYTE := GVL_Udp.StartDelimiter1;
+	_StartDelimiter2			: BYTE := GVL_Udp.StartDelimiter2;
+	_EndDelimiter1				: BYTE := GVL_Udp.EndDelimiter1;
+	_EndDelimiter2				: BYTE := GVL_Udp.EndDelimiter2;
+	_PacketTypePosition			: BYTE := GVL_Udp.PacketTypePosition;
+	
 END_VAR]]></Declaration>
     <Implementation>
       <ST><![CDATA[]]></ST>
     </Implementation>
-    <Folder Name="Private" Id="{b3a90f2a-fb10-47d8-b27b-ed3a8f77b9e5}" />
-    <Folder Name="Public" Id="{a272a727-3988-4408-abfc-67103f70209e}" />
-    <Method Name="ClearBufferAtLocation" Id="{d451c427-ca4e-4e53-86c8-cf78b23bc920}" FolderPath="Public\">
+    <Folder Name="Private" Id="{a272a727-3988-4408-abfc-67103f70209e}" />
+    <Folder Name="Public" Id="{b3a90f2a-fb10-47d8-b27b-ed3a8f77b9e5}" />
+    <Method Name="ClearBufferAtLocation" Id="{d451c427-ca4e-4e53-86c8-cf78b23bc920}" FolderPath="Private\">
       <Declaration><![CDATA[METHOD PRIVATE ClearBufferAtLocation : BOOL
 VAR_INPUT
-	PayloadLength			: UINT;
-	PayloadLocation			: PVOID;
+	PacketAddress			: PVOID;
+	PacketLength			: UINT;
 END_VAR
 VAR
 	i	: UDINT;
 END_VAR]]></Declaration>
       <Implementation>
         <ST><![CDATA[
-IF MEMSET(PayloadLocation, 0, PayloadLength) > 0 THEN
+IF MEMSET(PacketAddress, 0, PacketLength) > 0 THEN
 
 	ClearBufferAtLocation := TRUE;
 	
@@ -59,7 +64,7 @@ RETURN;
 ]]></ST>
       </Implementation>
     </Method>
-    <Method Name="ClearEntireBuffer" Id="{5b97cea3-6cfc-44ef-848d-da951801b59a}" FolderPath="Private\">
+    <Method Name="ClearEntireBuffer" Id="{5b97cea3-6cfc-44ef-848d-da951801b59a}" FolderPath="Public\">
       <Declaration><![CDATA[METHOD ClearEntireBuffer : BOOL
 VAR_INPUT
 END_VAR
@@ -70,29 +75,29 @@ END_VAR]]></Declaration>
         <ST><![CDATA[
 FOR i := 0 TO TCPADS_MAXUDP_BUFFSIZE - 1 BY 1 DO
 
-	UdpReceiveBuffer[i] := 0;
+	_UdpReceiveBuffer[i] := 0;
 
 END_FOR]]></ST>
       </Implementation>
     </Method>
-    <Method Name="CopyPacketIntoStructure" Id="{a7cd640b-c057-4e56-87b7-444786445c11}" FolderPath="Public\">
+    <Method Name="CopyPacketIntoStructure" Id="{a7cd640b-c057-4e56-87b7-444786445c11}" FolderPath="Private\">
       <Declaration><![CDATA[METHOD PRIVATE CopyPacketIntoStructure : BOOL
 VAR_INPUT
-	PayloadType				: BYTE;
-	PayloadLength			: UINT;
-	PayloadLocation			: PVOID;
+	PacketType				: BYTE;
+	PacketAddress			: PVOID;
+	PacketLength			: UINT;
 END_VAR
 ]]></Declaration>
       <Implementation>
-        <ST><![CDATA[CASE PayloadType OF
+        <ST><![CDATA[CASE PacketType OF
 	
 	1:
 	
-		MEMCPY(ADR(TestPacket), PayloadLocation, PayloadLength); 
+		MEMCPY(ADR(_Payload1), PacketAddress, PacketLength); 
 		
-		TestPacket.Start := HeaderEndianSwap(TestPacket.Start);
+		_Payload1.Start := HeaderEndianSwap(_Payload1.Start);
 		
-		TestPacket.End := TailEndianSwap(TestPacket.End);
+		_Payload1.End := TailEndianSwap(_Payload1.End);
 		
 		CopyPacketIntoStructure := TRUE;
 		
@@ -115,35 +120,211 @@ END_CASE
 ]]></ST>
       </Implementation>
     </Method>
-    <Method Name="CreateEsp" Id="{0422dece-937d-4f2d-8f33-18aad4d44460}" FolderPath="Public\">
-      <Declaration><![CDATA[METHOD CreateEsp : BOOL
+    <Method Name="CreateEsp" Id="{0422dece-937d-4f2d-8f33-18aad4d44460}" FolderPath="Private\">
+      <Declaration><![CDATA[METHOD PRIVATE CreateEsp : ITF_EspHost
 VAR_INPUT
+	PacketType				: BYTE;
+END_VAR
+VAR
+	Node	: ITF_Node;
+	Ptr	: POINTER TO EspHost;
 END_VAR
 ]]></Declaration>
       <Implementation>
-        <ST><![CDATA[]]></ST>
+        <ST><![CDATA[
+IF _List.CreateNode() THEN
+	
+	Node := _List.GetNode(_List.GetListLength());
+			
+	Ptr := Node.GetMyPointer();
+	
+	CreateEsp := Ptr^;
+	
+	CASE PacketType OF
+		
+		1:
+			
+			CreateEsp.Uid := _Payload1.Start.SlaveUid;
+			
+			CreateEsp.EspType := _Payload1.Start.MessageType;
+			
+		
+	END_CASE
+
+END_IF]]></ST>
       </Implementation>
     </Method>
-    <Method Name="CyclicUpdate" Id="{be97351d-5c68-4a8e-a83d-1e093e85b384}" FolderPath="Private\">
+    <Method Name="CyclicUpdate" Id="{be97351d-5c68-4a8e-a83d-1e093e85b384}" FolderPath="Public\">
       <Declaration><![CDATA[METHOD CyclicUpdate : BOOL
 VAR
+	hr	: HRESULT;
 END_VAR]]></Declaration>
       <Implementation>
         <ST><![CDATA[
-Udp.CyclicUpdate();
-	
+_Udp.CyclicUpdate();
 
-IF TryOpenConnection() = S_OK AND_THEN
-	TryFindPacketInBuffer(ReceivedPacketType, ReceivedPacketLength, ReceivedPacketLocation) = S_OK AND_THEN
-	CopyPacketIntoStructure(ReceivedPacketType, ReceivedPacketLength, ReceivedPacketLocation) AND_THEN 
-	ClearBufferAtLocation(ReceivedPacketLength, ReceivedPacketLocation) THEN
+_UdpReceiveBuffer REF= _Udp.ReceiveBufferReference;	
+
+IF _Udp.TryOpenConnection() <> S_OK OR ADR(_UdpReceiveBuffer) = 0 THEN
 	
-	
-	;
-	
-	
+	RETURN;
+
 END_IF
 
+
+
+FOR _i := 0 TO 199 BY 1 DO
+	
+	CASE _State OF
+		
+		0:
+		
+			_CurrentEsp32 := 0;
+			
+			hr := TryFindPacketInBuffer(_ReceivedPacketType, _ReceivedPacketAddress, _ReceivedPacketLength);
+			
+			IF hr = S_OK THEN
+				
+				_State := 1;
+				
+			ELSIF hr <> S_PENDING THEN
+				
+				EXIT;
+				
+			END_IF
+			
+			
+			
+		1:
+		
+			IF CopyPacketIntoStructure(_ReceivedPacketType, _ReceivedPacketAddress, _ReceivedPacketLength) THEN
+				
+				_State := 2;
+				
+			END_IF
+			
+			
+			
+		2:
+		
+			IF ClearBufferAtLocation(_ReceivedPacketAddress, _ReceivedPacketLength) THEN
+				
+				_State := 3;
+				
+			END_IF
+		
+		
+		
+		3:
+		
+			_CurrentEsp32 := FindEspFromUid(_ReceivedPacketType);
+		
+			IF _CurrentEsp32 <> 0 THEN
+				
+				_State := 4;
+			
+			ELSE
+				
+				CreateEsp(_ReceivedPacketType);
+				
+			END_IF
+			
+			
+			
+		4:
+		
+			IF _CurrentEsp32.InjectPacket(_ReceivedPacketType, _ReceivedPacketAddress, _ReceivedPacketLength) THEN
+				
+				_State := 7;
+				
+			END_IF
+		
+		
+		
+		5:
+		
+			//_CurrentEsp32.GetResponse(_SendingPacketAddress, _SendingPacketLength);
+			
+			
+		
+		6:
+		
+			IF _Udp.TrySendData(_Udp.LastReceivedIp, _Udp.LastReceivedPort, _SendingPacketAddress, _SendingPacketLength) = S_OK THEN
+				
+				_State := 7; 
+				
+			END_IF
+		
+		
+		
+		7:
+			
+			_State := 0;
+			
+	END_CASE
+
+END_FOR
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+// 
+// IF TryOpenConnection() = S_OK AND_THEN
+// 	TryFindPacketInBuffer(_ReceivedPacketType, _ReceivedPacketLength, _ReceivedPacketLocation) = S_OK AND_THEN
+// 	CopyPacketIntoStructure(_ReceivedPacketType, _ReceivedPacketLength, _ReceivedPacketLocation) AND_THEN 
+// 	ClearBufferAtLocation(_ReceivedPacketLength, _ReceivedPacketLocation) THEN
+// 	
+// 	
+// 	
+// 	CASE _ReceivedPacketType OF
+// 		
+// 		0:
+// 			;
+// 			
+// 		1:	// Test packet
+// 			_CurrentEsp32 := FindEspFromUid(_Payload1.Start);
+// 			IF _CurrentEsp32 = 0 THEN
+// 				_CurrentEsp32 := CreateEsp(_Payload1.Start);
+// 			END_IF
+// 			_CurrentEsp32.InjectPacket(ADR(_Payload1), SIZEOF(_Payload1), 1);
+// 			
+// 		2:
+// 			;
+// 			
+// 		3:
+// 			;
+// 			
+// 	END_CASE
+// 	
+// 	
+// 
+// 	
+// 
+// 	
+// 	
+// END_IF
+// 
 
 
 
@@ -178,26 +359,15 @@ VAR_INPUT
 	EspList		: ITF_LinkedList;
 END_VAR]]></Declaration>
       <Implementation>
-        <ST><![CDATA[Udp := UdpSocket;
-UdpReceiveBuffer REF= Udp.ReceiveBufferReference;
-List := EspList;]]></ST>
+        <ST><![CDATA[_Udp := UdpSocket;
+_UdpReceiveBuffer REF= _Udp.ReceiveBufferReference;
+_List := EspList;]]></ST>
       </Implementation>
     </Method>
-    <Method Name="IsAcceptingData" Id="{a8556bb5-22ae-4069-9b97-75360e7225b8}" FolderPath="Private\">
-      <Declaration><![CDATA[METHOD IsAcceptingData : BOOL
+    <Method Name="FindEspFromUid" Id="{a5acbb1d-0874-4cfb-aa5b-ecd39f0e29a6}" FolderPath="Private\">
+      <Declaration><![CDATA[METHOD PRIVATE FindEspFromUid : ITF_EspHost
 VAR_INPUT
-END_VAR
-]]></Declaration>
-      <Implementation>
-        <ST><![CDATA[IsAcceptingData := Udp.IsConnected();
-
-RETURN;]]></ST>
-      </Implementation>
-    </Method>
-    <Method Name="MatchUidToEsp" Id="{a5acbb1d-0874-4cfb-aa5b-ecd39f0e29a6}" FolderPath="Public\">
-      <Declaration><![CDATA[METHOD PRIVATE MatchUidToEsp : ITF_EspHost
-VAR_INPUT
-	Header	: EspUdpStart;
+	PacketType				: BYTE;
 END_VAR
 VAR
 	Length	: UINT;
@@ -205,15 +375,14 @@ VAR
 	Node	: ITF_Node;
 	Ptr		: POINTER TO EspHost;
 	Esp		: ITF_EspHost;
-	Uid		: ULINT;
 END_VAR]]></Declaration>
       <Implementation>
         <ST><![CDATA[
-Length := List.GetListLength();
+Length := _List.GetListLength();
 
 IF Length = 0 THEN
 	
-	MatchUidToEsp := 0;
+	FindEspFromUid := 0;
 		
 	RETURN;
 
@@ -221,39 +390,85 @@ END_IF
 
 FOR i := 1 TO Length BY 1 DO
 
-	Node := List.GetNode(i);	
-	
+	Node := _List.GetNode(i);
+
 	Ptr := Node.GetMyPointer();
-	
+
 	Esp := Ptr^;
 	
-	IF Esp = 0 THEN
-		
-		MatchUidToEsp := 0;
-		
-		RETURN;
-		
+	IF Esp.EspType = PacketType THEN
+	
+		CASE PacketType OF
+			
+			0:
+				
+			
+			1:
+				
+				IF Esp.Uid = _Payload1.Start.SlaveUid THEN
+					
+					FindEspFromUid := Esp;
+					
+					RETURN;
+					
+				END_IF
+				
+			
+		END_CASE
+	
 	END_IF
 	
-	Uid := Esp.Uid;
 	
-	IF Uid = Header.SlaveUid THEN // = uid in buffer 
-		
-		MatchUidToEsp := Esp;
-		
-		RETURN;
-		
-	END_IF
+	
+	
+	
+// 	
+// 	IF Header.MessageType <> 0 THEN
+// 		
+// 		Ptr := Node.GetMyPointer();
+// 	
+// 		Esp := Ptr^;
+// 		
+// 	END_IF
+// 	
+// 	IF Esp = 0 THEN
+// 		
+// 		FindEspFromUid := 0;
+// 		
+// 		RETURN;
+// 		
+// 	END_IF
+// 	
+// 	Uid := Esp.Uid;
+// 	
+// 	IF Uid = Header.SlaveUid THEN // = uid in buffer 
+// 		
+// 		FindEspFromUid := Esp;
+// 		
+// 		RETURN;
+// 		
+// 	END_IF
 
 END_FOR]]></ST>
       </Implementation>
     </Method>
-    <Method Name="TryFindPacketInBuffer" Id="{b0962c32-b620-4d2c-8983-6c2de1d66f22}" FolderPath="Public\">
+    <Method Name="IsAcceptingData" Id="{a8556bb5-22ae-4069-9b97-75360e7225b8}" FolderPath="Public\">
+      <Declaration><![CDATA[METHOD IsAcceptingData : BOOL
+VAR_INPUT
+END_VAR
+]]></Declaration>
+      <Implementation>
+        <ST><![CDATA[IsAcceptingData := _Udp.IsConnected();
+
+RETURN;]]></ST>
+      </Implementation>
+    </Method>
+    <Method Name="TryFindPacketInBuffer" Id="{b0962c32-b620-4d2c-8983-6c2de1d66f22}" FolderPath="Private\">
       <Declaration><![CDATA[METHOD PRIVATE TryFindPacketInBuffer : HRESULT
 VAR_INPUT
-	PayloadType				: REFERENCE TO BYTE;
-	PayloadLength			: REFERENCE TO UINT;
-	PayloadLocation			: REFERENCE TO PVOID;
+	PacketType				: REFERENCE TO BYTE;
+	PacketAddress			: REFERENCE TO PVOID;
+	PacketLength			: REFERENCE TO UINT;
 END_VAR
 VAR
 	i						: UDINT;
@@ -262,27 +477,27 @@ END_VAR]]></Declaration>
       <Implementation>
         <ST><![CDATA[TryFindPacketInBuffer := S_PENDING;
 
-FOR i := LastCheckedIndex TO TCPADS_MAXUDP_BUFFSIZE - 1 BY 1 DO
+FOR i := _LastCheckedIndex TO TCPADS_MAXUDP_BUFFSIZE - 1 BY 1 DO
 	
-	IF UdpReceiveBuffer[i] = StartDelimiter1 AND_THEN UdpReceiveBuffer[i + 1] = StartDelimiter2 THEN
-		
-		PayloadLength := BytesToUint(UdpReceiveBuffer[i + 2], UdpReceiveBuffer[i + 3]) + 50;
+	IF _UdpReceiveBuffer[i] = _StartDelimiter1 AND_THEN _UdpReceiveBuffer[i + 1] = _StartDelimiter2 THEN
 					
-		PayloadType := UdpReceiveBuffer[i + PacketTypePosition];
+		PacketType := _UdpReceiveBuffer[i + _PacketTypePosition];
 		
-		PayloadLocation := ADR(UdpReceiveBuffer[i]);
-					
-		IF PayloadLength = 0 OR PayloadType = 0 THEN
+		PacketAddress := ADR(_UdpReceiveBuffer[i]);
+		
+		PacketLength := BytesToUint(_UdpReceiveBuffer[i + 2], _UdpReceiveBuffer[i + 3]);
+		
+		IF PacketLength = 0 OR PacketType = 0 THEN
 			
 			TryFindPacketInBuffer := -1;
 					
-		ELSIF UdpReceiveBuffer[i + PayloadLength - 2] <> EndDelimiter1 OR UdpReceiveBuffer[i + PayloadLength - 1] <> EndDelimiter2 THEN
+		ELSIF _UdpReceiveBuffer[i + PacketLength - 2] <> _EndDelimiter1 OR _UdpReceiveBuffer[i + PacketLength - 1] <> _EndDelimiter2 THEN
 			
 			TryFindPacketInBuffer := S_PENDING;
 			
 		ELSE
 			
-			PacketsReceived := PacketsReceived + 1;
+			_PacketsReceived := _PacketsReceived + 1;
 			
 			Good := TRUE;
 			
@@ -294,13 +509,13 @@ FOR i := LastCheckedIndex TO TCPADS_MAXUDP_BUFFSIZE - 1 BY 1 DO
 
 END_FOR
 
-IF LastCheckedIndex > TCPADS_MAXUDP_BUFFSIZE - 1 THEN
+IF _LastCheckedIndex > TCPADS_MAXUDP_BUFFSIZE - 1 THEN
 	
-	LastCheckedIndex := 0;
+	_LastCheckedIndex := 0;
 	
 ELSE
 	
-	LastCheckedIndex := i;
+	_LastCheckedIndex := i;
 
 END_IF
 
@@ -310,27 +525,8 @@ IF Good THEN
 	
 ELSE
 	
-	TryFindPacketInBuffer := S_PENDING;
+	TryFindPacketInBuffer := -1;
 
-END_IF
-
-RETURN;]]></ST>
-      </Implementation>
-    </Method>
-    <Method Name="TryOpenConnection" Id="{17cd8edb-53a2-4c77-9ed3-82863fdd1da4}" FolderPath="Public\">
-      <Declaration><![CDATA[METHOD PRIVATE TryOpenConnection : HRESULT
-VAR_INPUT
-END_VAR
-]]></Declaration>
-      <Implementation>
-        <ST><![CDATA[TryOpenConnection := Udp.TryOpenConnection();
-
-UdpReceiveBuffer REF= Udp.ReceiveBufferReference;
-
-IF ADR(UdpReceiveBuffer) = 0 THEN
-
-	TryOpenConnection := -1;	
-	
 END_IF
 
 RETURN;]]></ST>

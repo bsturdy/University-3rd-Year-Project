@@ -2,13 +2,23 @@
 <TcLicenseInfo xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:noNamespaceSchemaLocation="http://www.beckhoff.com/schemas/2011/11/TcLicenseInfo">
 	<LicenseInfo>
 		<SystemId>{99330CBC-A21A-FEBC-98DA-61906B412F58}</SystemId>
-		<IssueTime>2025-10-06T13:11:00</IssueTime>
-		<ExpireTime>2025-10-14T00:00:00</ExpireTime>
-		<LicenseKey>e2e9e741c128d17325b9289256f4b1364965d912335c9db0f7d242284f4ef3ec759e5c5168e801c29182a7c3417b2455266dd15b1f3182b9d6fab704d28e0031cb32acc94ed5e1aa5c2152f800158a2c13c2ce674e192c5c519604f64bafa1d84a3d6fbb891e9c62168eb8db624380c9f8fd8f358b47fc1ec03955065c6d039ed92b666ecfcd64e134c4933e42db2ca2244956f792184d107cc0121af8127758367bf7fee20251e5df044217635a99bc2b234830a1ace36cf99add7fd5c091aaa282ced516fb506a6f70bc4971f003765226919c19dba14893a3e36a270b54e5b11b28dd5841a9d2d1332f292fbe26402c73fd4c1dfb0b701ce8bd5a44a7423d</LicenseKey>
+		<IssueTime>2025-10-27T14:52:00</IssueTime>
+		<ExpireTime>2025-11-04T00:00:00</ExpireTime>
+		<LicenseKey>b9e415e824a6965d1fa8bec482f71c5aee3d09327d319cc44bf7bb5e0d6b28aecc50b83009ba1ce3fcf97d2f608c508ce3caf8b5174bf9313cfb5c109cc2fca451af693a60fb807235e82462196245a535c3ae3772f996363d10e25762b012e618ce8e4a24e37986ab31fbb6e03eb2d806b310a6f1c90646b9ffda3151d6664184d5463dede30b557ed662395afbdef13a7bdae0d0802f53d1e7ae733e76553448ce430f25783e6d82acdc8042188b1d4aa99e27272351ab5c1aaefcb4d5e85dac4c5b4c79851a2d480823f4374c68d10e34b2ea199e41f99876eba15d43e49474b93a9dfb7047905f837bb64784fd02e2e9bc345dda162a066cc965c45ae589</LicenseKey>
 		<License>
 			<LicenseId>{081AC839-28D0-49CA-9792-72680E1F3249}</LicenseId>
 			<Name>TC3 TCP/UDP RT</Name>
 			<OrderNo>TF6311</OrderNo>
+		</License>
+		<License>
+			<LicenseId>{5F80BDB9-D9AC-40A4-9C8A-62EE6295DE0F}</LicenseId>
+			<Name>TC3 CNC</Name>
+			<OrderNo>TF5200</OrderNo>
+		</License>
+		<License>
+			<LicenseId>{281D57F6-ECA5-4116-A7E2-E5565EF04976}</LicenseId>
+			<Name>TC3 CNC Axis</Name>
+			<Instances>24</Instances>
 		</License>
 		<License>
 			<LicenseId>{4C256767-E6E6-4AF5-BD68-9F7ABAD0C200}</LicenseId>
@@ -16,9 +26,29 @@
 			<OrderNo>TC1000</OrderNo>
 		</License>
 		<License>
+			<LicenseId>{D8A1885F-B127-4B81-A1D3-D1D70C8D79A7}</LicenseId>
+			<Name>TC3 PLC / NC PTP 10 / NC I / CNC-E-3A</Name>
+			<OrderNo>TC1276</OrderNo>
+		</License>
+		<License>
+			<LicenseId>{A6DA2335-6B5A-4627-8824-0B8D5E3E73C5}</LicenseId>
+			<Name>TC3 CNC-E</Name>
+			<OrderNo>TF5210</OrderNo>
+		</License>
+		<License>
+			<LicenseId>{9FD32FC8-0CF9-4C5B-95FB-F35423496A77}</LicenseId>
+			<Name>TC3 PLC Static Analysis</Name>
+			<OrderNo>TE1200</OrderNo>
+		</License>
+		<License>
+			<LicenseId>{68A05D95-13CD-491E-A0DD-DC396DC90A19}</LicenseId>
+			<Name>TC3 PLC / NC PTP 10 / NC I / CNC-E</Name>
+			<OrderNo>TC1275</OrderNo>
+		</License>
+		<License>
 			<LicenseId>{A19036CF-A53B-4E3A-99FF-023EF5C4798B}</LicenseId>
 			<Name>TC3 NC PTP Axis</Name>
-			<Instances>10</Instances>
+			<Instances>50</Instances>
 		</License>
 		<License>
 			<LicenseId>{66689887-CCBD-452C-AC9A-039D997C6E66}</LicenseId>
@@ -26,9 +56,40 @@
 			<OrderNo>TC1200</OrderNo>
 		</License>
 		<License>
+			<LicenseId>{F8F2DBC7-3228-4672-91A9-C5D46C32B544}</LicenseId>
+			<Name>TC3 PLC / NC PTP 10 / NC I</Name>
+			<OrderNo>TC1260</OrderNo>
+		</License>
+		<License>
+			<LicenseId>{4BC056A5-11F8-46AC-9F38-0677395E2D35}</LicenseId>
+			<Name>TC3 CNC-E-3A</Name>
+			<OrderNo>TF5211</OrderNo>
+		</License>
+		<License>
+			<LicenseId>{5533D163-895A-4487-AF42-1659698510A7}</LicenseId>
+			<Name>TC3 CNC Channel</Name>
+			<OrderNo>TF5230</OrderNo>
+			<Instances>3</Instances>
+		</License>
+		<License>
 			<LicenseId>{520DE751-9DB6-47CB-8240-BD5C466E7E64}</LicenseId>
 			<Name>TC3 NC PTP</Name>
 			<OrderNo>TF5000</OrderNo>
+		</License>
+		<License>
+			<LicenseId>{DEA72F0A-9EA0-48F4-ABB5-766516202B8E}</LicenseId>
+			<Name>TC3 NC I</Name>
+			<OrderNo>TF5100</OrderNo>
+		</License>
+		<License>
+			<LicenseId>{7B9C044C-F003-44F9-8552-FA9D08753C91}</LicenseId>
+			<Name>TC3 PLC / NC PTP 10 / NC I / CNC</Name>
+			<OrderNo>TC1270</OrderNo>
+		</License>
+		<License>
+			<LicenseId>{8C57D0A8-BD63-4554-BAE1-E9C797EF0D0E}</LicenseId>
+			<Name>TC3 PLC / NC PTP 10</Name>
+			<OrderNo>TC1250</OrderNo>
 		</License>
 		<License>
 			<LicenseId>{3FF18E97-7754-401B-93FB-70544DE28A13}</LicenseId>
