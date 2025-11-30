@@ -10,6 +10,8 @@ VAR
 	_List						: ITF_LinkedList;
 	_PacketsReceived			: ULINT;
 	
+	_Decoder					: ITF_PayloadDecoder;
+	
 	_ReceivedPacketType			: BYTE;
 	_ReceivedPacketAddress		: PVOID;
 	_ReceivedPacketLength		: UINT;
@@ -165,7 +167,7 @@ _Udp.CyclicUpdate();
 
 _UdpReceiveBuffer REF= _Udp.ReceiveBufferReference;	
 
-IF _Udp.TryOpenConnection() <> S_OK OR ADR(_UdpReceiveBuffer) = 0 THEN
+IF _Udp.TryOpenConnection() <> S_OK OR ADR(_UdpReceiveBuffer) = 0 OR _Decoder = 0 THEN
 	
 	RETURN;
 
@@ -346,6 +348,17 @@ END_FOR
 ]]></ST>
       </Implementation>
     </Method>
+    <Property Name="Decoder" Id="{53b1f3d7-a565-4626-ad36-d708a0989c98}">
+      <Declaration><![CDATA[PROPERTY Decoder : ITF_PayloadDecoder]]></Declaration>
+      <Set Name="Set" Id="{3e91f7d1-ede6-4c34-b22f-716c9521e253}">
+        <Declaration><![CDATA[VAR
+END_VAR
+]]></Declaration>
+        <Implementation>
+          <ST><![CDATA[_Decoder := Decoder;]]></ST>
+        </Implementation>
+      </Set>
+    </Property>
     <Method Name="FB_Init" Id="{de930b98-4376-4a46-92a0-2be25d257ea9}">
       <Declaration><![CDATA[//FB_Init is always available implicitly and it is used primarily for initialization.
 //The return value is not evaluated. For a specific influence, you can also declare the

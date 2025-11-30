@@ -18,6 +18,14 @@ END_VAR
         <Declaration><![CDATA[]]></Declaration>
       </Set>
     </Property>
+    <Method Name="GetDataBuffer" Id="{8da7ba6e-02ea-4334-8c55-9511c73189e8}">
+      <Declaration><![CDATA[METHOD GetDataBuffer : BOOL
+VAR_INPUT
+	Address	: REFERENCE TO PVOID;
+	Size	: REFERENCE TO UDINT;
+END_VAR
+]]></Declaration>
+    </Method>
     <Method Name="HasTimedOut" Id="{d2b1e08d-b6db-4415-8ef2-87cf9616a599}">
       <Declaration><![CDATA[METHOD HasTimedOut : BOOL
 VAR_INPUT

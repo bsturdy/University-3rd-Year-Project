@@ -1,0 +1,12 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<TcPlcObject Version="1.1.0.1">
+  <POU Name="EspPayloadDecoder" Id="{3c23ce38-a44c-4571-993b-09ac9f9fd58b}" SpecialFunc="None">
+    <Declaration><![CDATA[FUNCTION_BLOCK EspPayloadDecoder IMPLEMENTS ITF_PayloadDecoder
+VAR
+END_VAR
+]]></Declaration>
+    <Implementation>
+      <ST><![CDATA[]]></ST>
+    </Implementation>
+  </POU>
+</TcPlcObject>

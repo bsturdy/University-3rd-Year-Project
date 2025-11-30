@@ -1,0 +1,46 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<TcPlcObject Version="1.1.0.1">
+  <POU Name="Updater_1" Id="{bd79bccd-023d-4c74-aa4d-f04321d65ae1}" SpecialFunc="None">
+    <Declaration><![CDATA[FUNCTION_BLOCK Updater_1 IMPLEMENTS ITF_Updater
+VAR CONSTANT
+    TestTypeId  	: BYTE := 1;
+    TestVersion 	: BYTE := 1;
+END_VAR
+VAR
+	
+END_VAR
+]]></Declaration>
+    <Implementation>
+      <ST><![CDATA[]]></ST>
+    </Implementation>
+    <Method Name="ApplyPayload" Id="{ddc6e7b4-b65e-41a4-8326-cf3a5a73d169}">
+      <Declaration><![CDATA[{warning 'Add method implementation '}
+METHOD ApplyPayload : BYTE
+VAR_INPUT
+	PacketAddress	: PVOID;
+	PacketLength	: UINT;
+	EspHost	: ITF_EspHost;
+END_VAR
+]]></Declaration>
+      <Implementation>
+        <ST><![CDATA[]]></ST>
+      </Implementation>
+    </Method>
+    <Method Name="GetTypeID" Id="{509ff72a-6577-43fb-95d5-49f461ecdabc}">
+      <Declaration><![CDATA[{warning 'Add method implementation '}
+METHOD GetTypeID : BYTE
+]]></Declaration>
+      <Implementation>
+        <ST><![CDATA[]]></ST>
+      </Implementation>
+    </Method>
+    <Method Name="GetVersion" Id="{3d91a00b-8b56-4dc7-bcda-df8b40561b35}">
+      <Declaration><![CDATA[{warning 'Add method implementation '}
+METHOD GetVersion : BYTE
+]]></Declaration>
+      <Implementation>
+        <ST><![CDATA[]]></ST>
+      </Implementation>
+    </Method>
+  </POU>
+</TcPlcObject>

@@ -1,0 +1,28 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<TcPlcObject Version="1.1.0.1">
+  <Itf Name="ITF_UpdaterRegistry" Id="{f37cc204-c2fb-42fe-8f63-27e01e348367}">
+    <Declaration><![CDATA[INTERFACE ITF_UpdaterRegistry
+]]></Declaration>
+    <Method Name="Reset" Id="{3d47ab56-9699-4dea-832d-1e85d8cbf5b0}">
+      <Declaration><![CDATA[METHOD Reset : BOOL
+VAR_INPUT
+END_VAR
+]]></Declaration>
+    </Method>
+    <Method Name="ResolveUpdater" Id="{c18c0931-7b96-4f34-ade5-921aecccfcd3}">
+      <Declaration><![CDATA[METHOD ResolveUpdater : ITF_Updater
+VAR_INPUT
+	TypeID	: BYTE;
+	Version	: BYTE;
+END_VAR
+]]></Declaration>
+    </Method>
+    <Method Name="TryRegister" Id="{1104802e-94bb-4466-a7d4-8338d9ec9f5f}">
+      <Declaration><![CDATA[METHOD TryRegister : HRESULT
+VAR_INPUT
+	Updater	: ITF_Updater;
+END_VAR
+]]></Declaration>
+    </Method>
+  </Itf>
+</TcPlcObject>

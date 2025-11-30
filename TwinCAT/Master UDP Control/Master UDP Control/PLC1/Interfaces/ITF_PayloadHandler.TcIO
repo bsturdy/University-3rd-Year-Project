@@ -1,0 +1,7 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<TcPlcObject Version="1.1.0.1">
+  <Itf Name="ITF_PayloadHandler" Id="{bff43ede-aa01-4619-ab48-cbd1a274fc21}">
+    <Declaration><![CDATA[INTERFACE ITF_PayloadHandler
+]]></Declaration>
+  </Itf>
+</TcPlcObject>

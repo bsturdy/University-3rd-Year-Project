@@ -27,6 +27,9 @@
     <Compile Include="DUTs\ESP\EspUdpStart.TcDUT">
       <SubType>Code</SubType>
     </Compile>
+    <Compile Include="DUTs\ESP\UpdaterEntry.TcDUT">
+      <SubType>Code</SubType>
+    </Compile>
     <Compile Include="DUTs\RtUdp\IpAdrUnion.TcDUT">
       <SubType>Code</SubType>
     </Compile>
@@ -70,13 +73,40 @@
     <Compile Include="Interfaces\ITF_NodeFactory.TcIO">
       <SubType>Code</SubType>
     </Compile>
+    <Compile Include="Interfaces\ITF_PayloadDecoder.TcIO">
+      <SubType>Code</SubType>
+    </Compile>
+    <Compile Include="Interfaces\ITF_PayloadHandler.TcIO">
+      <SubType>Code</SubType>
+    </Compile>
     <Compile Include="Interfaces\ITF_UdpConnection.TcIO">
       <SubType>Code</SubType>
     </Compile>
-    <Compile Include="Object\ESP Hosts\EspHost.TcPOU">
+    <Compile Include="Interfaces\ITF_Updater.TcIO">
       <SubType>Code</SubType>
     </Compile>
-    <Compile Include="Object\EspPacketProcessor.TcPOU">
+    <Compile Include="Interfaces\ITF_UpdaterRegistry.TcIO">
+      <SubType>Code</SubType>
+    </Compile>
+    <Compile Include="Object\ESP\EspHost.TcPOU">
+      <SubType>Code</SubType>
+    </Compile>
+    <Compile Include="Object\ESP\EspObjectUpdater.TcPOU">
+      <SubType>Code</SubType>
+    </Compile>
+    <Compile Include="Object\ESP\EspPacketProcessor.TcPOU">
+      <SubType>Code</SubType>
+    </Compile>
+    <Compile Include="Object\ESP\EspPayloadDecoder.TcPOU">
+      <SubType>Code</SubType>
+    </Compile>
+    <Compile Include="Object\ESP\EspPayloadRegistery.TcPOU">
+      <SubType>Code</SubType>
+    </Compile>
+    <Compile Include="Object\ESP\UpdaterRegistry.TcPOU">
+      <SubType>Code</SubType>
+    </Compile>
+    <Compile Include="Object\ESP\Updater_1.TcPOU">
       <SubType>Code</SubType>
     </Compile>
     <Compile Include="Object\Factories\EspHostFactory.TcPOU">
@@ -143,7 +173,7 @@
     <Folder Include="Functions" />
     <Folder Include="GVLs" />
     <Folder Include="Object\Factories" />
-    <Folder Include="Object\ESP Hosts" />
+    <Folder Include="Object\ESP" />
     <Folder Include="Object\IO" />
     <Folder Include="Object\UDP" />
     <Folder Include="Tests">
@@ -184,8 +214,8 @@
   <ProjectExtensions>
     <PlcProjectOptions>
       <XmlArchive>
-        <Data>
-          <o xml:space="preserve" t="OptionKey">
+  <Data>
+    <o xml:space="preserve" t="OptionKey">
       <v n="Name">"&lt;ProjectRoot&gt;"</v>
       <d n="SubKeys" t="Hashtable" ckt="String" cvt="OptionKey">
         <v>{192FAD59-8248-4824-A8DE-9177C94C195A}</v>
@@ -2468,15 +2498,15 @@
       </d>
       <d n="Values" t="Hashtable" />
     </o>
-        </Data>
-        <TypeList>
-          <Type n="Boolean">System.Boolean</Type>
-          <Type n="Hashtable">System.Collections.Hashtable</Type>
-          <Type n="Int32">System.Int32</Type>
-          <Type n="OptionKey">{54dd0eac-a6d8-46f2-8c27-2f43c7e49861}</Type>
-          <Type n="String">System.String</Type>
-        </TypeList>
-      </XmlArchive>
+  </Data>
+  <TypeList>
+    <Type n="Boolean">System.Boolean</Type>
+    <Type n="Hashtable">System.Collections.Hashtable</Type>
+    <Type n="Int32">System.Int32</Type>
+    <Type n="OptionKey">{54dd0eac-a6d8-46f2-8c27-2f43c7e49861}</Type>
+    <Type n="String">System.String</Type>
+  </TypeList>
+</XmlArchive>
     </PlcProjectOptions>
   </ProjectExtensions>
 </Project>

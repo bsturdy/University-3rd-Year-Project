@@ -6,12 +6,29 @@ VAR
 	UdpWin10				: UdpWindowsSocket('192.168.137.1', 10050);
 	UdpRt					: UdpRealtimeSocket(10050);
 	EspFactory				: EspHostFactory;
-	EspList					: List(EspFactory);
-	EspPacketProcessor		: EspPacketProcessor(UdpRt, EspList);
+	List					: List(EspFactory);
+	PacketProcessor			: EspPacketProcessor(UdpRt, List);
+	PayloadDecoder			: EspPayloadDecoder;
+	PayloadRegistery		: EspPayloadRegistery;
+	
+	UpdaterRegistry			: UpdaterRegistry;
+	TestUpdater				: Updater_1;
+	
+	Init					: BOOL;
 END_VAR
 ]]></Declaration>
     <Implementation>
-      <ST><![CDATA[EspPacketProcessor.CyclicUpdate();]]></ST>
+      <ST><![CDATA[
+IF NOT Init THEN
+	
+	UpdaterRegistry.TryRegister(TestUpdater);
+	
+	Init := TRUE;
+
+END_IF
+
+PacketProcessor.CyclicUpdate();
+]]></ST>
     </Implementation>
   </POU>
 </TcPlcObject>

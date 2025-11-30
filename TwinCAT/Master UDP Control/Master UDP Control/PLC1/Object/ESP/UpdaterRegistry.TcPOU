@@ -1,0 +1,151 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<TcPlcObject Version="1.1.0.1">
+  <POU Name="UpdaterRegistry" Id="{6e4286cd-5648-47cd-bb0d-8978b7123f8f}" SpecialFunc="None">
+    <Declaration><![CDATA[FUNCTION_BLOCK UpdaterRegistry IMPLEMENTS ITF_UpdaterRegistry
+VAR
+	Entries					: ARRAY [0..255] OF UpdaterEntry;
+	EntryCount				: BYTE := 0;
+	
+	RegisterOkCount         : UDINT;
+    RegisterDuplicateCount  : UDINT;
+    RegisterTableFullCount  : UDINT;
+    ResolveMissExactCount   : UDINT;
+    ResolveMissTypeCount    : UDINT;
+END_VAR
+]]></Declaration>
+    <Implementation>
+      <ST><![CDATA[]]></ST>
+    </Implementation>
+    <Method Name="Reset" Id="{c9ff6b3a-2717-41c6-8c35-809051dbcff3}">
+      <Declaration><![CDATA[METHOD Reset : BOOL
+VAR
+	i		: BYTE;
+END_VAR]]></Declaration>
+      <Implementation>
+        <ST><![CDATA[
+FOR i := 0 TO EntryCount BY 1 DO
+	
+	Entries[i].TypeID := 0;
+	Entries[i].Version := 0;
+	Entries[i].Updater := 0;
+
+END_FOR
+
+EntryCount := 0;
+RegisterOkCount := 0;
+RegisterDuplicateCount := 0;
+RegisterTableFullCount := 0;
+ResolveMissExactCount := 0;
+ResolveMissTypeCount := 0;]]></ST>
+      </Implementation>
+    </Method>
+    <Method Name="ResolveUpdater" Id="{a4c4544e-bc6a-4280-96e1-c09802842dca}">
+      <Declaration><![CDATA[METHOD ResolveUpdater : ITF_Updater
+VAR_INPUT
+	TypeID	: BYTE;
+	Version	: BYTE;
+END_VAR
+VAR
+	i		: BYTE;
+END_VAR]]></Declaration>
+      <Implementation>
+        <ST><![CDATA[ResolveUpdater := 0;
+
+// Exact match (type + version)
+FOR i := 0 TO EntryCount - 1 DO
+	
+    IF (Entries[i].TypeID = TypeID) AND (Entries[i].Version = Version) THEN
+		
+        ResolveUpdater := Entries[i].Updater;
+		
+        RETURN;
+		
+    END_IF
+	
+END_FOR
+
+
+ResolveMissExactCount := ResolveMissExactCount + 1;
+
+// Fallback: any entry with same type (e.g. default version)
+FOR i := 0 TO EntryCount - 1 DO
+	
+    IF Entries[i].TypeID = TypeID THEN
+		
+        ResolveUpdater := Entries[i].Updater;
+		
+        RETURN;
+		
+    END_IF
+	
+END_FOR
+
+ResolveMissTypeCount := ResolveMissTypeCount + 1;
+
+RETURN;
+]]></ST>
+      </Implementation>
+    </Method>
+    <Method Name="TryRegister" Id="{9216fb04-aae8-485e-9e4d-2b8fc43f2c04}">
+      <Declaration><![CDATA[METHOD TryRegister : HRESULT
+VAR_INPUT
+	Updater	: ITF_Updater;
+END_VAR
+VAR
+    i       : BYTE;
+    TypeId  : BYTE;
+    Version : BYTE;
+END_VAR]]></Declaration>
+      <Implementation>
+        <ST><![CDATA[TryRegister := S_PENDING;
+
+IF Updater = 0 THEN
+	
+	TryRegister := -1;	
+
+    RETURN;
+	
+END_IF
+
+IF EntryCount = 255 THEN
+	
+    RegisterTableFullCount := RegisterTableFullCount + 1;
+	
+	TryRegister := -2;
+	
+    RETURN;
+	
+END_IF
+
+TypeId  := Updater.GetTypeID();
+Version := Updater.GetVersion();
+
+FOR i := 0 TO EntryCount - 1 DO
+
+    IF (Entries[i].TypeID = TypeId) AND (Entries[i].Version = Version) THEN
+		
+        RegisterDuplicateCount := RegisterDuplicateCount + 1;
+		
+		TryRegister := -3;
+		
+        RETURN;
+    
+	END_IF
+	
+END_FOR
+
+Entries[EntryCount].TypeID  := TypeId;
+Entries[EntryCount].Version := Version;
+Entries[EntryCount].Updater := Updater;
+EntryCount := EntryCount + 1;
+
+RegisterOkCount := RegisterOkCount + 1;
+
+TryRegister := S_OK;
+
+RETURN;
+]]></ST>
+      </Implementation>
+    </Method>
+  </POU>
+</TcPlcObject>

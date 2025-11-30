@@ -1,0 +1,28 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<TcPlcObject Version="1.1.0.1">
+  <Itf Name="ITF_Updater" Id="{55c350b8-68d9-436d-a671-afe1ee501105}">
+    <Declaration><![CDATA[INTERFACE ITF_Updater
+]]></Declaration>
+    <Method Name="ApplyPayload" Id="{62f62d39-4422-4e09-9635-584ba5e34fa0}">
+      <Declaration><![CDATA[METHOD ApplyPayload : BYTE
+VAR_INPUT
+	PacketAddress	: PVOID;
+	PacketLength	: UINT;
+	EspHost			: ITF_EspHost;
+END_VAR
+]]></Declaration>
+    </Method>
+    <Method Name="GetTypeID" Id="{b056be6e-1afa-4f32-b4a4-e1157d0ff783}">
+      <Declaration><![CDATA[METHOD GetTypeID : BYTE
+VAR_INPUT
+END_VAR
+]]></Declaration>
+    </Method>
+    <Method Name="GetVersion" Id="{8abd07a8-5181-44f8-9e43-784834337c4c}">
+      <Declaration><![CDATA[METHOD GetVersion : BYTE
+VAR_INPUT
+END_VAR
+]]></Declaration>
+    </Method>
+  </Itf>
+</TcPlcObject>

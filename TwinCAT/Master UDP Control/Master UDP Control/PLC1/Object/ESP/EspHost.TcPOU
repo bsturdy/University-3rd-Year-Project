@@ -17,11 +17,8 @@ VAR
 	_EspType					: BYTE;
 	_PacketsReceivedCount		: ULINT;
 	_LastReceivedTimer			: TON;
-	_DistanceFromMaster			: BYTE;
-	
-	_Payload1					: EspUdpPayload1;
-	
-	_SomeData					: ARRAY [1..1000, 1..1000] OF BYTE;
+	_DistanceFromMaster			: BYTE;	
+	_DataBuffer					: ARRAY [0..511] OF BYTE;
 	
 END_VAR
 ]]></Declaration>
@@ -63,6 +60,20 @@ END_IF]]></ST>
         </Implementation>
       </Set>
     </Property>
+    <Method Name="GetDataBuffer" Id="{2ac55e4a-5e5d-4e04-a89a-b3b9e95a64dd}" FolderPath="ITF_EspHost\">
+      <Declaration><![CDATA[METHOD GetDataBuffer : BOOL
+VAR_INPUT
+	Address	: REFERENCE TO PVOID;
+	Size	: REFERENCE TO UDINT;
+END_VAR
+]]></Declaration>
+      <Implementation>
+        <ST><![CDATA[Address := ADR(_DataBuffer);
+Size := SIZEOF(_DataBuffer);
+
+GetDataBuffer := TRUE;]]></ST>
+      </Implementation>
+    </Method>
     <Method Name="GetLastNode" Id="{40659afe-16b7-4736-a59c-d79330896cb4}" FolderPath="ITF_Node\">
       <Declaration><![CDATA[METHOD GetLastNode : ITF_Node
 ]]></Declaration>
@@ -131,11 +142,11 @@ CASE PacketType OF
 	
 	1:
 	
-		_PacketsReceivedCount := _PacketsReceivedCount + 1;
-	
-		MEMCPY(ADR(_Payload1), PacketAdr, PacketLen);
-		
-		InjectPacket := TRUE;
+// 		_PacketsReceivedCount := _PacketsReceivedCount + 1;
+// 	
+// 		MEMCPY(ADR(_Payload1), PacketAdr, PacketLen);
+// 		
+// 		InjectPacket := TRUE;
 
 
 
