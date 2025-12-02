@@ -42,7 +42,7 @@ END_VAR]]></Declaration>
     <Folder Name="Private" Id="{a272a727-3988-4408-abfc-67103f70209e}" />
     <Folder Name="Public" Id="{b3a90f2a-fb10-47d8-b27b-ed3a8f77b9e5}" />
     <Method Name="ClearBufferAtLocation" Id="{d451c427-ca4e-4e53-86c8-cf78b23bc920}" FolderPath="Private\">
-      <Declaration><![CDATA[METHOD PRIVATE ClearBufferAtLocation : BOOL
+      <Declaration><![CDATA[METHOD ClearBufferAtLocation : BOOL
 VAR_INPUT
 	PacketAddress			: PVOID;
 	PacketLength			: UINT;
@@ -123,7 +123,7 @@ END_CASE
       </Implementation>
     </Method>
     <Method Name="CreateEsp" Id="{0422dece-937d-4f2d-8f33-18aad4d44460}" FolderPath="Private\">
-      <Declaration><![CDATA[METHOD PRIVATE CreateEsp : ITF_EspHost
+      <Declaration><![CDATA[METHOD CreateEsp : ITF_EspHost
 VAR_INPUT
 	PacketType				: BYTE;
 END_VAR
@@ -378,7 +378,7 @@ _List := EspList;]]></ST>
       </Implementation>
     </Method>
     <Method Name="FindEspFromUid" Id="{a5acbb1d-0874-4cfb-aa5b-ecd39f0e29a6}" FolderPath="Private\">
-      <Declaration><![CDATA[METHOD PRIVATE FindEspFromUid : ITF_EspHost
+      <Declaration><![CDATA[METHOD FindEspFromUid : ITF_EspHost
 VAR_INPUT
 	PacketType				: BYTE;
 END_VAR
@@ -465,6 +465,15 @@ FOR i := 1 TO Length BY 1 DO
 END_FOR]]></ST>
       </Implementation>
     </Method>
+    <Method Name="GetPacketUID" Id="{abe644a5-fd15-4ccf-b1f3-2e23948a2d8f}" FolderPath="Public\">
+      <Declaration><![CDATA[METHOD GetPacketUID : ULINT
+VAR_INPUT
+END_VAR
+]]></Declaration>
+      <Implementation>
+        <ST><![CDATA[MEMCPY(ADR(GetPacketUID), ADR(_UdpReceiveBuffer[8]), 8);]]></ST>
+      </Implementation>
+    </Method>
     <Method Name="IsAcceptingData" Id="{a8556bb5-22ae-4069-9b97-75360e7225b8}" FolderPath="Public\">
       <Declaration><![CDATA[METHOD IsAcceptingData : BOOL
 VAR_INPUT
@@ -477,7 +486,7 @@ RETURN;]]></ST>
       </Implementation>
     </Method>
     <Method Name="TryFindPacketInBuffer" Id="{b0962c32-b620-4d2c-8983-6c2de1d66f22}" FolderPath="Private\">
-      <Declaration><![CDATA[METHOD PRIVATE TryFindPacketInBuffer : HRESULT
+      <Declaration><![CDATA[METHOD TryFindPacketInBuffer : HRESULT
 VAR_INPUT
 	PacketType				: REFERENCE TO BYTE;
 	PacketAddress			: REFERENCE TO PVOID;

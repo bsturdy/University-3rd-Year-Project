@@ -1,0 +1,39 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<TcPlcObject Version="1.1.0.1">
+  <POU Name="MessageBuffer" Id="{c40be733-a0bc-401f-9d3f-a0bd19c8e686}" SpecialFunc="None">
+    <Declaration><![CDATA[FUNCTION_BLOCK MessageBuffer
+VAR
+	Buffer	: ARRAY [0..1023] OF STRING(1024);
+END_VAR
+]]></Declaration>
+    <Implementation>
+      <ST><![CDATA[]]></ST>
+    </Implementation>
+    <Method Name="AddData" Id="{78e3f40b-03cb-4e1b-b41b-469f710050de}">
+      <Declaration><![CDATA[METHOD AddData : BOOL
+VAR_INPUT
+	Data	: STRING(1024);
+END_VAR
+VAR
+	i		: UINT;
+END_VAR]]></Declaration>
+      <Implementation>
+        <ST><![CDATA[IF Data = '' THEN
+
+	RETURN;	
+
+END_IF
+
+FOR i := 1023 TO 1 BY -1 DO
+	
+	Buffer[i] := Buffer[i - 1];
+
+END_FOR
+
+Buffer[0] := Data;
+
+AddData := TRUE;]]></ST>
+      </Implementation>
+    </Method>
+  </POU>
+</TcPlcObject>

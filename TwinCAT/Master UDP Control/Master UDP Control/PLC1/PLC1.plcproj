@@ -133,13 +133,16 @@
     <Compile Include="POUs\MAIN.TcPOU">
       <SubType>Code</SubType>
     </Compile>
+    <Compile Include="POUs\MessageBuffer.TcPOU">
+      <SubType>Code</SubType>
+    </Compile>
     <Compile Include="POUs\Tests.TcPOU">
       <SubType>Code</SubType>
     </Compile>
     <Compile Include="POUs\Utility.TcPOU">
       <SubType>Code</SubType>
     </Compile>
-    <Compile Include="Tasks\PlcTask.TcTTO">
+    <Compile Include="Tasks\Task_4.TcTTO">
       <SubType>Code</SubType>
     </Compile>
     <Compile Include="Tests\EspNodeController.TcPOU">

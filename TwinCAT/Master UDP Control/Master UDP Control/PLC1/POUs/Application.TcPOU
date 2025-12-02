@@ -5,29 +5,183 @@
 VAR
 	UdpWin10				: UdpWindowsSocket('192.168.137.1', 10050);
 	UdpRt					: UdpRealtimeSocket(10050);
+	Udp						: ITF_UdpConnection := UdpRt;
+	
 	EspFactory				: EspHostFactory;
 	List					: List(EspFactory);
-	PacketProcessor			: EspPacketProcessor(UdpRt, List);
-	PayloadDecoder			: EspPayloadDecoder;
-	PayloadRegistery		: EspPayloadRegistery;
 	
+	PacketProcessor			: EspPacketProcessor(Udp, List);
 	UpdaterRegistry			: UpdaterRegistry;
 	TestUpdater				: Updater_1;
 	
 	Init					: BOOL;
+	i						: BYTE;
+	j						: UINT;
+	State					: BYTE;
+	hr						: HRESULT;
+	FoundEsp				: BOOL;
+	Data					: STRING(1024);
+	
+	CurrentEspUID			: ULINT;
+	TempEspPtr				: POINTER TO EspHost;
+	CurrentEsp				: ITF_EspHost;
+	CurrentUpdater			: ITF_Updater;
+		
+	ReceivedPacketType		: BYTE;
+	ReceivedPacketAddress	: PVOID;
+	ReceivedPacketLength	: UINT;
+	
+	MessageBuffer			: MessageBuffer;
 END_VAR
 ]]></Declaration>
     <Implementation>
       <ST><![CDATA[
 IF NOT Init THEN
+
+	IF Udp.TryOpenConnection() <> S_OK THEN
+		
+		RETURN;
 	
+	END_IF
+
 	UpdaterRegistry.TryRegister(TestUpdater);
 	
 	Init := TRUE;
 
 END_IF
 
-PacketProcessor.CyclicUpdate();
+
+
+
+
+// Multiple processing calls per cycle are possible
+FOR i := 0 TO 9 BY 1 DO
+	
+	Udp.CyclicUpdate();
+	
+	PacketProcessor.CyclicUpdate();
+	
+	CASE State OF
+		
+		0:
+		
+			CurrentEspUID := 0;
+		
+			CurrentEsp := 0;
+			
+			CurrentUpdater := 0;
+			
+			hr := PacketProcessor.TryFindPacketInBuffer(ReceivedPacketType, ReceivedPacketAddress, ReceivedPacketLength);
+			
+			IF hr = S_OK THEN
+				
+				State := 1;
+				
+			ELSIF hr <> S_PENDING THEN
+				
+				EXIT;
+				
+			END_IF
+			
+			
+			
+		1:
+		
+			CurrentUpdater := UpdaterRegistry.ResolveUpdater(ReceivedPacketType, 1);
+			
+			IF CurrentUpdater = 0 THEN
+				
+				;// ERROR
+				
+			END_IF
+			
+			State := 2;
+			
+		
+		
+		2:
+		
+			CurrentEspUID := PacketProcessor.GetPacketUID();
+			
+			IF CurrentEspUID = 0 THEN
+				
+				;// ERROR
+				
+			END_IF
+			
+			State := 3;
+			
+			
+			
+		3:
+		
+			FOR j := 1 TO List.GetListLength() BY 1 DO
+			
+				TempEspPtr := List.GetNode(j).GetMyPointer();
+			
+				CurrentEsp := TempEspPtr^;
+				
+				IF CurrentEspUid = CurrentEsp.Uid THEN
+					
+					FoundEsp := TRUE;
+					
+					EXIT;
+					
+				END_IF
+				
+			END_FOR
+			
+			IF FoundEsp THEN
+				
+				FoundEsp := FALSE;
+				
+				State := 5;
+				
+			ELSE
+				
+				State := 4;
+				
+			END_IF
+			
+			
+			
+		4:
+			
+			IF List.CreateNode() THEN
+						
+				TempEspPtr := List.GetNode(List.GetListLength()).GetMyPointer();
+				
+				CurrentEsp := TempEspPtr^;
+				
+				CurrentEsp.Uid := CurrentEspUID;
+				
+				CurrentEsp.EspType := ReceivedPacketType;
+				
+				State := 5;
+			
+			END_IF
+		
+		
+		
+		5:
+		
+			hr := CurrentUpdater.TryApplyPayload(ReceivedPacketAddress, ReceivedPacketLength, CurrentEsp);
+			
+			IF hr <> S_PENDING AND SUCCEEDED(hr) THEN
+				
+				PacketProcessor.ClearBufferAtLocation(ReceivedPacketAddress, ReceivedPacketLength);
+				
+				CurrentUpdater.TryGetContents(CurrentEsp, Data);
+				
+				MessageBuffer.AddData(Data);
+				
+				State := 0;
+				
+			END_IF
+			
+	END_CASE
+
+END_FOR
 ]]></ST>
     </Implementation>
   </POU>

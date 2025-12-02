@@ -4,9 +4,13 @@
     <Declaration><![CDATA[PROGRAM MAIN
 VAR
 	Test	: BOOL := FALSE;
+	i		: INT;
 END_VAR]]></Declaration>
     <Implementation>
       <ST><![CDATA[
+i := i + 1;
+
+
 IF Test THEN
 	
 	Tests();

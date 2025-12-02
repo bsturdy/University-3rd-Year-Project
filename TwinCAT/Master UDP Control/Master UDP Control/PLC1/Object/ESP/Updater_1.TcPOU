@@ -3,40 +3,163 @@
   <POU Name="Updater_1" Id="{bd79bccd-023d-4c74-aa4d-f04321d65ae1}" SpecialFunc="None">
     <Declaration><![CDATA[FUNCTION_BLOCK Updater_1 IMPLEMENTS ITF_Updater
 VAR CONSTANT
-    TestTypeId  	: BYTE := 1;
-    TestVersion 	: BYTE := 1;
+    PacketID  				: BYTE := 1;
+    PacketVersion 			: BYTE := 1;
+	PacketSize				: BYTE := 66;
 END_VAR
 VAR
-	
+	TempBuffer				: ARRAY [0..PacketSize - 1] OF BYTE;	
+
+	ApplyOkCount            : UDINT;
+    ApplyLengthErrorCount   : UDINT;
+    ApplyBufferTooSmall     : UDINT;
 END_VAR
 ]]></Declaration>
     <Implementation>
       <ST><![CDATA[]]></ST>
     </Implementation>
-    <Method Name="ApplyPayload" Id="{ddc6e7b4-b65e-41a4-8326-cf3a5a73d169}">
-      <Declaration><![CDATA[{warning 'Add method implementation '}
-METHOD ApplyPayload : BYTE
+    <Folder Name="ITF_Updater" Id="{dff51703-c49a-4fcb-b6fc-3de4a0a9c731}" />
+    <Method Name="GetTypeID" Id="{509ff72a-6577-43fb-95d5-49f461ecdabc}" FolderPath="ITF_Updater\">
+      <Declaration><![CDATA[METHOD GetTypeID : BYTE
+]]></Declaration>
+      <Implementation>
+        <ST><![CDATA[GetTypeID := PacketID;]]></ST>
+      </Implementation>
+    </Method>
+    <Method Name="GetVersion" Id="{3d91a00b-8b56-4dc7-bcda-df8b40561b35}" FolderPath="ITF_Updater\">
+      <Declaration><![CDATA[METHOD GetVersion : BYTE
+]]></Declaration>
+      <Implementation>
+        <ST><![CDATA[GetVersion := PacketVersion;]]></ST>
+      </Implementation>
+    </Method>
+    <Method Name="TryApplyPayload" Id="{ddc6e7b4-b65e-41a4-8326-cf3a5a73d169}" FolderPath="ITF_Updater\">
+      <Declaration><![CDATA[METHOD TryApplyPayload : HRESULT
 VAR_INPUT
 	PacketAddress	: PVOID;
 	PacketLength	: UINT;
-	EspHost	: ITF_EspHost;
+	EspHost			: ITF_EspHost;
 END_VAR
-]]></Declaration>
+VAR
+    BufferAddress : PVOID;
+    BufferSize    : UDINT;
+END_VAR]]></Declaration>
       <Implementation>
-        <ST><![CDATA[]]></ST>
+        <ST><![CDATA[TryApplyPayload := S_PENDING;
+
+IF PacketLength <> PacketSize THEN
+	
+    ApplyLengthErrorCount := ApplyLengthErrorCount + 1;
+	
+	TryApplyPayload := -1;
+	
+	RETURN;
+	
+END_IF
+
+IF NOT EspHost.GetDataBuffer(BufferAddress, BufferSize) THEN
+	
+	TryApplyPayload := -2;
+
+    RETURN;
+	
+END_IF
+
+IF PacketLength > BufferSize THEN
+	
+    ApplyBufferTooSmall := ApplyBufferTooSmall + 1;
+	
+    TryApplyPayload := -3;
+    
+	RETURN;
+
+END_IF
+
+
+
+MEMCPY(BufferAddress, PacketAddress, PacketLength);
+
+ApplyOkCount := ApplyOkCount + 1;
+
+TryApplyPayload := S_OK;          // success
+
+RETURN;
+]]></ST>
       </Implementation>
     </Method>
-    <Method Name="GetTypeID" Id="{509ff72a-6577-43fb-95d5-49f461ecdabc}">
-      <Declaration><![CDATA[{warning 'Add method implementation '}
-METHOD GetTypeID : BYTE
-]]></Declaration>
+    <Method Name="TryGetContents" Id="{f327ca8a-76cb-444c-8ebc-989c3d6d118d}" FolderPath="ITF_Updater\">
+      <Declaration><![CDATA[METHOD TryGetContents : HRESULT
+VAR_INPUT
+	Host	: ITF_EspHost;
+	Content	: REFERENCE TO STRING(1024);
+END_VAR
+VAR
+    BufferAddress 	: PVOID;
+    BufferSize   	: UDINT;
+	td9 			: ULINT;
+END_VAR]]></Declaration>
       <Implementation>
-        <ST><![CDATA[]]></ST>
+        <ST><![CDATA[TryGetContents := S_PENDING;
+
+Content := '{"Error" : "No_Data_Available"}';
+
+IF NOT Host.GetDataBuffer(BufferAddress, BufferSize) THEN
+
+	TryGetContents := -1;	
+
+    RETURN;
+	
+END_IF
+
+IF MEMCPY(ADR(TempBuffer), BufferAddress, BufferSize) <= 0 THEN
+	
+	TryGetContents := -2;
+	
+	RETURN;
+
+END_IF
+
+Content := '';
+
+Content := CONCAT(Content, '{"Test_Data_1" : ');
+Content := CONCAT(Content, TO_STRING(TempBuffer[48]));
+Content := CONCAT(Content, ', "Test_Data_2" : ');
+Content := CONCAT(Content, TO_STRING(TempBuffer[49]));
+Content := CONCAT(Content, ', "Test_Data_3" : ');
+Content := CONCAT(Content, TO_STRING(TempBuffer[50]));
+Content := CONCAT(Content, ', "Test_Data_4" : ');
+Content := CONCAT(Content, TO_STRING(TempBuffer[51]));
+Content := CONCAT(Content, ', "Test_Data_5" : ');
+Content := CONCAT(Content, TO_STRING(TempBuffer[52]));
+Content := CONCAT(Content, ', "Test_Data_6" : ');
+Content := CONCAT(Content, TO_STRING(TempBuffer[53]));
+Content := CONCAT(Content, ', "Test_Data_7" : ');
+Content := CONCAT(Content, TO_STRING(TempBuffer[54]));
+Content := CONCAT(Content, ', "Test_Data_8" : ');
+Content := CONCAT(Content, TO_STRING(TempBuffer[55]));
+
+td9 := (TempBuffer[56]);
+td9 := SHL(td9, 8) OR (TempBuffer[57]);
+td9 := SHL(td9, 8) OR (TempBuffer[58]);
+td9 := SHL(td9, 8) OR (TempBuffer[59]);
+td9 := SHL(td9, 8) OR (TempBuffer[60]);
+td9 := SHL(td9, 8) OR (TempBuffer[61]);
+td9 := SHL(td9, 8) OR (TempBuffer[62]);
+td9 := SHL(td9, 8) OR (TempBuffer[63]);
+
+Content := CONCAT(Content, ', "Test_Data_9" : ');
+Content := CONCAT(Content, TO_STRING(td9));
+Content := CONCAT(Content, '}');
+
+TryGetContents := S_OK;
+
+RETURN;
+]]></ST>
       </Implementation>
     </Method>
-    <Method Name="GetVersion" Id="{3d91a00b-8b56-4dc7-bcda-df8b40561b35}">
+    <Method Name="TrySendInstruction" Id="{2fb1adb3-7a93-42a3-89c8-dde3be6bb528}" FolderPath="ITF_Updater\">
       <Declaration><![CDATA[{warning 'Add method implementation '}
-METHOD GetVersion : BYTE
+METHOD TrySendInstruction : HRESULT
 ]]></Declaration>
       <Implementation>
         <ST><![CDATA[]]></ST>
