@@ -1,7 +1,7 @@
 ﻿<?xml version="1.0" encoding="utf-8"?>
 <TcPlcObject Version="1.1.0.1">
-  <POU Name="Updater_1" Id="{bd79bccd-023d-4c74-aa4d-f04321d65ae1}" SpecialFunc="None">
-    <Declaration><![CDATA[FUNCTION_BLOCK Updater_1 IMPLEMENTS ITF_Updater
+  <POU Name="Updater_TestPacket" Id="{bd79bccd-023d-4c74-aa4d-f04321d65ae1}" SpecialFunc="None">
+    <Declaration><![CDATA[FUNCTION_BLOCK Updater_TestPacket IMPLEMENTS ITF_Updater
 VAR CONSTANT
     PacketID  				: BYTE := 1;
     PacketVersion 			: BYTE := 1;

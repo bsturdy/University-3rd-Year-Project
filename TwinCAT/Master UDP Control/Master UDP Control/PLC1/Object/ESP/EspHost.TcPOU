@@ -13,11 +13,8 @@ VAR
 	
 	
 	// ESP information
-	_ObjectId					: ULINT;
-	_EspType					: BYTE;
+	_Data						: EspPacketHeader;
 	_PacketsReceivedCount		: ULINT;
-	_LastReceivedTimer			: TON;
-	_DistanceFromMaster			: BYTE;	
 	_DataBuffer					: ARRAY [0..511] OF BYTE;
 	
 END_VAR
@@ -27,39 +24,6 @@ END_VAR
     </Implementation>
     <Folder Name="ITF_EspHost" Id="{3e1ad894-296e-4a6b-bccd-5c988016ec11}" />
     <Folder Name="ITF_Node" Id="{1137c9b1-75b7-4fc7-8824-f307a94e0aea}" />
-    <Method Name="CyclicUpdate" Id="{bd38af97-0931-41e0-88e6-255853f43dce}" FolderPath="ITF_EspHost\">
-      <Declaration><![CDATA[{warning 'Add method implementation '}
-METHOD CyclicUpdate : BOOL
-]]></Declaration>
-      <Implementation>
-        <ST><![CDATA[_LastReceivedTimer(PT := T#5S);
-]]></ST>
-      </Implementation>
-    </Method>
-    <Property Name="EspType" Id="{6738a0fd-73da-44bb-a785-c6cd17b6a34f}" FolderPath="ITF_EspHost\">
-      <Declaration><![CDATA[PROPERTY EspType : BYTE
-]]></Declaration>
-      <Get Name="Get" Id="{1bf2efe6-15cb-4272-8e5f-4e17334e5d53}">
-        <Declaration><![CDATA[VAR
-END_VAR
-]]></Declaration>
-        <Implementation>
-          <ST><![CDATA[EspType := _EspType;]]></ST>
-        </Implementation>
-      </Get>
-      <Set Name="Set" Id="{ffa07b3b-eb0a-4adb-86d8-b806f7e88513}">
-        <Declaration><![CDATA[VAR
-END_VAR
-]]></Declaration>
-        <Implementation>
-          <ST><![CDATA[IF _EspType = 0 THEN
-	
-	_EspType := EspType;
-
-END_IF]]></ST>
-        </Implementation>
-      </Set>
-    </Property>
     <Method Name="GetDataBuffer" Id="{2ac55e4a-5e5d-4e04-a89a-b3b9e95a64dd}" FolderPath="ITF_EspHost\">
       <Declaration><![CDATA[METHOD GetDataBuffer : BOOL
 VAR_INPUT
@@ -81,6 +45,15 @@ GetDataBuffer := TRUE;]]></ST>
         <ST><![CDATA[GetLastNode := _LastNode;
 
 RETURN;]]></ST>
+      </Implementation>
+    </Method>
+    <Method Name="GetMetadata" Id="{7f6446d0-88f1-47cd-8cb9-c3796e759e00}" FolderPath="ITF_EspHost\">
+      <Declaration><![CDATA[METHOD GetMetadata : EspPacketHeader
+VAR_INPUT
+END_VAR
+]]></Declaration>
+      <Implementation>
+        <ST><![CDATA[GetMetadata := _Data;]]></ST>
       </Implementation>
     </Method>
     <Method Name="GetMyPointer" Id="{278de2df-56c5-465c-bf04-1733d5508c6f}" FolderPath="ITF_Node\">
@@ -108,75 +81,23 @@ RETURN;]]></ST>
 RETURN;]]></ST>
       </Implementation>
     </Method>
-    <Method Name="HasTimedOut" Id="{603925a8-3f9a-4299-b307-beb68e1cd417}" FolderPath="ITF_EspHost\">
-      <Declaration><![CDATA[METHOD HasTimedOut : BOOL
-]]></Declaration>
-      <Implementation>
-        <ST><![CDATA[IF _LastReceivedTimer.Q THEN
-	
-	HasTimedOut := TRUE;
-	
-ELSE
-	
-	HasTimedOut := FALSE;
-
-END_IF]]></ST>
-      </Implementation>
-    </Method>
-    <Method Name="InjectPacket" Id="{70725518-e03a-4fc2-bc25-6938d63691fd}" FolderPath="ITF_EspHost\">
-      <Declaration><![CDATA[{warning 'Add method implementation '}
-METHOD InjectPacket : BOOL
+    <Method Name="SetEspType" Id="{1c42e45e-5780-4704-8339-02500e9ebdcb}" FolderPath="ITF_EspHost\">
+      <Declaration><![CDATA[METHOD SetEspType : BOOL
 VAR_INPUT
-	PacketType	: BYTE;
-	PacketAdr	: PVOID;
-	PacketLen	: UDINT;
-END_VAR
-VAR
-	
+	EspType	: BYTE;
 END_VAR]]></Declaration>
       <Implementation>
-        <ST><![CDATA[
-CASE PacketType OF
+        <ST><![CDATA[IF _Data.EspType = 0 THEN
 	
-	0:
+	_Data.EspType := EspType;
 	
-	1:
-	
-// 		_PacketsReceivedCount := _PacketsReceivedCount + 1;
-// 	
-// 		MEMCPY(ADR(_Payload1), PacketAdr, PacketLen);
-// 		
-// 		InjectPacket := TRUE;
+	SetEspType := TRUE;
 
+END_IF
 
-
-END_CASE
-
-
-]]></ST>
+RETURN;]]></ST>
       </Implementation>
     </Method>
-    <Property Name="PacketsReceived" Id="{1004878e-e09d-4d3a-a68d-5c1688ca98fe}" FolderPath="ITF_EspHost\">
-      <Declaration><![CDATA[{warning 'Add property implementation'}
-PROPERTY PacketsReceived : ULINT
-]]></Declaration>
-      <Get Name="Get" Id="{1ebebfe9-85c0-4d64-8f07-1fc763760c90}">
-        <Declaration><![CDATA[VAR
-END_VAR
-]]></Declaration>
-        <Implementation>
-          <ST><![CDATA[PacketsReceived := THIS^._PacketsReceivedCount;]]></ST>
-        </Implementation>
-      </Get>
-      <Set Name="Set" Id="{1068f119-a0ad-4960-b007-c8dae36816f7}">
-        <Declaration><![CDATA[VAR
-END_VAR
-]]></Declaration>
-        <Implementation>
-          <ST><![CDATA[]]></ST>
-        </Implementation>
-      </Set>
-    </Property>
     <Method Name="SetLastNode" Id="{c5dd63a9-ada1-4b64-97ef-df115a746a4e}" FolderPath="ITF_Node\">
       <Declaration><![CDATA[METHOD SetLastNode : BOOL
 VAR_INPUT
@@ -218,31 +139,50 @@ SetPositionInList := TRUE;
 RETURN;]]></ST>
       </Implementation>
     </Method>
-    <Property Name="Uid" Id="{8c151426-fdc1-4292-aeff-50fb5feba438}" FolderPath="ITF_EspHost\">
-      <Declaration><![CDATA[{warning 'Add property implementation'}
-PROPERTY Uid : ULINT
-]]></Declaration>
-      <Get Name="Get" Id="{10c3a14d-374b-43eb-826b-11fbe9d89326}">
-        <Declaration><![CDATA[VAR
-END_VAR
-]]></Declaration>
-        <Implementation>
-          <ST><![CDATA[Uid := THIS^._ObjectId;]]></ST>
-        </Implementation>
-      </Get>
-      <Set Name="Set" Id="{faef1185-67a9-4f19-9e8f-404f70500a9d}">
-        <Declaration><![CDATA[VAR
-END_VAR
-]]></Declaration>
-        <Implementation>
-          <ST><![CDATA[IF THIS^._ObjectId = 0 THEN
-
-	THIS^._ObjectId := Uid;	
+    <Method Name="SetUID" Id="{518ae377-b86c-4bdb-ac7b-f06adc4eba5e}" FolderPath="ITF_EspHost\">
+      <Declaration><![CDATA[METHOD SetUID : BOOL
+VAR_INPUT
+	UID	: ULINT;
+END_VAR]]></Declaration>
+      <Implementation>
+        <ST><![CDATA[IF _Data.SlaveUid = 0 THEN
+	
+	_Data.SlaveUid := UID;
+	
+	SetUID := TRUE;
 
 END_IF
+
+RETURN;]]></ST>
+      </Implementation>
+    </Method>
+    <Method Name="UpdateMetadata" Id="{139b3c3d-2898-4d80-819a-1c7ff810c5c8}" FolderPath="ITF_EspHost\">
+      <Declaration><![CDATA[{warning 'Add method implementation '}
+METHOD UpdateMetadata : BOOL
+VAR_INPUT
+	Data	: EspPacketHeader;
+END_VAR
+]]></Declaration>
+      <Implementation>
+        <ST><![CDATA[IF Data.SendersTimestamp <> 0 THEN
+	
+	_Data.SendersTimestamp := Data.SendersTimestamp;
+
+END_IF
+
+IF Data.TimeDifference <> 0 THEN
+	
+	_Data.TimeDifference := Data.TimeDifference;
+
+END_IF
+
+UpdateMetadata := TRUE;
+
+_PacketsReceivedCount := _PacketsReceivedCount + 1;
+
+RETURN;
 ]]></ST>
-        </Implementation>
-      </Set>
-    </Property>
+      </Implementation>
+    </Method>
   </POU>
 </TcPlcObject>

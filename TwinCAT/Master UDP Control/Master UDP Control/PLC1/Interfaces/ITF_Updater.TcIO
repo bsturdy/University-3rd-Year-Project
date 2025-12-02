@@ -15,6 +15,18 @@ VAR_INPUT
 END_VAR
 ]]></Declaration>
     </Method>
+    <Method Name="SetSenderTimestamp" Id="{7336ed7e-a0c5-4c6d-a463-70189b36404b}">
+      <Declaration><![CDATA[METHOD SetSenderTimestamp : BOOL
+VAR_INPUT
+END_VAR
+]]></Declaration>
+    </Method>
+    <Method Name="SetTimeDifference" Id="{c905b475-5030-446d-b4ac-81e4f17b9636}">
+      <Declaration><![CDATA[METHOD SetTimeDifference : BOOL
+VAR_INPUT
+END_VAR
+]]></Declaration>
+    </Method>
     <Method Name="TryApplyPayload" Id="{62f62d39-4422-4e09-9635-584ba5e34fa0}">
       <Declaration><![CDATA[METHOD TryApplyPayload : HRESULT
 VAR_INPUT

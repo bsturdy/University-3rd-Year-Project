@@ -17,7 +17,7 @@ END_VAR
       <ST><![CDATA[]]></ST>
     </Implementation>
     <Folder Name="ITF_UpdaterRegistry" Id="{66de9967-bc2d-4455-9a7d-5d748881a2e2}" />
-    <Method Name="Reset" Id="{c9ff6b3a-2717-41c6-8c35-809051dbcff3}">
+    <Method Name="Reset" Id="{c9ff6b3a-2717-41c6-8c35-809051dbcff3}" FolderPath="ITF_UpdaterRegistry\">
       <Declaration><![CDATA[METHOD Reset : BOOL
 VAR
 	i		: BYTE;
@@ -40,7 +40,7 @@ ResolveMissExactCount := 0;
 ResolveMissTypeCount := 0;]]></ST>
       </Implementation>
     </Method>
-    <Method Name="ResolveUpdater" Id="{a4c4544e-bc6a-4280-96e1-c09802842dca}">
+    <Method Name="ResolveUpdater" Id="{a4c4544e-bc6a-4280-96e1-c09802842dca}" FolderPath="ITF_UpdaterRegistry\">
       <Declaration><![CDATA[METHOD ResolveUpdater : ITF_Updater
 VAR_INPUT
 	TypeID	: BYTE;
@@ -87,7 +87,7 @@ RETURN;
 ]]></ST>
       </Implementation>
     </Method>
-    <Method Name="TryRegister" Id="{9216fb04-aae8-485e-9e4d-2b8fc43f2c04}">
+    <Method Name="TryRegister" Id="{9216fb04-aae8-485e-9e4d-2b8fc43f2c04}" FolderPath="ITF_UpdaterRegistry\">
       <Declaration><![CDATA[METHOD TryRegister : HRESULT
 VAR_INPUT
 	Updater	: ITF_Updater;

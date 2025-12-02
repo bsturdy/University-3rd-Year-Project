@@ -1,9 +1,9 @@
 ﻿<?xml version="1.0" encoding="utf-8"?>
 <TcPlcObject Version="1.1.0.1">
   <POU Name="TailEndianSwap" Id="{b83d4834-125c-4a8f-ba5a-f0b762aa00d5}" SpecialFunc="None">
-    <Declaration><![CDATA[FUNCTION TailEndianSwap : EspUdpEnd
+    <Declaration><![CDATA[FUNCTION TailEndianSwap : EspPacketTerminater
 VAR_INPUT
-	In	: EspUdpEnd;
+	In	: EspPacketTerminater;
 END_VAR
 VAR
 END_VAR

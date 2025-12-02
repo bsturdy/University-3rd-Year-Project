@@ -18,13 +18,10 @@
     <LibraryReferences>{2ec6f3e0-2536-4d2a-94bf-d9c6476a1242}</LibraryReferences>
   </PropertyGroup>
   <ItemGroup>
-    <Compile Include="DUTs\ESP\EspUdpEnd.TcDUT">
+    <Compile Include="DUTs\ESP\EspPacketTerminater.TcDUT">
       <SubType>Code</SubType>
     </Compile>
-    <Compile Include="DUTs\ESP\EspUdpPayload1.TcDUT">
-      <SubType>Code</SubType>
-    </Compile>
-    <Compile Include="DUTs\ESP\EspUdpStart.TcDUT">
+    <Compile Include="DUTs\ESP\EspPacketHeader.TcDUT">
       <SubType>Code</SubType>
     </Compile>
     <Compile Include="DUTs\ESP\UpdaterEntry.TcDUT">
@@ -73,12 +70,6 @@
     <Compile Include="Interfaces\ITF_NodeFactory.TcIO">
       <SubType>Code</SubType>
     </Compile>
-    <Compile Include="Interfaces\ITF_PayloadDecoder.TcIO">
-      <SubType>Code</SubType>
-    </Compile>
-    <Compile Include="Interfaces\ITF_PayloadHandler.TcIO">
-      <SubType>Code</SubType>
-    </Compile>
     <Compile Include="Interfaces\ITF_UdpConnection.TcIO">
       <SubType>Code</SubType>
     </Compile>
@@ -91,22 +82,10 @@
     <Compile Include="Object\ESP\EspHost.TcPOU">
       <SubType>Code</SubType>
     </Compile>
-    <Compile Include="Object\ESP\EspObjectUpdater.TcPOU">
-      <SubType>Code</SubType>
-    </Compile>
-    <Compile Include="Object\ESP\EspPacketProcessor.TcPOU">
-      <SubType>Code</SubType>
-    </Compile>
-    <Compile Include="Object\ESP\EspPayloadDecoder.TcPOU">
-      <SubType>Code</SubType>
-    </Compile>
-    <Compile Include="Object\ESP\EspPayloadRegistery.TcPOU">
-      <SubType>Code</SubType>
-    </Compile>
     <Compile Include="Object\ESP\UpdaterRegistry.TcPOU">
       <SubType>Code</SubType>
     </Compile>
-    <Compile Include="Object\ESP\Updater_1.TcPOU">
+    <Compile Include="Object\ESP\Updater_TestPacket.TcPOU">
       <SubType>Code</SubType>
     </Compile>
     <Compile Include="Object\Factories\EspHostFactory.TcPOU">
@@ -115,7 +94,10 @@
     <Compile Include="Object\IO\RgbController.TcPOU">
       <SubType>Code</SubType>
     </Compile>
-    <Compile Include="Object\List.TcPOU">
+    <Compile Include="Object\Linked List\List.TcPOU">
+      <SubType>Code</SubType>
+    </Compile>
+    <Compile Include="Object\UDP\MetadataDecoder.TcPOU">
       <SubType>Code</SubType>
     </Compile>
     <Compile Include="Object\UDP\UdpRealtimeSocket.TcPOU">
@@ -143,6 +125,9 @@
       <SubType>Code</SubType>
     </Compile>
     <Compile Include="Tasks\Task_4.TcTTO">
+      <SubType>Code</SubType>
+    </Compile>
+    <Compile Include="Tasks\_aux.TcTTO">
       <SubType>Code</SubType>
     </Compile>
     <Compile Include="Tests\EspNodeController.TcPOU">
@@ -178,6 +163,7 @@
     <Folder Include="Object\Factories" />
     <Folder Include="Object\ESP" />
     <Folder Include="Object\IO" />
+    <Folder Include="Object\Linked List" />
     <Folder Include="Object\UDP" />
     <Folder Include="Tests">
       <ExcludeFromBuild>false</ExcludeFromBuild>

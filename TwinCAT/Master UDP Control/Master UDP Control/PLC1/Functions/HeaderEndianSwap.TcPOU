@@ -1,9 +1,9 @@
 ﻿<?xml version="1.0" encoding="utf-8"?>
 <TcPlcObject Version="1.1.0.1">
   <POU Name="HeaderEndianSwap" Id="{ceabc220-fd15-4dc0-b93e-ab2b6f583046}" SpecialFunc="None">
-    <Declaration><![CDATA[FUNCTION HeaderEndianSwap : EspUdpStart
+    <Declaration><![CDATA[FUNCTION HeaderEndianSwap : EspPacketHeader
 VAR_INPUT
-	In	: EspUdpStart;
+	In	: EspPacketHeader;
 END_VAR
 VAR
 END_VAR

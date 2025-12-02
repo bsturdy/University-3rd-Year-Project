@@ -3,21 +3,6 @@
   <Itf Name="ITF_EspHost" Id="{abc0fd08-8675-407a-972a-8d22e58329f4}">
     <Declaration><![CDATA[INTERFACE ITF_EspHost
 ]]></Declaration>
-    <Method Name="CyclicUpdate" Id="{54038f61-fd98-4d8d-846d-aa9ba39adb0e}">
-      <Declaration><![CDATA[METHOD CyclicUpdate : BOOL
-VAR_INPUT
-END_VAR
-]]></Declaration>
-    </Method>
-    <Property Name="EspType" Id="{82509193-2a51-4363-a922-faea65b44f6c}">
-      <Declaration><![CDATA[PROPERTY EspType : BYTE]]></Declaration>
-      <Get Name="Get" Id="{3e72e1d6-28b3-4b63-9298-12638ba6aee0}">
-        <Declaration><![CDATA[]]></Declaration>
-      </Get>
-      <Set Name="Set" Id="{c6060686-6a71-4a5d-8a16-52ac7e53af77}">
-        <Declaration><![CDATA[]]></Declaration>
-      </Set>
-    </Property>
     <Method Name="GetDataBuffer" Id="{8da7ba6e-02ea-4334-8c55-9511c73189e8}">
       <Declaration><![CDATA[METHOD GetDataBuffer : BOOL
 VAR_INPUT
@@ -26,35 +11,31 @@ VAR_INPUT
 END_VAR
 ]]></Declaration>
     </Method>
-    <Method Name="HasTimedOut" Id="{d2b1e08d-b6db-4415-8ef2-87cf9616a599}">
-      <Declaration><![CDATA[METHOD HasTimedOut : BOOL
+    <Method Name="GetMetadata" Id="{092453f9-bdfc-451c-9a98-2b2b149e9714}">
+      <Declaration><![CDATA[METHOD GetMetadata : EspPacketHeader
 VAR_INPUT
 END_VAR
 ]]></Declaration>
     </Method>
-    <Method Name="InjectPacket" Id="{b9ec20d7-1d36-4c20-8795-46a70a0f05a6}">
-      <Declaration><![CDATA[METHOD InjectPacket : BOOL
+    <Method Name="SetEspType" Id="{e3c007f5-3d89-4e0e-a60d-918d2cfb4649}">
+      <Declaration><![CDATA[METHOD SetEspType : BOOL
 VAR_INPUT
-	PacketType	: BYTE;
-	PacketAdr	: PVOID;
-	PacketLen	: UDINT;
+	EspType	: BYTE;
+END_VAR]]></Declaration>
+    </Method>
+    <Method Name="SetUID" Id="{be2bad33-45cb-4a7d-89f3-5afa2d7f7753}">
+      <Declaration><![CDATA[METHOD SetUID : BOOL
+VAR_INPUT
+	UID	: ULINT;
 END_VAR
 ]]></Declaration>
     </Method>
-    <Property Name="PacketsReceived" Id="{63060259-1f1b-46eb-b4f2-8a41fa8b4509}">
-      <Declaration><![CDATA[PROPERTY PacketsReceived : ULINT]]></Declaration>
-      <Get Name="Get" Id="{77538af4-39dc-4377-8fa2-77c8ad35ea2c}">
-        <Declaration><![CDATA[]]></Declaration>
-      </Get>
-    </Property>
-    <Property Name="Uid" Id="{42e2b9b4-be55-4d58-9068-905f7e39593b}">
-      <Declaration><![CDATA[PROPERTY Uid : ULINT]]></Declaration>
-      <Get Name="Get" Id="{58940bcb-cded-41bc-8b3b-338ef233e20e}">
-        <Declaration><![CDATA[]]></Declaration>
-      </Get>
-      <Set Name="Set" Id="{ba81bfb7-eb32-43ad-bc4e-dadda5364d4d}">
-        <Declaration><![CDATA[]]></Declaration>
-      </Set>
-    </Property>
+    <Method Name="UpdateMetadata" Id="{f63b2cb9-24e9-4405-8a20-3118827fa9aa}">
+      <Declaration><![CDATA[METHOD UpdateMetadata : BOOL
+VAR_INPUT
+	Data	: EspPacketHeader;
+END_VAR
+]]></Declaration>
+    </Method>
   </Itf>
 </TcPlcObject>

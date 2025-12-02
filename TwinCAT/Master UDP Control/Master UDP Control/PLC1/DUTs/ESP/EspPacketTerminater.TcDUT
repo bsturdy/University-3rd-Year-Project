@@ -1,7 +1,7 @@
 ﻿<?xml version="1.0" encoding="utf-8"?>
 <TcPlcObject Version="1.1.0.1">
-  <DUT Name="EspUdpEnd" Id="{1d30ec86-e764-47bf-8dc3-ba27221ffe59}">
-    <Declaration><![CDATA[TYPE EspUdpEnd :
+  <DUT Name="EspPacketTerminater" Id="{1d30ec86-e764-47bf-8dc3-ba27221ffe59}">
+    <Declaration><![CDATA[TYPE EspPacketTerminater :
 STRUCT
 	EndDelimiter			: UINT := 859;
 END_STRUCT

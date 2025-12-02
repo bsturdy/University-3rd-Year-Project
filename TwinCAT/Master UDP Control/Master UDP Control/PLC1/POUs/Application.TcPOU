@@ -10,9 +10,9 @@ VAR
 	EspFactory				: EspHostFactory;
 	List					: List(EspFactory);
 	
-	PacketProcessor			: EspPacketProcessor(Udp, List);
+	MetadataDecoder			: MetadataDecoder(Udp, List);
 	UpdaterRegistry			: UpdaterRegistry;
-	TestUpdater				: Updater_1;
+	TestUpdater				: Updater_TestPacket;
 	
 	Init					: BOOL;
 	i						: BYTE;
@@ -20,13 +20,13 @@ VAR
 	State					: BYTE;
 	hr						: HRESULT;
 	FoundEsp				: BOOL;
-	Data					: STRING(1024);
 	
-	CurrentEspUID			: ULINT;
-	TempEspPtr				: POINTER TO EspHost;
+	TargetEspUID			: ULINT;
+	CurrentEspPtr			: POINTER TO EspHost;
 	CurrentEsp				: ITF_EspHost;
+	CurrentEspMetadata		: EspPacketHeader;
 	CurrentUpdater			: ITF_Updater;
-		
+	
 	ReceivedPacketType		: BYTE;
 	ReceivedPacketAddress	: PVOID;
 	ReceivedPacketLength	: UINT;
@@ -59,19 +59,11 @@ FOR i := 0 TO 9 BY 1 DO
 	
 	Udp.CyclicUpdate();
 	
-	PacketProcessor.CyclicUpdate();
-	
 	CASE State OF
 		
 		0:
-		
-			CurrentEspUID := 0;
-		
-			CurrentEsp := 0;
 			
-			CurrentUpdater := 0;
-			
-			hr := PacketProcessor.TryFindPacketInBuffer(ReceivedPacketType, ReceivedPacketAddress, ReceivedPacketLength);
+			hr := MetadataDecoder.TryFindPacketInBuffer(ReceivedPacketType, ReceivedPacketAddress, ReceivedPacketLength);
 			
 			IF hr = S_OK THEN
 				
@@ -101,9 +93,9 @@ FOR i := 0 TO 9 BY 1 DO
 		
 		2:
 		
-			CurrentEspUID := PacketProcessor.GetPacketUID();
+			TargetEspUID := MetadataDecoder.GetPacketUID();
 			
-			IF CurrentEspUID = 0 THEN
+			IF TargetEspUID = 0 THEN
 				
 				;// ERROR
 				
@@ -117,11 +109,13 @@ FOR i := 0 TO 9 BY 1 DO
 		
 			FOR j := 1 TO List.GetListLength() BY 1 DO
 			
-				TempEspPtr := List.GetNode(j).GetMyPointer();
+				CurrentEspPtr := List.GetNode(j).GetMyPointer();
 			
-				CurrentEsp := TempEspPtr^;
+				CurrentEsp := CurrentEspPtr^;
 				
-				IF CurrentEspUid = CurrentEsp.Uid THEN
+				CurrentEspMetadata := CurrentEsp.GetMetadata();
+				
+				IF TargetEspUID = CurrentEspMetadata.SlaveUid THEN
 					
 					FoundEsp := TRUE;
 					
@@ -149,13 +143,13 @@ FOR i := 0 TO 9 BY 1 DO
 			
 			IF List.CreateNode() THEN
 						
-				TempEspPtr := List.GetNode(List.GetListLength()).GetMyPointer();
+				CurrentEspPtr := List.GetNode(List.GetListLength()).GetMyPointer();
 				
-				CurrentEsp := TempEspPtr^;
+				CurrentEsp := CurrentEspPtr^;
 				
-				CurrentEsp.Uid := CurrentEspUID;
+				CurrentEsp.SetUID(TargetEspUID);
 				
-				CurrentEsp.EspType := ReceivedPacketType;
+				CurrentEsp.SetEspType(ReceivedPacketType);
 				
 				State := 5;
 			
@@ -169,11 +163,19 @@ FOR i := 0 TO 9 BY 1 DO
 			
 			IF hr <> S_PENDING AND SUCCEEDED(hr) THEN
 				
-				PacketProcessor.ClearBufferAtLocation(ReceivedPacketAddress, ReceivedPacketLength);
+				CurrentEsp.UpdateMetadata(MetadataDecoder.CreateMetadataUpdate());
 				
-				CurrentUpdater.TryGetContents(CurrentEsp, Data);
+				MetadataDecoder.ClearBufferAtLocation(ReceivedPacketAddress, ReceivedPacketLength);
 				
-				MessageBuffer.AddData(Data);
+				ReceivedPacketAddress := 0;
+				ReceivedPacketLength := 0;
+				ReceivedPacketType := 0;
+			
+				TargetEspUID := 0;
+				CurrentEspPtr := 0;	
+				CurrentEsp := 0;
+				MEMSET(ADR(CurrentEspMetadata), 0, SIZEOF(CurrentEspMetadata));
+				CurrentUpdater := 0;
 				
 				State := 0;
 				

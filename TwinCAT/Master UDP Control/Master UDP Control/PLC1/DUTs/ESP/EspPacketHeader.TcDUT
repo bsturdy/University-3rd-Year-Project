@@ -1,7 +1,7 @@
 ﻿<?xml version="1.0" encoding="utf-8"?>
 <TcPlcObject Version="1.1.0.1">
-  <DUT Name="EspUdpStart" Id="{7619e575-9c28-4376-aefd-1b848b7eb091}">
-    <Declaration><![CDATA[TYPE EspUdpStart :
+  <DUT Name="EspPacketHeader" Id="{7619e575-9c28-4376-aefd-1b848b7eb091}">
+    <Declaration><![CDATA[TYPE EspPacketHeader :
 STRUCT
 	StartDelimiter			: UINT := 693;
 	PayloadSize				: UINT;
@@ -11,7 +11,7 @@ STRUCT
 	SendersTimestamp		: ULINT;
 	TimeDifference			: UDINT;
 	NumberOfChainedSLaves	: BYTE;
-	MessageType				: BYTE;
+	EspType					: BYTE;
 	Flags					: BYTE;
 	HeaderVersion			: BYTE;
 	NetworkId				: BYTE;
