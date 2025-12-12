@@ -1,0 +1,10 @@
+menu "Device Configuration"
+
+config ESP_NODE_UID
+    hex "Node unique ID (64-bit hex)"
+    default 0x0000000000000001
+    help
+        64-bit unique ID for this node.
+        Enter as 16 hex digits, e.g. 0x1122334455667788.
+
+endmenu
