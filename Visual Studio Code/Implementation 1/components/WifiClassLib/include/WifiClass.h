@@ -154,51 +154,58 @@ class Station // Singleton
 {
     private:
 
+        // Factory creation only
         friend class WifiFactory;
-
         Station(uint8_t CoreToUse, uint16_t UdpPort, bool EnableRuntimeLogging);
         ~Station();
 
-        //static Station* StaClassInstance;
 
+        // Event handlers
         static void WifiEventHandler(void* arg, esp_event_base_t event_base,
                                     int32_t event_id, void* event_data);
         
         static void IpEventHandler(void* arg, esp_event_base_t event_base,
                                     int32_t event_id, void* event_data);
+                            
+        static void UdpRxTask(void* pvParameters); 
+        TaskHandle_t UdpRxTaskHandle = nullptr;
+
+
+        // Wifi Configuration
+        esp_err_t Error;
+        wifi_init_config_t WifiDriverConfig = WIFI_INIT_CONFIG_DEFAULT();
+        wifi_country_t WifiCountry = {};
+        wifi_config_t WifiServiceConfig = {};
+        esp_netif_t* StaNetif = nullptr;
         
 
-        // UDP Buffer management
-        portMUX_TYPE SlotMux = portMUX_INITIALIZER_UNLOCKED;
-        uint8_t SlotHead  = 0; 
-        uint8_t SlotCount = 0; 
+        // Critical section for data access
+        portMUX_TYPE CriticalSection = portMUX_INITIALIZER_UNLOCKED;
 
-        static void UdpRxTask(void* pvParameters); 
-        UdpSlot BufferSlots[UDP_SLOTS]{};
 
-        TaskHandle_t UdpRxTaskHandle = nullptr;
+        // UDP Buffer
+        uint8_t RxData[1024]{};
+        uint16_t LastPositionWritten = 0;
+        bool DataInBuffer = false;
+
        
+        // UDP helper functions
         bool StartUdp(uint16_t Port, uint8_t Core);
         bool StopUdp();
 
-        esp_netif_t* StaNetif = nullptr;
 
-        bool NvsReady = false;
-        bool NetifReady = false;
-        bool EventLoopReady = false;
-        bool StationInterfaceReady = false;
-        bool WifiStackReady = false;
-        bool CountrySet = false;
-        bool EventHandlersRegistered = false;
-        bool SetWifiModeDone = false;
-        bool ApplyConfigDone = false;
-        bool StartWifiDone = false;
-        bool ApIpAcquired = false;
+        // Internal states
+        uint8_t SetupState = 0;
+        bool SystemInitialized = false;
         bool UdpStarted = false;
+        bool IsConnected = false;
+        bool ApIpAcquired = false;
+        
+       
 
         bool IsRuntimeLoggingEnabled = false;
 
-        bool IsConnected = false;
+        
         WifiDevice ApWifiDevice{};  
 
         int UdpSocket = -1;
@@ -218,7 +225,6 @@ class Station // Singleton
         bool IsConnectedToHost() const { return IsConnected and ApIpAcquired; }
         const char* GetGatewayIpAddress() const { return ApWifiDevice.IpAddress; }
         const char* GetMyIpAddress() const { return MyIpAddress; }
-        int GetNumberOfPacketsInBuffer() const { return SlotCount; }
         void SetRuntimeLogging(bool EnableRuntimeLogging) { IsRuntimeLoggingEnabled = EnableRuntimeLogging; }
 };
 

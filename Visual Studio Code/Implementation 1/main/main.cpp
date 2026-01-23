@@ -111,8 +111,6 @@ extern "C" void app_main(void)
                     WifiSta->GetGatewayIpAddress(),
                     WifiSta->GetMyIpAddress()
                 );
-                printf("\nSlots Filled: %i\n\n",
-                    WifiSta->GetNumberOfPacketsInBuffer());
                 break;
 
 

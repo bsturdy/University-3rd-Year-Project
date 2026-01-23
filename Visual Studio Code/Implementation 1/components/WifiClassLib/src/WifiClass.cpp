@@ -1,5 +1,6 @@
 #include "WifiClass.h"
 #include "esp_wifi_types_generic.h"
+#include "portmacro.h"
 #include <cstddef>
 #include <string.h>
 
@@ -1412,12 +1413,6 @@ bool Station::StartUdp(uint16_t Port, uint8_t Core)
     tv.tv_usec = 1000; // divide by 1000 for milliseconds
     setsockopt(StaClassInstance->UdpSocket, SOL_SOCKET, SO_RCVTIMEO, &tv, sizeof(tv));
 
-    // Reset buffer state
-    portENTER_CRITICAL(&StaClassInstance->SlotMux);
-    StaClassInstance->SlotHead = 0;
-    StaClassInstance->SlotCount = 0;
-    memset(StaClassInstance->BufferSlots, 0, sizeof(StaClassInstance->BufferSlots));
-    portEXIT_CRITICAL(&StaClassInstance->SlotMux);
 
     // Create RX task
     if (xTaskCreatePinnedToCore(&Station::UdpRxTask,
@@ -1460,13 +1455,6 @@ bool Station::StopUdp()
         StaClassInstance->UdpSocket = -1;
     }
 
-    // Clear buffer state
-    portENTER_CRITICAL(&StaClassInstance->SlotMux);
-    StaClassInstance->SlotHead = 0;
-    StaClassInstance->SlotCount = 0;
-    memset(StaClassInstance->BufferSlots, 0, sizeof(StaClassInstance->BufferSlots));
-    portEXIT_CRITICAL(&StaClassInstance->SlotMux);
-
     return true;
 }
 
@@ -1474,7 +1462,8 @@ void Station::UdpRxTask(void* pvParameters)
 {
     (void)pvParameters;
 
-    uint8_t RxBuffer[UDP_SLOT_SIZE];
+    //uint8_t RxBuffer[UDP_SLOT_SIZE];
+    uint8_t TempBuffer[1024];
     sockaddr_in SourceAddr;
     socklen_t AddrLen = sizeof(SourceAddr);
 
@@ -1484,42 +1473,40 @@ void Station::UdpRxTask(void* pvParameters)
         if (!StaClassInstance->UdpStarted) break;
         if (StaClassInstance->UdpSocket < 0) break;
 
+        AddrLen = sizeof(SourceAddr);
+
         int BytesReceived = recvfrom(
             StaClassInstance->UdpSocket,
-            RxBuffer,
-            sizeof(RxBuffer),
+            TempBuffer,
+            sizeof(TempBuffer),
             0,
             (struct sockaddr*)&SourceAddr,
             &AddrLen
         );
-
-        if (BytesReceived > 0 and RxBuffer[0] == 2 and RxBuffer[1] == 181)
+        
+        if (BytesReceived > 0)
         {
-            uint16_t CopyLen = (BytesReceived > UDP_SLOT_SIZE)
-                                ? UDP_SLOT_SIZE
-                                : (uint16_t)BytesReceived;
+            portENTER_CRITICAL(&StaClassInstance->CriticalSection);
 
-            portENTER_CRITICAL(&StaClassInstance->SlotMux);
+            size_t Remaining = sizeof(StaClassInstance->RxData) - StaClassInstance->LastPositionWritten;
 
-            StaClassInstance->BufferSlots[StaClassInstance->SlotHead].len = CopyLen;
-            memcpy(StaClassInstance->BufferSlots[StaClassInstance->SlotHead].data,
-                   RxBuffer,
-                   CopyLen);
+            // Typecast to avoid signed/unsigned comparison
+            size_t n = (size_t)BytesReceived;
 
-            StaClassInstance->SlotHead =
-                (uint8_t)((StaClassInstance->SlotHead + 1) % UDP_SLOTS);
-
-            if (StaClassInstance->SlotCount < UDP_SLOTS)
+            if (n <= Remaining)
             {
-                StaClassInstance->SlotCount++;
+                memcpy(StaClassInstance->RxData + StaClassInstance->LastPositionWritten, TempBuffer, n);
+
+                StaClassInstance->LastPositionWritten += n;
+
+                StaClassInstance->DataInBuffer = (StaClassInstance->LastPositionWritten > 0);
             }
 
-            portEXIT_CRITICAL(&StaClassInstance->SlotMux);
+            portEXIT_CRITICAL(&StaClassInstance->CriticalSection);
         }
-        else
-        {
-            vTaskDelay(1);
-        }
+
+        vTaskDelay(1);
+
     }
 
     vTaskDelete(nullptr);
@@ -1527,183 +1514,188 @@ void Station::UdpRxTask(void* pvParameters)
 
 bool Station::SetupWifi()
 {
-    esp_err_t Err;
-
-    // NVS
-    if (!NvsReady)
+    switch (SetupState) 
     {
-        if (IsRuntimeLoggingEnabled) ESP_LOGW(STA_TAG, "SetupWifi: nvs_flash_init()");
-        Err = nvs_flash_init();
+        case 0: // NVS
+            if (IsRuntimeLoggingEnabled) ESP_LOGW(STA_TAG, "SetupWifi: nvs_flash_init()");
+            Error = nvs_flash_init();
+            if (Error == ESP_ERR_NVS_NO_FREE_PAGES || Error == ESP_ERR_NVS_NEW_VERSION_FOUND)
+            {
+                if (IsRuntimeLoggingEnabled) ESP_LOGW(STA_TAG, "SetupWifi: nvs_flash_erase()");
+                if (nvs_flash_erase() != ESP_OK) return false;
 
-        if (Err == ESP_ERR_NVS_NO_FREE_PAGES || Err == ESP_ERR_NVS_NEW_VERSION_FOUND)
-        {
-            if (IsRuntimeLoggingEnabled) ESP_LOGW(STA_TAG, "SetupWifi: nvs_flash_erase()");
-            if (nvs_flash_erase() != ESP_OK) return false;
+                if (IsRuntimeLoggingEnabled) ESP_LOGW(STA_TAG, "SetupWifi: nvs_flash_init() retry");
+                Error = nvs_flash_init();
+            }
+            if (Error != ESP_OK) return false;
+            if (IsRuntimeLoggingEnabled) ESP_LOGW(STA_TAG, "SetupWifi: NVS ready");
+            SetupState++;
+            break;
 
-            if (IsRuntimeLoggingEnabled) ESP_LOGW(STA_TAG, "SetupWifi: nvs_flash_init() retry");
-            Err = nvs_flash_init();
-        }
+            
 
-        if (Err != ESP_OK) return false;
-        NvsReady = true;
-        if (IsRuntimeLoggingEnabled) ESP_LOGW(STA_TAG, "SetupWifi: NVS ready");
-    }
+        case 1: // Netif
+            if (IsRuntimeLoggingEnabled) ESP_LOGW(STA_TAG, "SetupWifi: esp_netif_init()");
+            if (esp_netif_init() != ESP_OK) return false;
+            if (IsRuntimeLoggingEnabled) ESP_LOGW(STA_TAG, "SetupWifi: Netif ready");
+            SetupState++;
+            break;
 
-    // Netif
-    if (!NetifReady)
-    {
-        if (IsRuntimeLoggingEnabled) ESP_LOGW(STA_TAG, "SetupWifi: esp_netif_init()");
-        if (esp_netif_init() != ESP_OK) return false;
-        NetifReady = true;
-        if (IsRuntimeLoggingEnabled) ESP_LOGW(STA_TAG, "SetupWifi: Netif ready");
-    }
 
-    // Event loop
-    if (!EventLoopReady)
-    {
-        if (IsRuntimeLoggingEnabled) ESP_LOGW(STA_TAG, "SetupWifi: esp_event_loop_create_default()");
-        if (esp_event_loop_create_default() != ESP_OK) return false;
-        EventLoopReady = true;
-        if (IsRuntimeLoggingEnabled) ESP_LOGW(STA_TAG, "SetupWifi: Event loop ready");
-    }
 
-    // Create STA interface
-    if (!StationInterfaceReady)
-    {
-        if (IsRuntimeLoggingEnabled) ESP_LOGW(STA_TAG, "SetupWifi: esp_netif_create_default_wifi_sta()");
-        StaNetif = esp_netif_create_default_wifi_sta();
-        if (StaNetif == nullptr) return false;
-        StationInterfaceReady = true;
-        if (IsRuntimeLoggingEnabled) ESP_LOGW(STA_TAG, "SetupWifi: Station interface ready");
-    }
+        case 2: // Event loop
+            if (IsRuntimeLoggingEnabled) ESP_LOGW(STA_TAG, "SetupWifi: esp_event_loop_create_default()");
+            if (esp_event_loop_create_default() != ESP_OK) return false;
+            if (IsRuntimeLoggingEnabled) ESP_LOGW(STA_TAG, "SetupWifi: Event loop ready");
+            SetupState++;
+            break;
 
-    // Wi-Fi init
-    if (!WifiStackReady)
-    {
-        if (IsRuntimeLoggingEnabled) ESP_LOGW(STA_TAG, "SetupWifi: esp_wifi_init()");
-        wifi_init_config_t Cfg = WIFI_INIT_CONFIG_DEFAULT();
-        if (esp_wifi_init(&Cfg) != ESP_OK) return false;
-        WifiStackReady = true;
-        if (IsRuntimeLoggingEnabled) ESP_LOGW(STA_TAG, "SetupWifi: Wi-Fi stack ready");
-    }
 
-    // Country
-    if (!CountrySet)
-    {
-        if (IsRuntimeLoggingEnabled) ESP_LOGW(STA_TAG, "SetupWifi: esp_wifi_set_country(GB)");
-        wifi_country_t Country = {};
-        memcpy(Country.cc, "GB", 2);
-        Country.schan = 1;
-        Country.nchan = 13;
-        Country.max_tx_power = 20;
-        Country.policy = WIFI_COUNTRY_POLICY_AUTO;
 
-        if (esp_wifi_set_country(&Country) != ESP_OK) return false;
-        CountrySet = true;
-        if (IsRuntimeLoggingEnabled) ESP_LOGW(STA_TAG, "SetupWifi: Country set");
-    }
+        case 3: // Create STA interface
+            if (IsRuntimeLoggingEnabled) ESP_LOGW(STA_TAG, "SetupWifi: esp_netif_create_default_wifi_sta()");
+            StaNetif = esp_netif_create_default_wifi_sta();
+            if (StaNetif == nullptr) return false;
+            if (IsRuntimeLoggingEnabled) ESP_LOGW(STA_TAG, "SetupWifi: Station interface ready");
+            SetupState++;
+            break;
 
-    // Register event handlers
-    if (!EventHandlersRegistered)
-    {
-        if (IsRuntimeLoggingEnabled) ESP_LOGW(STA_TAG, "SetupWifi: register WIFI_EVENT handler");
-        if (esp_event_handler_instance_register(WIFI_EVENT, ESP_EVENT_ANY_ID,
-                                                &Station::WifiEventHandler, nullptr, nullptr) != ESP_OK)
+
+
+        case 4: // Wi-Fi init
+            if (IsRuntimeLoggingEnabled) ESP_LOGW(STA_TAG, "SetupWifi: esp_wifi_init()");
+            if (esp_wifi_init(&WifiDriverConfig) != ESP_OK) return false;
+            if (IsRuntimeLoggingEnabled) ESP_LOGW(STA_TAG, "SetupWifi: Wi-Fi stack ready");
+            SetupState++;
+            break;
+
+
+
+        case 5: // Country
+            if (IsRuntimeLoggingEnabled) ESP_LOGW(STA_TAG, "SetupWifi: esp_wifi_set_country(GB)");
+            memcpy(WifiCountry.cc, "GB", 2);
+            WifiCountry.schan = 1;
+            WifiCountry.nchan = 13;
+            WifiCountry.max_tx_power = 20;
+            WifiCountry.policy = WIFI_COUNTRY_POLICY_AUTO;
+            if (esp_wifi_set_country(&WifiCountry) != ESP_OK) return false;
+            if (IsRuntimeLoggingEnabled) ESP_LOGW(STA_TAG, "SetupWifi: Country set");
+            SetupState++;
+            break;
+
+
+
+        case 6: // Register event handlers
+            if (IsRuntimeLoggingEnabled) ESP_LOGW(STA_TAG, "SetupWifi: register WIFI_EVENT handler");
+            if (esp_event_handler_instance_register(WIFI_EVENT, ESP_EVENT_ANY_ID,
+                                                    &Station::WifiEventHandler, nullptr, nullptr) != ESP_OK)
+                return false;
+            if (IsRuntimeLoggingEnabled) ESP_LOGW(STA_TAG, "SetupWifi: register IP_EVENT handler");
+            if (esp_event_handler_instance_register(IP_EVENT, ESP_EVENT_ANY_ID,
+                                                    &Station::IpEventHandler, nullptr, nullptr) != ESP_OK)
+                return false;
+            if (IsRuntimeLoggingEnabled) ESP_LOGW(STA_TAG, "SetupWifi: Event handlers registered");
+            SetupState++;
+            break;
+
+
+
+        case 7: // Configure STA
+            if (IsRuntimeLoggingEnabled) ESP_LOGW(STA_TAG, "SetupWifi: build wifi_config_t");
+            strncpy((char*)WifiServiceConfig.sta.ssid, CONFIG_ESP_WIFI_SSID, sizeof(WifiServiceConfig.sta.ssid) - 1);
+            strncpy((char*)WifiServiceConfig.sta.password, CONFIG_ESP_WIFI_PASSWORD, sizeof(WifiServiceConfig.sta.password) - 1);
+            WifiServiceConfig.sta.threshold.authmode = WIFI_AUTH_WPA2_PSK;
+            WifiServiceConfig.sta.pmf_cfg.capable = true;
+            WifiServiceConfig.sta.pmf_cfg.required = false;
+            SetupState++;
+            break;
+
+
+
+        case 8: // Set mode
+            if (IsRuntimeLoggingEnabled) ESP_LOGW(STA_TAG, "SetupWifi: esp_wifi_set_mode(STA)");
+            if (esp_wifi_set_mode(WIFI_MODE_STA) != ESP_OK) return false;
+            if (IsRuntimeLoggingEnabled) ESP_LOGW(STA_TAG, "SetupWifi: Wi-Fi mode set");
+            SetupState++;
+            break;
+
+
+
+        case 9: // Apply config
+            if (IsRuntimeLoggingEnabled) ESP_LOGW(STA_TAG, "SetupWifi: esp_wifi_set_config(STA)");
+            if (esp_wifi_set_config(WIFI_IF_STA, &WifiServiceConfig) != ESP_OK) return false;
+            if (IsRuntimeLoggingEnabled) ESP_LOGW(STA_TAG, "SetupWifi: Config applied");
+            SetupState++;
+            break;
+
+
+
+        case 10: // Start Wi-Fi
+            if (IsRuntimeLoggingEnabled) ESP_LOGW(STA_TAG, "SetupWifi: esp_wifi_start()");
+            if (esp_wifi_start() != ESP_OK) return false;
+            if (IsRuntimeLoggingEnabled) ESP_LOGW(STA_TAG, "SetupWifi: Wi-Fi started");
+            SetupState = 100;
+            break;
+
+
+
+        case 100: // Done
+            SystemInitialized = true;
+            break;
+
+
+
+        default:
             return false;
-
-        if (IsRuntimeLoggingEnabled) ESP_LOGW(STA_TAG, "SetupWifi: register IP_EVENT handler");
-        if (esp_event_handler_instance_register(IP_EVENT, ESP_EVENT_ANY_ID,
-                                                &Station::IpEventHandler, nullptr, nullptr) != ESP_OK)
-            return false;
-
-        EventHandlersRegistered = true;
-        if (IsRuntimeLoggingEnabled) ESP_LOGW(STA_TAG, "SetupWifi: Event handlers registered");
+            break;
     }
 
-    // Configure STA
-    if (IsRuntimeLoggingEnabled) ESP_LOGW(STA_TAG, "SetupWifi: build wifi_config_t");
-    wifi_config_t WifiConfig = {};
-    strncpy((char*)WifiConfig.sta.ssid, CONFIG_ESP_WIFI_SSID, sizeof(WifiConfig.sta.ssid) - 1);
-    strncpy((char*)WifiConfig.sta.password, CONFIG_ESP_WIFI_PASSWORD, sizeof(WifiConfig.sta.password) - 1);
-    WifiConfig.sta.threshold.authmode = WIFI_AUTH_WPA2_PSK;
-    WifiConfig.sta.pmf_cfg.capable = true;
-    WifiConfig.sta.pmf_cfg.required = false;
-
-    // Set mode
-    if (!SetWifiModeDone)
+    if (SetupState == 100) 
     {
-        if (IsRuntimeLoggingEnabled) ESP_LOGW(STA_TAG, "SetupWifi: esp_wifi_set_mode(STA)");
-        if (esp_wifi_set_mode(WIFI_MODE_STA) != ESP_OK) return false;
-        SetWifiModeDone = true;
-        if (IsRuntimeLoggingEnabled) ESP_LOGW(STA_TAG, "SetupWifi: Wi-Fi mode set");
+        return true;
     }
-
-    // Apply config
-    if (!ApplyConfigDone)
+    else 
     {
-        if (IsRuntimeLoggingEnabled) ESP_LOGW(STA_TAG, "SetupWifi: esp_wifi_set_config(STA)");
-        if (esp_wifi_set_config(WIFI_IF_STA, &WifiConfig) != ESP_OK) return false;
-        ApplyConfigDone = true;
-        if (IsRuntimeLoggingEnabled) ESP_LOGW(STA_TAG, "SetupWifi: Config applied");
+        return false;
     }
-
-    // Start Wi-Fi
-    if (!StartWifiDone)
-    {
-        if (IsRuntimeLoggingEnabled) ESP_LOGW(STA_TAG, "SetupWifi: esp_wifi_start()");
-        if (esp_wifi_start() != ESP_OK) return false;
-        StartWifiDone = true;
-        if (IsRuntimeLoggingEnabled) ESP_LOGW(STA_TAG, "SetupWifi: Wi-Fi started");
-    }
-
-    // Connection attempt is triggered by WIFI_EVENT_STA_START
-    return true;
 }
+
+
 
 size_t Station::GetDataFromBuffer(bool* IsDataAvailable, uint8_t* DataToReceive)
 {
     if (IsDataAvailable) *IsDataAvailable = false;
     if (!IsDataAvailable || !DataToReceive) return 0;
 
-    size_t outLen = 0;
+    size_t Copied = 0;
 
-    portENTER_CRITICAL(&SlotMux);
+    portENTER_CRITICAL(&CriticalSection);
 
-    // No packets queued
-    if (SlotCount == 0)
+    const size_t Available = LastPositionWritten;
+
+    if (DataInBuffer && Available > 0)
     {
-        portEXIT_CRITICAL(&SlotMux);
-        return 0;
-    }
+        memcpy(DataToReceive, RxData, Available);
 
-    // "Current focus" = oldest filled slot in the ring
-    // Oldest index = (SlotHead - SlotCount) modulo UDP_SLOTS
-    uint8_t readIndex = (uint8_t)((SlotHead + UDP_SLOTS - SlotCount) % UDP_SLOTS);
+        Copied = Available;
 
-    // Copy out
-    uint16_t len = BufferSlots[readIndex].len;
-    if (len > 0)
-    {
-        // If you want hard safety against oversized writes into DataToReceive,
-        // clamp here to your destination size (caller-owned). As-is, assumes caller provides enough space.
-        memcpy(DataToReceive, BufferSlots[readIndex].data, len);
-        outLen = len;
+        LastPositionWritten = 0;
+
+        DataInBuffer = false;
+
         *IsDataAvailable = true;
     }
-
-    // Wipe the slot we just read
-    BufferSlots[readIndex].len = 0;
-    memset(BufferSlots[readIndex].data, 0, sizeof(BufferSlots[readIndex].data));
-
-    // If the "buffer after it" is filled => we had more than 1 queued.
-    // In ring-buffer terms: if SlotCount > 1, advance focus (dequeue exactly one).
-    if (SlotCount > 0)
+    else
     {
-        SlotCount--;
+        DataInBuffer = false;
+
+        LastPositionWritten = 0;
     }
 
-    portEXIT_CRITICAL(&SlotMux);
-    return outLen;
+    portEXIT_CRITICAL(&CriticalSection);
+
+    return Copied;
+
 }
 
 
