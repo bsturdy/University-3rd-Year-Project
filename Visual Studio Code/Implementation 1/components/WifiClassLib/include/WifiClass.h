@@ -17,6 +17,7 @@
 #include "esp_log.h"
 #include "esp_timer.h" 
 #include "esp_now.h"
+#include <cstdint>
 #include <string.h>
 #include <vector>
 #include <algorithm>
@@ -24,6 +25,18 @@
 #include "lwip/err.h"
 #include "lwip/sys.h"
 #include <sys/socket.h>
+#include <netinet/in.h>
+#include <arpa/inet.h>
+#include <unistd.h>
+
+static constexpr size_t UDP_SLOTS = 10;
+static constexpr size_t UDP_SLOT_SIZE = 256;
+
+struct UdpSlot 
+{
+    uint16_t len;
+    uint8_t  data [UDP_SLOT_SIZE];
+};
 
 struct WifiDevice
 {
@@ -31,9 +44,6 @@ struct WifiDevice
     uint8_t MacId[6];
     uint16_t aid;
     char IpAddress[16];
-    bool IsRegisteredWithEspNow;
-    bool IsSyncSystemRunning = false;
-    uint8_t SyncPacketCheckCounter = 10;
 };
 
 struct UdpPacket
@@ -43,6 +53,8 @@ struct UdpPacket
     char SenderIp[16];
     uint16_t SenderPort = 0;
 };
+
+
 
 class WifiClass
 {
@@ -61,66 +73,52 @@ class WifiClass
         
 
 
-        static void EspNowTask(void *pvParameters);                                     // Task that handles the registering and de-registering of devices to ESP-NOW
-        static void UdpPollingTask (void *pvParameters);                                // Task that listens for UDP packets to be received into the system
-        static void UdpProcessingTask(void* pvParameters);                              // Task that processes received UDP packets appropriately
-        static void UdpSystemTask(void* pvParameters);                                  // Task that manages UDP connection
+        portMUX_TYPE SlotMux = portMUX_INITIALIZER_UNLOCKED;
+        uint8_t SlotHead  = 0;                                                          // next write index
+        uint8_t SlotCount = 0;                                                          // number of valid slots (0..UDP_SLOTS)
 
-        static const int EspNowTaskStackSize = 4096;                                    // Size given to ESP NOW task
-        static StackType_t EspNowTaskStack[EspNowTaskStackSize];                        // Static memory size for ESP NOW task
-        static StaticTask_t EspNowTaskTCB;                                              // Static memory location for ESP NOW task
+        static void UdpRxTask(void* pvParameters);                                      // Task that receives UDP packets from the socket
 
-        static const int UdpPollingTaskStackSize = 4096;                                // Size given to UDP Polling task    
-        static StackType_t UdpPollingTaskStack[UdpPollingTaskStackSize];                // Static memory size for UDP Polling task
-        static StaticTask_t UdpPollingTaskTCB;                                          // Static memory location for UDP Polling task
+        UdpSlot BufferSlots[UDP_SLOTS];                                                 // Size of UDP buffer
 
-        static const int UdpProcessingTaskStackSize = 4096;                             // Size given to UDP Processing task    
-        static StackType_t UdpProcessingTaskStack[UdpProcessingTaskStackSize];          // Static memory size for UDP Processing task
-        static StaticTask_t UdpProcessingTaskTCB;                                       // Static memory location for UDP Processing task
-
-        static const int UdpSystemTaskStackSize = 4096;                                 // Size given to UDP Processing task    
-        static StackType_t UdpSystemTaskStack[UdpProcessingTaskStackSize];              // Static memory size for UDP Processing task
-        static StaticTask_t UdpSystemTaskTCB;                                           // Static memory location for UDP Processing task
-
-        static const uint16_t UdpHostBufferSize = 1024;                                 // Size of UDP buffer
-
-        TaskHandle_t EspNowTaskHandle = NULL;                                           // Task handle
-        TaskHandle_t UdpPollingTaskHandle = NULL;                                       // Task handle
-        TaskHandle_t UdpProcessingTaskHandle = NULL;                                    // Task handle
-        TaskHandle_t UdpSystemTaskHandle = NULL;                                        // Task handle
-        QueueHandle_t EspNowDeviceQueue;                                                // Queue handle
-        QueueHandle_t UdpProcessingQueue;                                               // Queue handle
-
-        void DeauthenticateDeviceAp(const char* ipAddress);
-        void DeauthenticateDeviceSta(const char* ipAddress);
-        bool EspNowRegisterDevice(WifiDevice* DeviceToRegister);                        // Function to register a device to ESP NOW
-        bool EspNowDeleteDevice(WifiDevice* DeviceToDelete);                            // Function to deregister / delete a device from ESP NOW
-        bool SetupUdpSocket(uint16_t UdpPort);                                          // Function to establish a UDP socket on a given port
+        TaskHandle_t UdpRxTaskHandle = NULL;                                            // Task handle
+       
         bool SetupWifiAP(uint16_t UdpPort, uint16_t Timeout, uint8_t CoreToUse);        // Sets up system as an Access Point. Parameters are configured through the Menu Config
         bool SetupWifiSta(uint16_t UdpPort, uint16_t Timeout, uint8_t CoreToUse);       // Sets up system as a station and polls for available Access Points. Parameters are configured through the Menu Config
-        
-        void UdpPollingOnAp(struct sockaddr_in* SourceAddress, 
-                            socklen_t* SourceAddressLength, 
-                            UdpPacket* ReceivedPacket);
-        void UdpPollingOnSta(struct sockaddr_in* SourceAddress, 
-                            socklen_t* SourceAddressLength, 
-                            UdpPacket* ReceivedPacket);
-        void UdpProcessOnAp(UdpPacket* ReceivedPacket);
-        void UdpProcessOnSta(UdpPacket* ReceivedPacket);
-        void UdpSystemOnAp(uint8_t Counter);
-        void UdpSystemOnSta(uint8_t Counter);
+
+        bool StartUdp(uint16_t Port, uint8_t Core);
+
+        esp_netif_t* ApNetif = nullptr;
+        esp_netif_t* StaNetif = nullptr;
+
+        int UdpSocket = -1;
+
+        bool NvsReady = false;
+        bool NetifReady = false;
+        bool EventLoopReady = false;
+        bool StationInterfaceReady = false;
+        bool ApInterfaceReady = false;
+        bool WifiStackReady = false;
+        bool CountrySet = false;
+        bool ApEventHandlersRegistered = false;
+        bool StaEventHandlersRegistered = false;
+        bool SetWifiModeDone = false;
+        bool ApplyConfigDone = false;
+        bool StartWifiDone = false;
+        bool StaIpAcquired = false;
+        bool UdpStarted = false;
+        bool UdpTasksCreated = false;
 
         bool IsRuntimeLoggingEnabled = false;                                           // Print out logs for runtime functions
         bool IsAp = false;                                                              // Internal check
         bool IsSta = false;                                                             // Internal check
         bool IsConnectedToAP;                                                           // Is system connected to an Access Point (used when in station mode)
         WifiDevice HostWifiDevice;                                                      // AccessPoint that station is connected to (used when in station mode)
-        std::vector<WifiDevice> ClientWifiDeviceList;                                   // List of devices connected to Access Point (used when in AP mode)
+        //std::vector<WifiDevice> ClientWifiDeviceList;                                   // List of devices connected to Access Point (used when in AP mode)
         const uint16_t UdpPollingTaskCycleTime = 10;                                    // Cycle time of UDP polling task
         const uint16_t UdpSystemTaskCycleTime = 10;                                     // Cycle time of UDP system task
         struct sockaddr_in UdpHostServerAddress;                                        // Address of UDP server
         socklen_t UdpAddressLength = sizeof(UdpHostServerAddress);                      // Length of UDP server address
-        char UdpHostBuffer[UdpHostBufferSize];                                          // Buffer for UDP data
         int UdpSocketFD;                                                                // File Descriptor of UDP socket
 
 
@@ -142,11 +140,113 @@ class WifiClass
         bool GetIsAp();
         bool GetIsSta();
         const char* GetApIpAddress();
+        size_t GetDataFromBuffer(uint8_t* DataOut, bool* DataAvailable);
         TaskHandle_t GetEspNowTaskHandle();
         TaskHandle_t GetUdpPollingTaskHandle();
         TaskHandle_t GetUdpProcessingTaskHandle();
 
         void SetRuntimeLogging(bool EnableRuntimeLogging);                           // Produces logs for runtime functions. Useful for debugging
 };
+
+
+
+class Station // Singleton
+{
+    private:
+
+        friend class WifiFactory;
+
+        Station(uint8_t CoreToUse, uint16_t UdpPort, bool EnableRuntimeLogging);
+        ~Station();
+
+        //static Station* StaClassInstance;
+
+        static void WifiEventHandler(void* arg, esp_event_base_t event_base,
+                                    int32_t event_id, void* event_data);
+        
+        static void IpEventHandler(void* arg, esp_event_base_t event_base,
+                                    int32_t event_id, void* event_data);
+        
+
+        // UDP Buffer management
+        portMUX_TYPE SlotMux = portMUX_INITIALIZER_UNLOCKED;
+        uint8_t SlotHead  = 0; 
+        uint8_t SlotCount = 0; 
+
+        static void UdpRxTask(void* pvParameters); 
+        UdpSlot BufferSlots[UDP_SLOTS]{};
+
+        TaskHandle_t UdpRxTaskHandle = nullptr;
+       
+        bool StartUdp(uint16_t Port, uint8_t Core);
+        bool StopUdp();
+
+        esp_netif_t* StaNetif = nullptr;
+
+        bool NvsReady = false;
+        bool NetifReady = false;
+        bool EventLoopReady = false;
+        bool StationInterfaceReady = false;
+        bool WifiStackReady = false;
+        bool CountrySet = false;
+        bool EventHandlersRegistered = false;
+        bool SetWifiModeDone = false;
+        bool ApplyConfigDone = false;
+        bool StartWifiDone = false;
+        bool ApIpAcquired = false;
+        bool UdpStarted = false;
+
+        bool IsRuntimeLoggingEnabled = false;
+
+        bool IsConnected = false;
+        WifiDevice ApWifiDevice{};  
+
+        int UdpSocket = -1;
+        char MyIpAddress[16];
+
+        uint8_t  UdpCore = 0;
+        uint16_t UdpPort = 0;
+
+
+
+    public:
+
+        bool SetupWifi();                                             
+        bool SendUdpPacket(const char* DataToSend, const char* DestinationIP, uint16_t DestinationPort);  
+        size_t GetDataFromBuffer(bool* IsDataAvailable, uint8_t* DataToReceive);
+
+        bool IsConnectedToHost() const { return IsConnected and ApIpAcquired; }
+        const char* GetGatewayIpAddress() const { return ApWifiDevice.IpAddress; }
+        const char* GetMyIpAddress() const { return MyIpAddress; }
+        int GetNumberOfPacketsInBuffer() const { return SlotCount; }
+        void SetRuntimeLogging(bool EnableRuntimeLogging) { IsRuntimeLoggingEnabled = EnableRuntimeLogging; }
+};
+
+
+
+class WifiFactory
+{
+    private:
+        WifiFactory() = delete;
+
+        enum class ActiveMode
+        {
+            None,
+            Station,
+            AccessPoint,
+            ApSta
+        };
+
+        static ActiveMode CurrentMode;
+
+
+    public:
+        static Station* CreateStation(uint8_t CoreToUse, uint16_t UdpPort, bool EnableRuntimeLogging);
+        // static AccessPoint* CreateAccessPoint(uint8_t CoreToUse, uint16_t UdpPort, bool EnableRuntimeLogging);
+        // static ApSta* CreateApSta(uint8_t CoreToUse, uint16_t UdpPort, bool EnableRuntimeLogging);
+
+};
+
+
 
 #endif
