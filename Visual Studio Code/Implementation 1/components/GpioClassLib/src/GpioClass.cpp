@@ -27,8 +27,6 @@
 
 #define TAG                     "GPIO Class"
 
-static GpioClass* ClassInstance;
-
 static rmt_channel_handle_t RmtLedChannel = NULL;
 static rmt_encoder_handle_t RmtLedEncoder = NULL;
 
@@ -41,64 +39,94 @@ static rmt_encoder_handle_t RmtLedEncoder = NULL;
 //                                                                              //
 //==============================================================================// 
 
-// Constructor
-GpioClass::GpioClass()
+// Singleton Instance
+GpioClass& GpioClass::Instance()
 {
-    ClassInstance = this;
+    static GpioClass Instance;
+    return Instance;
 }
 
+// Constructor
+GpioClass::GpioClass() = default;
+
 // Destructor
-GpioClass::~GpioClass()
-{
-    ;
-} 
+GpioClass::~GpioClass() = default;
+
+
 
 // Configures a TX RMT Channel
 bool GpioClass::SetupRmtTxChannel(gpio_num_t GpioNumber, uint32_t Resolution) 
 {
-    if (ClassInstance->IsRuntimeLoggingEnabled)
+    switch (SetupRmtState) 
     {
-        printf("\n");
-        ESP_LOGW(TAG, "SETUP RMT TX CHANNEL BEGIN");
+        case 0: // Begin Setup
+            if (IsRuntimeLoggingEnabled) ESP_LOGW(TAG, "SETUP RMT TX CHANNEL BEGIN");
+            SetupRmtState++;
+            break;
+        
+        
+
+        case 1: // Configure RMT Channel
+            RmtConfig = 
+            {
+                .gpio_num = GpioNumber,             // GPIO to use
+                .clk_src = RMT_CLK_SRC_APB,         // Use default clock source
+                .resolution_hz = Resolution,        // Set resolution
+                .mem_block_symbols = 64,            // Memory block size (adjust if needed)
+                .trans_queue_depth = 4,             // Transmission queue depth
+                .flags = 
+                {
+                    .with_dma = false,            // No DMA for now
+                }
+            };    
+            SetupRmtState++;
+            break;
+        
+        
+        
+        case 2: // Create RMT Channel
+            Error = rmt_new_tx_channel(&RmtConfig, &RmtLedChannel);
+            if (Error != ESP_OK) 
+            {
+                ESP_LOGE("RMT", "Failed to create RMT TX channel: %s", esp_err_to_name(Error));
+                return false;
+            }   
+            SetupRmtState++;
+            break;
+
+
+
+        case 3: // Enable RMT Channel
+            Error = rmt_enable(RmtLedChannel);
+            if (Error != ESP_OK) 
+            {
+                ESP_LOGE("RMT", "Failed to enable RMT channel: %s", esp_err_to_name(Error));
+                return false;
+            }
+            if (IsRuntimeLoggingEnabled)
+            {
+                ESP_LOGW(TAG, "SETUP RMT TX CHANNEL COMPLETED");
+                printf("\n");
+            }
+            SetupRmtState = 100;
+            break;
+
+
+
+        case 100: // Setup Complete
+            RmtChannelSetupComplete = true;
+            break;
     }
 
-
-    // Create RMT Channel (Automatically Selects A Free Channel)
-    rmt_tx_channel_config_t Config = 
+    if (SetupRmtState == 100) 
     {
-        .gpio_num = GpioNumber,             // GPIO to use
-        .clk_src = RMT_CLK_SRC_APB,         // Use default clock source
-        .resolution_hz = Resolution,        // Set resolution
-        .mem_block_symbols = 64,            // Memory block size (adjust if needed)
-        .trans_queue_depth = 4,             // Transmission queue depth
-        .flags = 
-        {
-            .with_dma = false,            // No DMA for now
-        }
-    };
-    esp_err_t err = rmt_new_tx_channel(&Config, &RmtLedChannel);
-    if (err != ESP_OK) 
+        return true;
+    }
+    else 
     {
-        ESP_LOGE("RMT", "Failed to create RMT TX channel: %s", esp_err_to_name(err));
         return false;
     }
 
-
-    // Enable RMT Channel
-    err = rmt_enable(RmtLedChannel);
-    if (err != ESP_OK) 
-    {
-        ESP_LOGE("RMT", "Failed to enable RMT channel: %s", esp_err_to_name(err));
-        return false;
-    }
-
-
-    if (ClassInstance->IsRuntimeLoggingEnabled)
-    {
-        ESP_LOGW(TAG, "SETUP RMT TX CHANNEL COMPLETED");
-        printf("\n");
-    }
-    return true;
 }
 
 
@@ -114,14 +142,14 @@ bool GpioClass::SetupRmtTxChannel(gpio_num_t GpioNumber, uint32_t Resolution)
 // Configures an RMT channel to communicate with the LED pin
 bool GpioClass::SetupOnboardLed()
 {
-    if (ClassInstance->IsRuntimeLoggingEnabled)
+    if (IsRuntimeLoggingEnabled)
     {
         printf("\n");
         ESP_LOGW(TAG, "SETUP ONBOARD LED BEGIN");
     }
 
 
-    if (!ClassInstance->SetupRmtTxChannel(OnboardLedPin, LedClock))
+    if (!SetupRmtTxChannel(OnboardLedPin, LedClock))
     {
         ESP_LOGE(TAG, "Failed to start RMT channel for onboard LED!");
         return false;
@@ -158,7 +186,7 @@ bool GpioClass::SetupOnboardLed()
     }
 
 
-    if (ClassInstance->IsRuntimeLoggingEnabled)
+    if (IsRuntimeLoggingEnabled)
     {
         ESP_LOGW(TAG, "SETUP ONBOARD LED COMPLETED");
         printf("\n");

@@ -194,35 +194,28 @@ class Station // Singleton
         bool StopUdp();
 
 
-        // Internal states
+        // Internal data
+        uint8_t  UdpCore = 0;
+        uint16_t UdpPort = 0;
         uint8_t SetupState = 0;
         bool SystemInitialized = false;
         bool UdpStarted = false;
         bool IsConnected = false;
         bool ApIpAcquired = false;
-        
-       
-
         bool IsRuntimeLoggingEnabled = false;
-
-        
-        WifiDevice ApWifiDevice{};  
-
         int UdpSocket = -1;
         char MyIpAddress[16];
-
-        uint8_t  UdpCore = 0;
-        uint16_t UdpPort = 0;
+        WifiDevice ApWifiDevice{};  
 
 
 
     public:
 
         bool SetupWifi();                                             
-        bool SendUdpPacket(const char* DataToSend, const char* DestinationIP, uint16_t DestinationPort);  
+        size_t SendUdpPacket(const char* DataToSend, const char* DestinationIP, uint16_t DestinationPort);  
         size_t GetDataFromBuffer(bool* IsDataAvailable, uint8_t* DataToReceive);
 
-        bool IsConnectedToHost() const { return IsConnected and ApIpAcquired; }
+        bool IsConnectedToHost() const { return IsConnected && ApIpAcquired; }
         const char* GetGatewayIpAddress() const { return ApWifiDevice.IpAddress; }
         const char* GetMyIpAddress() const { return MyIpAddress; }
         void SetRuntimeLogging(bool EnableRuntimeLogging) { IsRuntimeLoggingEnabled = EnableRuntimeLogging; }
@@ -250,7 +243,6 @@ class WifiFactory
         static Station* CreateStation(uint8_t CoreToUse, uint16_t UdpPort, bool EnableRuntimeLogging);
         // static AccessPoint* CreateAccessPoint(uint8_t CoreToUse, uint16_t UdpPort, bool EnableRuntimeLogging);
         // static ApSta* CreateApSta(uint8_t CoreToUse, uint16_t UdpPort, bool EnableRuntimeLogging);
-
 };
 
 

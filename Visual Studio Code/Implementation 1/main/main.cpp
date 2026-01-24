@@ -12,7 +12,6 @@
 #define CYCLIC_TAG "CyclicTask"
 
 TimerClass Timer;
-GpioClass OnboardLed;
 UtilitiesClass Utilities;
 //WifiClass Wifi;
 Station* WifiSta = nullptr;
@@ -75,17 +74,17 @@ extern "C" void app_main(void)
         switch(MainState)
         {
             case 0:
-                OnboardLed.SetupOnboardLed();
+                GpioClass::Instance().SetupOnboardLed();
                 WifiSta->SetupWifi();
                 if (WifiSta->IsConnectedToHost())
                 {
-                    OnboardLed.ChangeOnboardLedColour(0, 255, 0);
+                    GpioClass::Instance().ChangeOnboardLedColour(0, 255, 0);
                     MainState = 1;
                 }
                 else
                 {
                     ESP_LOGI(TAG, "Waiting to connect to AP...");
-                    OnboardLed.ChangeOnboardLedColour(255, 165, 0);
+                    GpioClass::Instance().ChangeOnboardLedColour(255, 165, 0);
                 }
                 break;
     
@@ -98,7 +97,7 @@ extern "C" void app_main(void)
                 else
                 {
                     ESP_LOGE(TAG, "Failed to start cyclic task!");
-                    OnboardLed.ChangeOnboardLedColour(255, 0, 0);
+                    GpioClass::Instance().ChangeOnboardLedColour(255, 0, 0);
                 }
 
             case 2:
@@ -111,11 +110,12 @@ extern "C" void app_main(void)
                     WifiSta->GetGatewayIpAddress(),
                     WifiSta->GetMyIpAddress()
                 );
+                vTaskDelay(pdMS_TO_TICKS(900));
                 break;
 
 
             case 99:
-            OnboardLed.ChangeOnboardLedColour(255, 0, 0);
+                GpioClass::Instance().ChangeOnboardLedColour(255, 0, 0);
                 break;
 
 
@@ -123,6 +123,6 @@ extern "C" void app_main(void)
                 break;
         }
         
-        vTaskDelay(pdMS_TO_TICKS(1000));
+        vTaskDelay(pdMS_TO_TICKS(100));
     }
 }

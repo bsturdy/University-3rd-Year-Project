@@ -1523,7 +1523,6 @@ bool Station::SetupWifi()
             {
                 if (IsRuntimeLoggingEnabled) ESP_LOGW(STA_TAG, "SetupWifi: nvs_flash_erase()");
                 if (nvs_flash_erase() != ESP_OK) return false;
-
                 if (IsRuntimeLoggingEnabled) ESP_LOGW(STA_TAG, "SetupWifi: nvs_flash_init() retry");
                 Error = nvs_flash_init();
             }
@@ -1660,8 +1659,6 @@ bool Station::SetupWifi()
     }
 }
 
-
-
 size_t Station::GetDataFromBuffer(bool* IsDataAvailable, uint8_t* DataToReceive)
 {
     if (IsDataAvailable) *IsDataAvailable = false;
@@ -1698,7 +1695,33 @@ size_t Station::GetDataFromBuffer(bool* IsDataAvailable, uint8_t* DataToReceive)
 
 }
 
+size_t Station::SendUdpPacket(const char* Data, const char* DestinationIP, uint16_t DestinationPort)
+{
+    if (!Data || !DestinationIP) return (size_t)-1;
+    if (!UdpStarted) return (size_t)-1;
+    if (UdpSocket < 0) return (size_t)-1;
+    if (DestinationPort == 0) return (size_t)-1;
 
+    sockaddr_in DestAddr{};
+    DestAddr.sin_family = AF_INET;
+    DestAddr.sin_port = htons(DestinationPort);
+
+    if (inet_pton(AF_INET, DestinationIP, &DestAddr.sin_addr) != 1)
+    {
+        return (size_t)-1;
+    }
+
+    ssize_t Sent = sendto(
+        UdpSocket,
+        Data,
+        strlen(Data),
+        0,
+        reinterpret_cast<sockaddr*>(&DestAddr),
+        sizeof(DestAddr)
+    );
+
+    return Sent;
+}
 
 
 
