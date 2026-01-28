@@ -71,13 +71,13 @@ END_IF]]></ST>
 VAR_INPUT
 	bInitRetains : BOOL; // if TRUE, the retain variables are initialized (warm start / cold start)
 	bInCopyCode : BOOL;  // if TRUE, the instance afterwards gets moved into the copy code (online change)
-	Port	: UINT;
+	Port	: UDINT;
 END_VAR
 VAR
 	//ipSrv: ITComObjectServer;
 END_VAR]]></Declaration>
       <Implementation>
-        <ST><![CDATA[_UdpPort := Port;
+        <ST><![CDATA[_UdpPort := TO_UINT(Port);
 // 
 // IF NOT bInCopyCode THEN // no online change
 // 	IF ipUdp = 0 AND ObjectId <> 0 THEN

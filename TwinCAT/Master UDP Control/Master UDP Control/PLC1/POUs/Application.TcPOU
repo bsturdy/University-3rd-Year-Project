@@ -2,15 +2,18 @@
 <TcPlcObject Version="1.1.0.1">
   <POU Name="Application" Id="{e755b4b3-663e-4aba-9984-5644739ccf72}" SpecialFunc="None">
     <Declaration><![CDATA[PROGRAM Application
+VAR CONSTANT
+	Port 					: UDINT := 10050;
+END_VAR
 VAR
-	UdpWin10				: UdpWindowsSocket('192.168.137.1', 10050);
-	UdpRt					: UdpRealtimeSocket(10050);
+	UdpWin10				: UdpWindowsSocket('192.168.137.1', Port);
+	UdpRt					: UdpRealtimeSocket(Port);
 	Udp						: ITF_UdpConnection := UdpRt;
 	
 	EspFactory				: EspHostFactory;
 	List					: List(EspFactory);
 	
-	MetadataDecoder			: MetadataDecoder(Udp, List);
+	DataDecoder				: DataDecoder(Udp, List);
 	UpdaterRegistry			: UpdaterRegistry;
 	TestUpdater				: Updater_TestPacket;
 	
@@ -19,18 +22,23 @@ VAR
 	j						: UINT;
 	State					: BYTE;
 	hr						: HRESULT;
-	FoundEsp				: BOOL;
+
+	ReceivedIP				: T_IPv4Addr;
+	InputHeader				: EspPacketHeader;	
+	TempEspPtr				: POINTER TO EspHost;
+	TempEsp					: ITF_EspHost;
+	TempEspHeader			: EspPacketHeader;
+	TempUpdater				: ITF_Updater;
 	
-	TargetEspUID			: ULINT;
-	CurrentEspPtr			: POINTER TO EspHost;
-	CurrentEsp				: ITF_EspHost;
-	CurrentEspMetadata		: EspPacketHeader;
-	CurrentUpdater			: ITF_Updater;
+	PacketToSendAdr			: PVOID;
+	PacketToSendLength		: UDINT;
 	
 	ReceivedPacketType		: BYTE;
 	ReceivedPacketAddress	: PVOID;
 	ReceivedPacketLength	: UINT;
+	ReceivedDataLength		: UINT;
 	
+	PacketsDone				: ULINT;
 	MessageBuffer			: MessageBuffer;
 END_VAR
 ]]></Declaration>
@@ -55,17 +63,20 @@ END_IF
 
 
 // Multiple processing calls per cycle are possible
+
 FOR i := 0 TO 9 BY 1 DO
 	
 	Udp.CyclicUpdate();
 	
 	CASE State OF
 		
-		0:
+		0:	// Is data available
 			
-			hr := MetadataDecoder.TryFindPacketInBuffer(ReceivedPacketType, ReceivedPacketAddress, ReceivedPacketLength);
+			hr := DataDecoder.TryFindPacketInBuffer(ReceivedPacketType, ReceivedPacketAddress, ReceivedPacketLength, ReceivedDataLength);
 			
 			IF hr = S_OK THEN
+				
+				ReceivedIP := UdpRt.LastReceivedIp;
 				
 				State := 1;
 				
@@ -75,63 +86,73 @@ FOR i := 0 TO 9 BY 1 DO
 				
 			END_IF
 			
-			
-			
-		1:
+	
+
+		1:	// Decode header
 		
-			CurrentUpdater := UpdaterRegistry.ResolveUpdater(ReceivedPacketType, 1);
-			
-			IF CurrentUpdater = 0 THEN
+			InputHeader := DataDecoder.GetPacketHeader();
+
+			IF InputHeader.SlaveUid = 0 THEN
 				
-				;// ERROR
+				// Clear buffer
+				
+				State := 0;
 				
 			END_IF
 			
 			State := 2;
+
+
+
+		2:	// Check CRC
+		
+			// CRC Check Function on TargetHeader
 			
-		
-		
-		2:
-		
-			TargetEspUID := MetadataDecoder.GetPacketUID();
-			
-			IF TargetEspUID = 0 THEN
-				
-				;// ERROR
-				
-			END_IF
+			// If fail, clear buffer, state := 0
 			
 			State := 3;
-			
-			
-			
-		3:
+
+
+
+		3:	// Find UID in list
+		
+			IF List.GetListLength() = 0 THEN
+				
+				State := 4;
+				
+			END_IF
 		
 			FOR j := 1 TO List.GetListLength() BY 1 DO
 			
-				CurrentEspPtr := List.GetNode(j).GetMyPointer();
-			
-				CurrentEsp := CurrentEspPtr^;
+				TempEspPtr := List.GetNode(j).GetMyPointer();
 				
-				CurrentEspMetadata := CurrentEsp.GetMetadata();
+				IF TempEspPtr = 0 THEN
+					
+					// No matching device in list, create
+					
+					State := 4;
+					
+				ELSE
+					
+					// Check if correct UID
+					
+					TempEsp := TempEspPtr^;
 				
-				IF TargetEspUID = CurrentEspMetadata.SlaveUid THEN
+					TempEspHeader := TempEsp.GetMetadata();
 					
-					FoundEsp := TRUE;
-					
-					EXIT;
+					IF InputHeader.SlaveUid = TempEspHeader.SlaveUid THEN
+						
+						State := 5;
+						
+						EXIT;
+						
+					END_IF
 					
 				END_IF
 				
-			END_FOR
+			END_FOR	
 			
-			IF FoundEsp THEN
-				
-				FoundEsp := FALSE;
-				
-				State := 5;
-				
-			ELSE
+			IF j = List.GetListLength() + 1 THEN
 				
 				State := 4;
 				
@@ -139,47 +160,208 @@ FOR i := 0 TO 9 BY 1 DO
 			
 			
 			
-		4:
+		4:	// Create device in list
 			
 			IF List.CreateNode() THEN
 						
-				CurrentEspPtr := List.GetNode(List.GetListLength()).GetMyPointer();
+				TempEspPtr := List.GetNode(List.GetListLength()).GetMyPointer();
 				
-				CurrentEsp := CurrentEspPtr^;
+				TempEsp := TempEspPtr^;
 				
-				CurrentEsp.SetUID(TargetEspUID);
+				TempEsp.SetUID(InputHeader.SlaveUid);
 				
-				CurrentEsp.SetEspType(ReceivedPacketType);
+				TempEsp.SetEspType(ReceivedPacketType);
 				
 				State := 5;
 			
 			END_IF
+			
+			
+			
+		5:	// Apply data
+		
+			IF TempEsp.UpdateMetadata(InputHeader) THEN
+				
+				IF TempEsp.GetPacketToSend(PacketToSendAdr, PacketToSendLength) THEN
+					
+					State := 6;
+
+				ELSE
+					
+					State := 7;
+	
+				END_IF
+				
+			END_IF
 		
 		
 		
-		5:
+		6:	// Send data
 		
-			hr := CurrentUpdater.TryApplyPayload(ReceivedPacketAddress, ReceivedPacketLength, CurrentEsp);
+			hr := UdpRt.TrySendData(ReceivedIP, Port, PacketToSendAdr, PacketToSendLength);
 			
 			IF hr <> S_PENDING AND SUCCEEDED(hr) THEN
 				
-				CurrentEsp.UpdateMetadata(MetadataDecoder.CreateMetadataUpdate());
+				State := 7;
 				
-				MetadataDecoder.ClearBufferAtLocation(ReceivedPacketAddress, ReceivedPacketLength);
+			ELSIF FAILED(hr) THEN
 				
-				ReceivedPacketAddress := 0;
-				ReceivedPacketLength := 0;
-				ReceivedPacketType := 0;
-			
-				TargetEspUID := 0;
-				CurrentEspPtr := 0;	
-				CurrentEsp := 0;
-				MEMSET(ADR(CurrentEspMetadata), 0, SIZEOF(CurrentEspMetadata));
-				CurrentUpdater := 0;
-				
-				State := 0;
+				State := 8;
 				
 			END_IF
+		
+		
+		
+		7:	// System function OK
+			
+			ReceivedIP := '';
+			MEMSET(ADR(InputHeader), 0, 48);
+			TempEspPtr := 0;
+			TempEsp := 0;
+			MEMSET(ADR(TempEspHeader), 0, 48);
+			DataDecoder.ClearBufferAtLocation(ReceivedPacketAddress, ReceivedPacketLength);
+			
+			PacketsDone := PacketsDone + 1;
+			State := 0;
+			
+			
+		
+		
+		8:	// System RX OK, TX FAIL
+		
+// 		
+// 		
+// 		
+// 		5:
+// 		
+// 			hr := TempUpdater.TryApplyPayload(ReceivedPacketAddress, ReceivedPacketLength, TempEsp);
+// 			
+// 			IF hr <> S_PENDING AND SUCCEEDED(hr) THEN
+// 				
+// 				TempEsp.UpdateMetadata(DataDecoder.CreateMetadataUpdate());
+// 				
+// 				DataDecoder.ClearBufferAtLocation(ReceivedPacketAddress, ReceivedPacketLength);
+// 				
+// 				ReceivedPacketAddress := 0;
+// 				ReceivedPacketLength := 0;
+// 				ReceivedPacketType := 0;
+// 			
+// 				TargetEspUID := 0;
+// 				TempEspPtr := 0;	
+// 				TempEsp := 0;
+// 				MEMSET(ADR(TempEspHeader), 0, SIZEOF(TempEspHeader));
+// 				TempUpdater := 0;
+// 				
+// 				State := 0;
+// 				
+// 			END_IF
+// 		
+// 		
+// 			
+// 			
+// 		1:
+// 		
+// 			TempUpdater := UpdaterRegistry.ResolveUpdater(ReceivedPacketType, 1);
+// 			
+// 			IF TempUpdater = 0 THEN
+// 				
+// 				;// ERROR
+// 				
+// 			END_IF
+// 			
+// 			State := 2;
+// 			
+// 		
+// 		
+// 		2:
+// 		
+// 			TargetEspUID := DataDecoder.GetPacketUID();
+// 			
+// 			IF TargetEspUID = 0 THEN
+// 				
+// 				;// ERROR
+// 				
+// 			END_IF
+// 			
+// 			State := 3;
+// 			
+// 			
+// 			
+// 		3:
+// 		
+// 			FOR j := 1 TO List.GetListLength() BY 1 DO
+// 			
+// 				TempEspPtr := List.GetNode(j).GetMyPointer();
+// 			
+// 				TempEsp := TempEspPtr^;
+// 				
+// 				TempEspHeader := TempEsp.GetMetadata();
+// 				
+// 				IF TargetEspUID = TempEspHeader.SlaveUid THEN
+// 					
+// 					FoundEsp := TRUE;
+// 					
+// 					EXIT;
+// 					
+// 				END_IF
+// 				
+// 			END_FOR
+// 			
+// 			IF FoundEsp THEN
+// 				
+// 				FoundEsp := FALSE;
+// 				
+// 				State := 5;
+// 				
+// 			ELSE
+// 				
+// 				State := 4;
+// 				
+// 			END_IF
+// 			
+// 			
+// 			
+// 		4:
+// 			
+// 			IF List.CreateNode() THEN
+// 						
+// 				TempEspPtr := List.GetNode(List.GetListLength()).GetMyPointer();
+// 				
+// 				TempEsp := TempEspPtr^;
+// 				
+// 				TempEsp.SetUID(TargetEspUID);
+// 				
+// 				TempEsp.SetEspType(ReceivedPacketType);
+// 				
+// 				State := 5;
+// 			
+// 			END_IF
+// 		
+// 		
+// 		
+// 		5:
+// 		
+// 			hr := TempUpdater.TryApplyPayload(ReceivedPacketAddress, ReceivedPacketLength, TempEsp);
+// 			
+// 			IF hr <> S_PENDING AND SUCCEEDED(hr) THEN
+// 				
+// 				TempEsp.UpdateMetadata(DataDecoder.CreateMetadataUpdate());
+// 				
+// 				DataDecoder.ClearBufferAtLocation(ReceivedPacketAddress, ReceivedPacketLength);
+// 				
+// 				ReceivedPacketAddress := 0;
+// 				ReceivedPacketLength := 0;
+// 				ReceivedPacketType := 0;
+// 			
+// 				TargetEspUID := 0;
+// 				TempEspPtr := 0;	
+// 				TempEsp := 0;
+// 				MEMSET(ADR(TempEspHeader), 0, SIZEOF(TempEspHeader));
+// 				TempUpdater := 0;
+// 				
+// 				State := 0;
+// 				
+// 			END_IF
 			
 	END_CASE
 

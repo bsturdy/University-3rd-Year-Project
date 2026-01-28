@@ -7,4 +7,5 @@ idf_component_register(
         heap
         driver
         freertos
+        esp_wifi
 )

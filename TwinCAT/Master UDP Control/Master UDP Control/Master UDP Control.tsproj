@@ -953,11 +953,25 @@
 		</System>
 		<Plc>
 			<Project GUID="{BEFF220E-6D19-4D95-8A6D-32ABCFFA0951}" Name="PLC1" PrjFilePath="PLC1\PLC1.plcproj" TmcFilePath="PLC1\PLC1.tmc" ReloadTmc="true" AmsPort="851" FileArchiveSettings="#x000e" SymbolicMapping="true">
-				<Instance Id="#x08502000" TcSmClass="TComPlcObjDef" KeepUnrestoredLinks="2" TmcHash="{50BAF914-280F-BA68-AC8A-8605C0DF6D54}" TmcPath="PLC1\PLC1.tmc">
+				<Instance Id="#x08502000" TcSmClass="TComPlcObjDef" KeepUnrestoredLinks="2" TmcHash="{C825989D-DC11-16C9-1CE7-E5E096E9185E}" TmcPath="PLC1\PLC1.tmc">
 					<Name>PLC1 Instance</Name>
 					<CLSID ClassFactory="TcPlc30">{08500001-0000-0000-F000-000000000064}</CLSID>
 					<Vars VarGrpType="2" ContextId="1" AreaNo="17">
 						<Name>Aux Outputs</Name>
+						<Var>
+							<Name>Utility.EL9227Ch2.MDP5001_922_Output</Name>
+							<Type GUID="{0CA60820-0342-B125-319B-0902A2513961}">MDP5001_922_O_DEB3C1CF</Type>
+						</Var>
+					</Vars>
+					<Vars VarGrpType="1" ContextId="1" AreaNo="16">
+						<Name>Aux Inputs</Name>
+						<Var>
+							<Name>Utility.EL9227Ch2.MDP5001_922_Input</Name>
+							<Type GUID="{0CA6081F-0342-B125-319B-0902A2513961}">MDP5001_922_I_DEB3C1CF</Type>
+						</Var>
+					</Vars>
+					<Vars VarGrpType="2" AreaNo="1">
+						<Name>Task_4 Outputs</Name>
 						<Var>
 							<Name>Utility.LedStrip._Red</Name>
 							<Type>BOOL</Type>
@@ -974,19 +988,11 @@
 							<Name>Utility.EL9227Ch1.MDP5001_922_Output</Name>
 							<Type GUID="{0CA60820-0342-B125-319B-0902A2513961}">MDP5001_922_O_DEB3C1CF</Type>
 						</Var>
-						<Var>
-							<Name>Utility.EL9227Ch2.MDP5001_922_Output</Name>
-							<Type GUID="{0CA60820-0342-B125-319B-0902A2513961}">MDP5001_922_O_DEB3C1CF</Type>
-						</Var>
 					</Vars>
-					<Vars VarGrpType="1" ContextId="1" AreaNo="16">
-						<Name>Aux Inputs</Name>
+					<Vars VarGrpType="1">
+						<Name>Task_4 Inputs</Name>
 						<Var>
 							<Name>Utility.EL9227Ch1.MDP5001_922_Input</Name>
-							<Type GUID="{0CA6081F-0342-B125-319B-0902A2513961}">MDP5001_922_I_DEB3C1CF</Type>
-						</Var>
-						<Var>
-							<Name>Utility.EL9227Ch2.MDP5001_922_Input</Name>
 							<Type GUID="{0CA6081F-0342-B125-319B-0902A2513961}">MDP5001_922_I_DEB3C1CF</Type>
 						</Var>
 					</Vars>
@@ -1909,26 +1915,27 @@
 		</Io>
 	</Project>
 	<Mappings>
-		<MappingInfo Identifier="{00000000-2002-0850-0120-500810000403}" Id="#x02030010"/>
+		<MappingInfo Identifier="{00000000-2001-0850-0020-500810000403}" Id="#x02030010"/>
+		<MappingInfo Identifier="{08502002-0010-0304-0020-500810000403}" Id="#x02030020" Watchdog="00000000000000000000000000000000"/>
 		<OwnerA Name="TIPC^PLC1^PLC1 Instance">
 			<OwnerB Name="TIID^Rail IO^Term 1 (EK1200)^Term 2 (EL9227-5500)">
-				<Link VarA="Aux Inputs^Utility.EL9227Ch1.MDP5001_922_Input^MDP5001_922_Current" VarB="OCP Inputs Channel 1^Current"/>
-				<Link VarA="Aux Inputs^Utility.EL9227Ch1.MDP5001_922_Input^MDP5001_922_Load" VarB="OCP Inputs Channel 1^Load"/>
-				<Link VarA="Aux Inputs^Utility.EL9227Ch1.MDP5001_922_Input^MDP5001_922_Status" VarB="OCP Inputs Channel 1^Status"/>
-				<Link VarA="Aux Inputs^Utility.EL9227Ch1.MDP5001_922_Input^MDP5001_922_Voltage_In" VarB="OCP Inputs Channel 1^Voltage In"/>
-				<Link VarA="Aux Inputs^Utility.EL9227Ch1.MDP5001_922_Input^MDP5001_922_Voltage_Out" VarB="OCP Inputs Channel 1^Voltage Out"/>
 				<Link VarA="Aux Inputs^Utility.EL9227Ch2.MDP5001_922_Input^MDP5001_922_Current" VarB="OCP Inputs Channel 2^Current"/>
 				<Link VarA="Aux Inputs^Utility.EL9227Ch2.MDP5001_922_Input^MDP5001_922_Load" VarB="OCP Inputs Channel 2^Load"/>
 				<Link VarA="Aux Inputs^Utility.EL9227Ch2.MDP5001_922_Input^MDP5001_922_Status" VarB="OCP Inputs Channel 2^Status"/>
 				<Link VarA="Aux Inputs^Utility.EL9227Ch2.MDP5001_922_Input^MDP5001_922_Voltage_In" VarB="OCP Inputs Channel 2^Voltage In"/>
 				<Link VarA="Aux Inputs^Utility.EL9227Ch2.MDP5001_922_Input^MDP5001_922_Voltage_Out" VarB="OCP Inputs Channel 2^Voltage Out"/>
-				<Link VarA="Aux Outputs^Utility.EL9227Ch1.MDP5001_922_Output^MDP5001_922_Control" VarB="OCP Outputs Channel 1^Control"/>
 				<Link VarA="Aux Outputs^Utility.EL9227Ch2.MDP5001_922_Output^MDP5001_922_Control" VarB="OCP Outputs Channel 2^Control"/>
+				<Link VarA="Task_4 Inputs^Utility.EL9227Ch1.MDP5001_922_Input^MDP5001_922_Current" VarB="OCP Inputs Channel 1^Current"/>
+				<Link VarA="Task_4 Inputs^Utility.EL9227Ch1.MDP5001_922_Input^MDP5001_922_Load" VarB="OCP Inputs Channel 1^Load"/>
+				<Link VarA="Task_4 Inputs^Utility.EL9227Ch1.MDP5001_922_Input^MDP5001_922_Status" VarB="OCP Inputs Channel 1^Status"/>
+				<Link VarA="Task_4 Inputs^Utility.EL9227Ch1.MDP5001_922_Input^MDP5001_922_Voltage_In" VarB="OCP Inputs Channel 1^Voltage In"/>
+				<Link VarA="Task_4 Inputs^Utility.EL9227Ch1.MDP5001_922_Input^MDP5001_922_Voltage_Out" VarB="OCP Inputs Channel 1^Voltage Out"/>
+				<Link VarA="Task_4 Outputs^Utility.EL9227Ch1.MDP5001_922_Output^MDP5001_922_Control" VarB="OCP Outputs Channel 1^Control"/>
 			</OwnerB>
 			<OwnerB Name="TIID^Rail IO^Term 1 (EK1200)^Term 3 (EL2088)">
-				<Link VarA="Aux Outputs^Utility.LedStrip._Blue" VarB="Channel 5^Output"/>
-				<Link VarA="Aux Outputs^Utility.LedStrip._Green" VarB="Channel 3^Output"/>
-				<Link VarA="Aux Outputs^Utility.LedStrip._Red" VarB="Channel 1^Output"/>
+				<Link VarA="Task_4 Outputs^Utility.LedStrip._Blue" VarB="Channel 5^Output"/>
+				<Link VarA="Task_4 Outputs^Utility.LedStrip._Green" VarB="Channel 3^Output"/>
+				<Link VarA="Task_4 Outputs^Utility.LedStrip._Red" VarB="Channel 1^Output"/>
 			</OwnerB>
 		</OwnerA>
 	</Mappings>

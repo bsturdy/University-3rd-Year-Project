@@ -1,4 +1,7 @@
 #include "packet_processors.h"
+#include <cstddef>
+#include <cstdint>
+#include <cstring>
 
 
 
@@ -64,28 +67,39 @@ static bool ValidateCrc32(const uint8_t* data)
     return crc == expected;
 }
 
-bool ParseAndValidateHeader(const uint8_t* data, size_t Length, PacketHeader& outHeader)
+bool ExtractData(uint8_t* InputBuffer,
+                size_t* InputBufferBytes,
+                uint8_t* OutputBuffer,
+                size_t OutputBufferCapacity,
+                size_t* OutputBytes)
 {
-    if (!data) return false;
+    if (!InputBuffer || !InputBufferBytes || !OutputBuffer || !OutputBytes) return false;
+    *OutputBytes = 0;
+    if (*InputBufferBytes < PACKET_HEADER_SIZE + sizeof(PACKET_END_DELIMITER)) return false;
+    if (InputBuffer[0] != START0 || InputBuffer[1] != START1) return false;
 
-    // Must contain header + payload 
-    if (Length < PACKET_HEADER_SIZE) return false;
+    size_t PayloadSize = (size_t)((uint16_t)InputBuffer[2] | ((uint16_t)InputBuffer[3] << 8));
+    size_t TotalPacketSize = PACKET_HEADER_SIZE + PayloadSize + sizeof(PACKET_END_DELIMITER);   
 
-    // Check start delimiter from raw bytes
-    const uint16_t delimiter =
-        (uint16_t)data[0] |
-        ((uint16_t)data[1] << 8);
+    if (*InputBufferBytes < TotalPacketSize) return false;
+    if (OutputBufferCapacity < TotalPacketSize) return false;
+    if (InputBuffer[TotalPacketSize - 2] != END0 || InputBuffer[TotalPacketSize - 1] != END1) return false;
 
-    if (delimiter != PACKET_START_DELIMITER) return false;
+    // verify crc32
 
-    //if (!ValidateCrc32(data)) return false;
+    memcpy(OutputBuffer, InputBuffer, TotalPacketSize);
+    memmove
+    (
+        InputBuffer,
+        InputBuffer + TotalPacketSize,
+        *InputBufferBytes - TotalPacketSize
+    );
 
-    // Copy header out
-    memcpy(&outHeader, data, PACKET_HEADER_SIZE);
+    *InputBufferBytes -= TotalPacketSize;
+    *OutputBytes = TotalPacketSize;
 
     return true;
 }
-
 
 
 //==============================================================================//
@@ -98,7 +112,7 @@ bool Packet1::ProcessPacket(const uint8_t* UdpPacketIn, size_t Length, uint8_t* 
 {
     if (!UdpPacketIn || !ProcessedDataOut) return false;
     if (Length > PACKET_HEADER_SIZE + sizeof(Payload1) + sizeof(PACKET_END_DELIMITER)) return false;
-    if (!ParseAndValidateHeader(UdpPacketIn, Length, LastHeader)) return false;
+   // if (!ParseAndValidateHeader(UdpPacketIn, Length, LastHeader)) return false;
     if (UdpPacketIn[PACKET_HEADER_SIZE + sizeof(Payload1) + 0] != 0x5B) return false;
     if (UdpPacketIn[PACKET_HEADER_SIZE + sizeof(Payload1) + 1] != 0x03) return false;
 
@@ -119,8 +133,8 @@ size_t Packet1::PreparePacket(uint8_t* ProcessedDataIn, size_t Length, uint8_t* 
     LastHeader.reserved0          = 0;
     LastHeader.slaveUid           = CONFIG_ESP_NODE_UID;
     LastHeader.messageCounter++;
-    LastHeader.prevCycleTimeUs    = UtilitiesClass::GetUptimeUs() - LastHeader.senderTimestampUs;
-    LastHeader.senderTimestampUs  = UtilitiesClass::GetUptimeUs();
+    LastHeader.prevCycleTimeUs    = UtilitiesClass::GetInstance().GetUptimeUs() - LastHeader.senderTimestampUs;
+    LastHeader.senderTimestampUs  = UtilitiesClass::GetInstance().GetUptimeUs();
     LastHeader.chainedSlaveCount  = 0;
     LastHeader.espType            = 1;
     LastHeader.flags              = 0;

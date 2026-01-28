@@ -9,10 +9,14 @@
 #include "esp_system.h"
 #include "esp_heap_caps.h"
 #include "driver/temperature_sensor.h"
+#include "esp_wifi.h"
 
 class UtilitiesClass
 {
     private:    
+        UtilitiesClass();
+        ~UtilitiesClass();
+
         void InitTemperatureSensor(); 
 
         bool temp_sensor_ready;
@@ -20,21 +24,17 @@ class UtilitiesClass
 
 
     public:
-        UtilitiesClass();
-        ~UtilitiesClass();
+        static UtilitiesClass& GetInstance();
+        UtilitiesClass(const UtilitiesClass&) = delete;
+        void operator=(const UtilitiesClass&) = delete;
 
-        // Time since boot, in microseconds and milliseconds
-        static uint64_t GetUptimeUs();
-        static uint64_t GetUptimeMs();
+        static uint64_t GetUptimeUs() { return static_cast<uint64_t>(esp_timer_get_time()); }
+        static uint64_t GetUptimeMs() { return GetUptimeUs() / 1000ULL; }
+        static size_t GetFreeHeapBytes() { return static_cast<size_t>(heap_caps_get_free_size(MALLOC_CAP_DEFAULT)); }
+        static int GetResetReasonRaw() { return static_cast<int>(esp_reset_reason()); }
 
-        // Free heap, bytes
-        static std::size_t GetFreeHeapBytes();
-
-        // Last reset reason (raw enum from ESP-IDF)
-        static int GetResetReasonRaw();
-
-        // Approximate chip temperature in degrees Celsius.
-        static float GetChipTemperatureC();
+        float GetChipTemperatureC();
+        float GetWifiSignalStrength();
 };
 
 

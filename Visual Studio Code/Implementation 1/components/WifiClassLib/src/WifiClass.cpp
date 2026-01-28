@@ -1156,7 +1156,9 @@ Station::Station(uint8_t CoreToUse, uint16_t Port, bool EnableRuntimeLogging)
 }
 
 Station::~Station()
-{}
+{
+    ;
+}
 
 void Station::WifiEventHandler(void* arg,
                                esp_event_base_t event_base,
@@ -1498,8 +1500,6 @@ void Station::UdpRxTask(void* pvParameters)
                 memcpy(StaClassInstance->RxData + StaClassInstance->LastPositionWritten, TempBuffer, n);
 
                 StaClassInstance->LastPositionWritten += n;
-
-                StaClassInstance->DataInBuffer = (StaClassInstance->LastPositionWritten > 0);
             }
 
             portEXIT_CRITICAL(&StaClassInstance->CriticalSection);
@@ -1670,7 +1670,7 @@ size_t Station::GetDataFromBuffer(bool* IsDataAvailable, uint8_t* DataToReceive)
 
     const size_t Available = LastPositionWritten;
 
-    if (DataInBuffer && Available > 0)
+    if (Available > 0)
     {
         memcpy(DataToReceive, RxData, Available);
 
@@ -1678,14 +1678,10 @@ size_t Station::GetDataFromBuffer(bool* IsDataAvailable, uint8_t* DataToReceive)
 
         LastPositionWritten = 0;
 
-        DataInBuffer = false;
-
         *IsDataAvailable = true;
     }
     else
     {
-        DataInBuffer = false;
-
         LastPositionWritten = 0;
     }
 
@@ -1725,6 +1721,246 @@ size_t Station::SendUdpPacket(const char* Data, const char* DestinationIP, uint1
 
 
 
+
+
+//==============================================================================//
+//                                                                              //
+//                                AP + STA                                      //
+//                                                                              //
+//==============================================================================// 
+
+#define STA_TAG "Station"
+
+static AccessPointStation* ApStaClassInstance;
+
+
+AccessPointStation::AccessPointStation(uint8_t CoreToUse, uint16_t Port, bool EnableRuntimeLogging)
+{
+    ApStaClassInstance = this;
+    UdpCore = CoreToUse;
+    UdpPort = Port;
+    IsRuntimeLoggingEnabled = EnableRuntimeLogging;
+
+    SystemInitialized = false;
+    UdpStarted = false;
+    IsConnectedToParent = false;
+    ApIpAcquired = false;
+    MyHopCount = 255; // Default to 'Infinity' until scan/connect
+}
+
+AccessPointStation::~AccessPointStation()
+{
+    ;
+}
+
+void AccessPointStation::ApWifiEventHandler(void* arg, esp_event_base_t event_base,
+                                           int32_t event_id, void* event_data)
+{
+    if (ApStaClassInstance == nullptr || event_base != WIFI_EVENT) return;
+
+    if (event_id == WIFI_EVENT_AP_STACONNECTED) 
+    {
+        wifi_event_ap_staconnected_t* Event = (wifi_event_ap_staconnected_t*)event_data;
+        
+        WifiDevice child;
+        memset(&child, 0, sizeof(WifiDevice)); // Precise: Clear memory for string safety
+        child.TimeOfConnection = esp_timer_get_time();
+        child.aid = Event->aid;
+        child.HopCount = 255; // Initialized as unknown
+        memcpy(child.MacId, Event->mac, 6);
+        child.IpAddress[0] = '\0'; 
+
+        ApStaClassInstance->ChildDevices.push_back(child);
+
+        if (ApStaClassInstance->IsRuntimeLoggingEnabled) {
+            ESP_LOGW("MESH_AP", "Child Joined | MAC: " MACSTR " | AID: %d", 
+                     MAC2STR(Event->mac), Event->aid);
+        }
+    } 
+    else if (event_id == WIFI_EVENT_AP_STADISCONNECTED) 
+    {
+        wifi_event_ap_stadisconnected_t* Event = (wifi_event_ap_stadisconnected_t*)event_data;
+        
+        if (ApStaClassInstance->IsRuntimeLoggingEnabled) {
+            ESP_LOGE("MESH_AP", "Child Left | MAC: " MACSTR, MAC2STR(Event->mac));
+        }
+
+        // Precise removal using Erase-Remove Idiom
+        auto& list = ApStaClassInstance->ChildDevices;
+        list.erase(std::remove_if(list.begin(), list.end(), [&](const WifiDevice& d) {
+            return memcmp(d.MacId, Event->mac, 6) == 0;
+        }), list.end());
+    }
+}
+
+void AccessPointStation::StaWifiEventHandler(void* arg, esp_event_base_t event_base,
+                                            int32_t event_id, void* event_data)
+{
+    if (ApStaClassInstance == nullptr || event_base != WIFI_EVENT) return;
+
+    switch (event_id) 
+    {
+        case WIFI_EVENT_STA_START:
+            ApStaClassInstance->IsConnectedToParent = false;
+            ApStaClassInstance->ApIpAcquired = false;
+            ApStaClassInstance->StopUdp();
+            esp_wifi_connect();
+            break;
+
+        case WIFI_EVENT_STA_CONNECTED: 
+        {
+            wifi_event_sta_connected_t* Event = static_cast<wifi_event_sta_connected_t*>(event_data);
+            ApStaClassInstance->IsConnectedToParent = true;
+            
+            ApStaClassInstance->ParentDevice.TimeOfConnection = esp_timer_get_time();
+            ApStaClassInstance->ParentDevice.aid = Event->aid;
+            memcpy(ApStaClassInstance->ParentDevice.MacId, Event->bssid, 6);
+
+            if (ApStaClassInstance->IsRuntimeLoggingEnabled) {
+                ESP_LOGW(STA_TAG, "Hardware Link to Parent Established");
+            }
+            break;
+        }
+
+        case WIFI_EVENT_STA_DISCONNECTED:
+        {
+            // Precise State Reset
+            ApStaClassInstance->IsConnectedToParent = false;
+            ApStaClassInstance->ApIpAcquired = false;
+            
+            // Critical Mesh Logic: Poison the path so children drop off and re-scan
+            ApStaClassInstance->MyHopCount = 255; 
+            ApStaClassInstance->UpdateBeaconMetadata(255); 
+            
+            ApStaClassInstance->StopUdp();
+            
+            if (ApStaClassInstance->IsRuntimeLoggingEnabled) {
+                 wifi_event_sta_disconnected_t* Event = (wifi_event_sta_disconnected_t*)event_data;
+                 ESP_LOGE(STA_TAG, "Parent Lost (Reason: %d). Reconnecting...", Event->reason);
+            }
+
+            // Attempt to re-establish the link
+            esp_wifi_connect();
+            break;
+        }
+    }
+}
+
+void AccessPointStation::IpEventHandler(void* arg, esp_event_base_t event_base,
+                                         int32_t event_id, void* event_data)
+{
+    if (ApStaClassInstance == nullptr || event_base != IP_EVENT) return;
+
+    switch (event_id)
+    {
+        case IP_EVENT_STA_GOT_IP:
+        {
+            ip_event_got_ip_t* Event = static_cast<ip_event_got_ip_t*>(event_data);
+
+            // Convert IP addresses to strings
+            char GwStr[16] = {0};
+            esp_ip4addr_ntoa(&Event->ip_info.gw, GwStr, sizeof(GwStr));
+            char MyStr[16] = {0};
+            esp_ip4addr_ntoa(&Event->ip_info.ip, MyStr, sizeof(MyStr));
+
+            // Store internal station data (Upstream)
+            strncpy(ApStaClassInstance->ParentDevice.IpAddress, GwStr, 15);
+            strncpy(ApStaClassInstance->MyStaIpAddress, MyStr, 15);
+            
+            // Update State
+            ApStaClassInstance->ApIpAcquired = true;
+
+            // MESH LOGIC: Path Validation
+            // We increment the hop count based on who we connected to.
+            // If we connected to the Master, ParentDevice.HopCount was 0, so we become 1.
+            if (ApStaClassInstance->ParentDevice.HopCount != 255) 
+            {
+                ApStaClassInstance->MyHopCount = ApStaClassInstance->ParentDevice.HopCount + 1;
+            }
+            else 
+            {
+                // Fallback: If for some reason we don't know the parent hop, 
+                // we stay at 255 to signal we aren't a valid router yet.
+                ApStaClassInstance->MyHopCount = 255;
+            }
+
+            // Broadcast our new status to the world
+            // This is the "Host + 1" moment. Our AP will now tell everyone 
+            // behind us that a path to the master exists through us.
+            ApStaClassInstance->UpdateBeaconMetadata(ApStaClassInstance->MyHopCount);
+
+            // 6. Start UDP
+            bool UdpStartedOk = ApStaClassInstance->StartUdp(ApStaClassInstance->UdpPort, ApStaClassInstance->UdpCore);
+
+            if (ApStaClassInstance->IsRuntimeLoggingEnabled)
+            {
+                ESP_LOGW(STA_TAG, "STA got IP: %s | Parent: %s | My Hop: %d", 
+                         MyStr, GwStr, ApStaClassInstance->MyHopCount);
+            }
+            break;
+        }
+ 
+
+
+        case IP_EVENT_AP_STAIPASSIGNED:
+        {
+            // Get the IP that was just assigned
+            ip_event_ap_staipassigned_t* Event = static_cast<ip_event_ap_staipassigned_t*>(event_data);
+            
+            char AssignedIp[16];
+            esp_ip4addr_ntoa(&Event->ip, AssignedIp, sizeof(AssignedIp));
+
+
+            // In a mesh, the most recent device to connect is the one getting the IP.
+            // We search our vector from NEWEST to OLDEST (reverse iterator).
+            bool matched = false;
+            for (auto it = ApStaClassInstance->ChildDevices.rbegin(); it != ApStaClassInstance->ChildDevices.rend(); ++it)
+            {
+                // If the IpAddress is still empty, this is our target.
+                if (it->IpAddress[0] == '\0') 
+                {
+                    strncpy(it->IpAddress, AssignedIp, sizeof(it->IpAddress) - 1);
+                    it->IpAddress[sizeof(it->IpAddress) - 1] = '\0';
+                    
+                    if (ApStaClassInstance->IsRuntimeLoggingEnabled) {
+                        ESP_LOGW("MESH_AP", "Linked IP %s to Child MAC " MACSTR, AssignedIp, MAC2STR(it->MacId));
+                    }
+                    matched = true;
+                    break;
+                }
+            }
+
+            if (!matched && ApStaClassInstance->IsRuntimeLoggingEnabled) {
+                ESP_LOGE("MESH_AP", "Received IP assignment %s but found no matching child!", AssignedIp);
+            }
+            break;
+        }
+
+
+        
+        case IP_EVENT_STA_LOST_IP:
+        {
+            ApStaClassInstance->ApIpAcquired = false;
+            memset(ApStaClassInstance->MyStaIpAddress, 0, 16);
+
+            // MESH LOGIC: Poison the route
+            ApStaClassInstance->MyHopCount = 255; 
+            ApStaClassInstance->UpdateBeaconMetadata(255);
+
+            ApStaClassInstance->StopUdp();
+            
+            if (ApStaClassInstance->IsRuntimeLoggingEnabled) ESP_LOGE(STA_TAG, "STA lost IP");
+            break;
+        }
+    }
+}
+
+
+
+
+
+
+
 //==============================================================================//
 //                                                                              //
 //                                 Factory                                      //
@@ -1740,7 +1976,7 @@ Station* WifiFactory::CreateStation(uint8_t CoreToUse, uint16_t UdpPort, bool En
         return StaClassInstance;
     }
 
-    if (false) // Placeholder for access point and ApSta pointers
+    if (ApStaClassInstance != nullptr) // Placeholder for access point and ApSta pointers
     {
         return nullptr;
     }
@@ -1755,4 +1991,28 @@ Station* WifiFactory::CreateStation(uint8_t CoreToUse, uint16_t UdpPort, bool En
 
     ESP_LOGW(FACTORY_TAG, "Station instance created successfully");
     return StaClassInstance;
+}
+
+AccessPointStation* WifiFactory::CreateAccessPointStation(uint8_t CoreToUse, uint16_t UdpPort, bool EnableRuntimeLogging)
+{
+    if (ApStaClassInstance != nullptr)
+    {
+        return ApStaClassInstance;
+    }
+
+    if (StaClassInstance != nullptr) // Placeholder for access point and ApSta pointers
+    {
+        return nullptr;
+    }
+
+    ApStaClassInstance = new AccessPointStation(CoreToUse, UdpPort, EnableRuntimeLogging);
+
+    if (ApStaClassInstance == nullptr)
+    {
+        ESP_LOGE(FACTORY_TAG, "Failed to create AccessPointStation instance!");
+        return nullptr;
+    }
+
+    ESP_LOGW(FACTORY_TAG, "AccessPointStation instance created successfully");
+    return ApStaClassInstance;
 }

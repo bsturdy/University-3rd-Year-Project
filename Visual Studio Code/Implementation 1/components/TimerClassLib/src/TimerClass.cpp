@@ -1,41 +1,23 @@
 #include "TimerClass.h"
 
-// Author - Ben Sturdy
-// This file implements a class 'Timer Class'. This class should be instantiated
-// only once in a project. This class configures 2 timers to work together to run
-// a task in a cyclic mode. One timer calls a task to run from a hardware ISR  
-// cyclically. Another task calls a watchdog timeout system that checks if the cyclic 
-// task has exceeded a set limit - useful for ensuring that the idle tasks and / or 
-// other tasks continue to run without being drained of CPU resources. This system 
-// can be pinned to a core, and is recommended to be pinned to a core with no other 
-// processes running on it.
-
-
-
-
-
-//==============================================================================// 
-//                                                                              //
-//                            Timer Class                                       //
-//                                                                              //
-//==============================================================================// 
-
-#define CyclicTimerGroup        ((timer_group_t)(CONFIG_ESP_CYCLIC_TIMER_GROUP == 0 ? TIMER_GROUP_0 : TIMER_GROUP_1))
-#define CyclicTimerIndex        ((timer_idx_t)(CONFIG_ESP_CYCLIC_TIMER_INDEX == 0 ? TIMER_0 : TIMER_1))
-#define WatchdogTimerGroup      ((timer_group_t)(CONFIG_ESP_WATCHDOG_TIMER_GROUP == 0 ? TIMER_GROUP_0 : TIMER_GROUP_1))
-#define WatchdogTimerIndex      ((timer_idx_t)(CONFIG_ESP_WATCHDOG_TIMER_INDEX == 0 ? TIMER_0 : TIMER_1))
+// Hardware Config Macros
+#define CyclicTimerGroup        TIMER_GROUP_0 
+#define CyclicTimerIndex        TIMER_0
+#define WatchdogTimerGroup      TIMER_GROUP_1
+#define WatchdogTimerIndex      TIMER_0
 #define CyclicPeriodInUs        CONFIG_ESP_CYCLIC_TASK_PERIOD
 #define WatchdogPeriodInUs      CONFIG_ESP_WATCHDOG_TASK_PERIOD
 #define Prescaler               CONFIG_ESP_TIMER_PRESCALER
 #define TAG                     "Timer Class"
 
-static TimerClass* ClassInstance;
+#ifndef CONFIG_ESP_CYCLIC_TASK_PERIOD
+#define CONFIG_ESP_CYCLIC_TASK_PERIOD 1000 // default example
+#endif
 
-StackType_t TimerClass::CyclicTaskStack[CyclicTaskStackSize];
-StaticTask_t TimerClass::CyclicTaskTCB;
+#define TAG "TimerClass"
 
-StackType_t TimerClass::WatchdogTaskStack[WatchdogTaskStackSize];
-StaticTask_t TimerClass::WatchdogTaskTCB;
+// Initialize the static ISR pointer
+TimerClass* TimerClass::isr_instance = nullptr;
 
 
 
@@ -47,134 +29,130 @@ StaticTask_t TimerClass::WatchdogTaskTCB;
 //                                                                              //
 //==============================================================================// 
 
-// Constructor
+TimerClass& TimerClass::GetInstance()
+{
+    static TimerClass instance;
+    return instance;
+}
+
 TimerClass::TimerClass()
 {
-    // Pointer to itself
-    ClassInstance = this;
-    CycleTimeMs = CyclicPeriodInUs / 1000.0;
+    //ISRs can find us without calling GetInstance()
+    isr_instance = this;
+    
+    // Default initialization
+    CycleTimeMs = CyclicPeriodInUs / 1000.0; 
     WatchdogTimeMs = WatchdogPeriodInUs / 1000.0;
-    Prescalar = Prescaler;
+    Prescalar = Prescaler;     // Default
 }
 
-// Destructor (Unsused, this class should exist throughout runtime)
 TimerClass::~TimerClass()
 {
-    ;
+    isr_instance = nullptr;
 }
 
-// Task called by cyclic ISR. This task calls the user task
-void TimerClass::CyclicTask(void* pvParameters) 
-{
-    while (true) 
-    {
-        // Block until called
-        ulTaskNotifyTake(pdTRUE, portMAX_DELAY);
 
-        if (ClassInstance->AreTimersInitated)
-        {
 
-            if (ClassInstance->UserTask == nullptr)
-            {
-                return;
-            }
-
-            // ======== START USER CODE ======== //
-
-            if (ClassInstance->UserTask) 
-            {
-                // Reset and start watchdog timer
-                ESP_ERROR_CHECK(timer_set_counter_value(WatchdogTimerGroup, WatchdogTimerIndex, 0));
-                ESP_ERROR_CHECK(timer_start(WatchdogTimerGroup, WatchdogTimerIndex));
-                
-                // Run user task
-                ClassInstance->UserTask(NULL);
-
-                // Increment task counter
-                ClassInstance->CyclicTaskCounter = ClassInstance->CyclicTaskCounter + 1;
-
-                // Pause watchdog timer
-                ESP_ERROR_CHECK(timer_pause(WatchdogTimerGroup, WatchdogTimerIndex));
-            }
-
-            // ======== END USER CODE ======== //
-
-        }
-    }
-}
-
-// Task called by Watchdog ISR. This task resets the cyclic task
-void TimerClass::WatchdogTask(void* pvParameters)
-{
-    while(true)
-    {
-        // Block until called
-        ulTaskNotifyTake(pdTRUE, portMAX_DELAY);
-
-        if (ClassInstance->AreTimersInitated)
-        {
-            // Pause watchdog timer
-            ESP_ERROR_CHECK(timer_pause(WatchdogTimerGroup, WatchdogTimerIndex));
-
-            // Delete cyclic task
-            vTaskDelete(ClassInstance->CyclicTaskHandle);
-            ClassInstance->CyclicTaskHandle = NULL;
-
-            // Re-create cyclic task (static memory location for fast speeds)
-            ClassInstance->CyclicTaskHandle = xTaskCreateStaticPinnedToCore
-            (
-                CyclicTask,                // Task function
-                "Deterministic Task",      // Task name
-                CyclicTaskStackSize,                 // Stack depth
-                NULL,                      // Parameters to pass
-                configMAX_PRIORITIES - 2,  // Highest priority
-                CyclicTaskStack,           // Preallocated stack memory
-                &CyclicTaskTCB,             // Preallocated TCB memory
-                ClassInstance->CoreToRunCyclicTask
-            );
-
-            // Reset watchdog timer
-            ESP_ERROR_CHECK(timer_set_counter_value(WatchdogTimerGroup, WatchdogTimerIndex, 0));
-
-            // Enable timers alarm if optioned
-            if (ClassInstance->IsWatchdogEnabled)
-            {
-                ESP_ERROR_CHECK(timer_set_alarm(WatchdogTimerGroup, WatchdogTimerIndex, TIMER_ALARM_EN));
-            }
-
-            // Increment task counter
-            ClassInstance->WatchdogTaskCounter = ClassInstance->WatchdogTaskCounter + 1;
-
-        }
-    }
-}
-
-// ISR called cyclically by a hardware timer, signals deterministic task to run
 bool IRAM_ATTR TimerClass::CyclicISR(void* arg) 
 {
-    // Increment ISR counter
-    ClassInstance->CyclicIsrCounter = ClassInstance->CyclicIsrCounter + 1;
-    
-    // Notify task to run with appropriate priority interruption
-    vTaskNotifyGiveFromISR(ClassInstance->CyclicTaskHandle, &ClassInstance->xHigherPriorityTaskWokenFalse);
+    // Do not access if instance is gone
+    if (isr_instance == nullptr) return false;
 
-    // End
-    portYIELD_FROM_ISR(ClassInstance->xHigherPriorityTaskWokenFalse);  
+    // Access instance members via the pointer
+    isr_instance->CyclicIsrCounter++;
+    
+    // Notify Task
+    if (isr_instance->CyclicTaskHandle != NULL) {
+        vTaskNotifyGiveFromISR(isr_instance->CyclicTaskHandle, &isr_instance->xHigherPriorityTaskWokenFalse);
+    }
+
+    portYIELD_FROM_ISR(isr_instance->xHigherPriorityTaskWokenFalse);  
     return true;
 }
 
-// ISR called by a timer triggered in the cyclic task, signals that a task has taken too long and must be terminated
 bool IRAM_ATTR TimerClass::WatchdogISR(void* arg) 
 { 
-    // Increment ISR counter
-    ClassInstance->WatchdogISRCounter = ClassInstance->WatchdogISRCounter + 1;
+    if (isr_instance == nullptr) return false;
 
-    // Notify task to run with appropriate priority interruption
-    vTaskNotifyGiveFromISR(ClassInstance->WatchdogTaskHandle, &ClassInstance->xHigherPriorityTaskWokenTrue);
+    isr_instance->WatchdogISRCounter++;
 
-    // End
-    portYIELD_FROM_ISR(ClassInstance->xHigherPriorityTaskWokenTrue); 
+    if (isr_instance->WatchdogTaskHandle != NULL) {
+        vTaskNotifyGiveFromISR(isr_instance->WatchdogTaskHandle, &isr_instance->xHigherPriorityTaskWokenTrue);
+    }
+
+    portYIELD_FROM_ISR(isr_instance->xHigherPriorityTaskWokenTrue); 
     return true;
+}
+
+void TimerClass::CyclicTask(void* pvParameters) 
+{
+    TimerClass* self = (TimerClass*)pvParameters;
+    ESP_LOGI(TAG, "Cyclic Task Started on Core %d", xPortGetCoreID());
+
+    while (true) 
+    {
+        // Block until notified by ISR
+        ulTaskNotifyTake(pdTRUE, portMAX_DELAY);
+
+        // esp_rom_printf("Woke\n"); 
+
+        if (self->AreTimersInitated && self->UserTask != nullptr)
+        {
+            // Reset and start watchdog
+            timer_set_counter_value(WatchdogTimerGroup, WatchdogTimerIndex, 0);
+            timer_start(WatchdogTimerGroup, WatchdogTimerIndex);
+            
+            // Run user task
+            self->UserTask(NULL);
+            self->CyclicTaskCounter++;
+
+            // Pause watchdog
+            timer_pause(WatchdogTimerGroup, WatchdogTimerIndex);
+        }
+    }
+}
+
+void TimerClass::WatchdogTask(void* pvParameters)
+{
+    TimerClass* self = (TimerClass*)pvParameters;
+
+    while(true)
+    {
+        ulTaskNotifyTake(pdTRUE, portMAX_DELAY);
+
+        if (self->AreTimersInitated)
+        {
+            ESP_LOGE(TAG, "Watchdog Triggered! Resetting Cyclic Task.");
+
+            timer_pause(WatchdogTimerGroup, WatchdogTimerIndex);
+
+            // Re-create cyclic task
+            if (self->CyclicTaskHandle != NULL) {
+                vTaskDelete(self->CyclicTaskHandle);
+                self->CyclicTaskHandle = NULL;
+            }
+
+            self->CyclicTaskHandle = xTaskCreateStaticPinnedToCore
+            (
+                CyclicTask,                
+                "Deterministic Task",      
+                CyclicTaskStackSize,                 
+                self,                       // <--- Pass 'this' (self) here!
+                configMAX_PRIORITIES - 2,  
+                self->CyclicTaskStack,     // Use instance member     
+                &self->CyclicTaskTCB,      // Use instance member       
+                self->CoreToRunCyclicTask
+            );
+
+            timer_set_counter_value(WatchdogTimerGroup, WatchdogTimerIndex, 0);
+
+            if (self->IsWatchdogEnabled)
+            {
+                timer_set_alarm(WatchdogTimerGroup, WatchdogTimerIndex, TIMER_ALARM_EN);
+            }
+            self->WatchdogTaskCounter++;
+        }
+    }
 }
 
 
@@ -187,193 +165,122 @@ bool IRAM_ATTR TimerClass::WatchdogISR(void* arg)
 //                                                                              //
 //==============================================================================// 
 
-// Configures cyclic timer at 80MHz to call cyclic ISR.
+bool TimerClass::SetupCyclicTask(void (*TaskToRun)(void*), uint8_t CoreToUse)
+{
+    if (this->IsSetupDone) return true;
+
+    ESP_LOGI(TAG, "Setting up Cyclic Task");
+
+    this->CoreToRunCyclicTask = CoreToUse;
+    this->UserTask = TaskToRun;
+
+    // Create Tasks    
+    this->CyclicTaskHandle = xTaskCreateStaticPinnedToCore
+    (
+        CyclicTask, 
+        "Deterministic Task", 
+        CyclicTaskStackSize, 
+        this,                           
+        configMAX_PRIORITIES - 2, 
+        this->CyclicTaskStack,
+        &this->CyclicTaskTCB,
+        CoreToRunCyclicTask
+    );
+
+    this->WatchdogTaskHandle = xTaskCreateStaticPinnedToCore
+    (
+        WatchdogTask, 
+        "Watchdog Task", 
+        WatchdogTaskStackSize, 
+        this,
+        configMAX_PRIORITIES - 1, 
+        this->WatchdogTaskStack,
+        &this->WatchdogTaskTCB,
+        CoreToRunCyclicTask
+    );
+
+    // Call internal setup
+    bool Success = SetupTimer(CycleTimeMs, WatchdogTimeMs, Prescalar);
+
+    if (Success) this->IsSetupDone = true;
+    return Success;
+}
+
 bool TimerClass::SetupTimer(float CycleTimeInMs, float WatchdogTime, uint16_t Prescalar)
 {
-    printf("\n");
     ESP_LOGI(TAG, "SetupTimer Executed!");
 
-    // Assign vars
-    ClassInstance->CycleTimeMs = CycleTimeInMs;
-    ClassInstance->WatchdogTimeMs = WatchdogTime;
-    ClassInstance->Prescalar = Prescalar;
+    this->CycleTimeMs = CycleTimeInMs;
+    this->WatchdogTimeMs = WatchdogTime;
+    this->Prescalar = Prescalar;
 
-    // If cyclic task doesnt exist yet, wait
-    while(CyclicTaskHandle == NULL)
-    {
-        vTaskDelay(100);
+    // Ensure task exists before starting timer
+    if (this->CyclicTaskHandle == NULL) {
+        ESP_LOGE(TAG, "CyclicTaskHandle is NULL. Call SetupCyclicTask first.");
+        return false;
     }
 
-    // Configure cyclic timer
-    timer_config_t CyclicConfig =
-    {
-        .alarm_en = TIMER_ALARM_DIS,
+    // Configure Cyclic Timer
+    timer_config_t CyclicConfig = {
+        .alarm_en = TIMER_ALARM_DIS,       // Alarm is enabled later
         .counter_en = TIMER_START,
-        .intr_type = TIMER_INTR_LEVEL, 
+        .intr_type = TIMER_INTR_LEVEL,
         .counter_dir = TIMER_COUNT_UP,
         .auto_reload = TIMER_AUTORELOAD_EN,
         .clk_src = TIMER_SRC_CLK_APB,
-        .divider = ClassInstance->Prescalar
+        .divider = (uint32_t)this->Prescalar // Cast to ensure correct type
     };
 
-    // init timer
-    timer_init(CyclicTimerGroup, CyclicTimerIndex, &CyclicConfig);
-    // Set alarm up
-    timer_set_alarm_value(CyclicTimerGroup, CyclicTimerIndex, ((80000000/ClassInstance->Prescalar) * (ClassInstance->CycleTimeMs/1000)));
-    // Enable interrupt on timer
-    timer_enable_intr(CyclicTimerGroup, CyclicTimerIndex);
-    // Link ISR callback for timer
-    timer_isr_callback_add(CyclicTimerGroup, CyclicTimerIndex, CyclicISR, NULL, 0);
-    // Enable timer
-    timer_start(CyclicTimerGroup, CyclicTimerIndex);
-    // Enable alarm
-    timer_set_alarm(CyclicTimerGroup, CyclicTimerIndex, TIMER_ALARM_EN);
+    ESP_ERROR_CHECK(timer_init(CyclicTimerGroup, CyclicTimerIndex, &CyclicConfig));
+    
+    // Calculate alarm value (ticks)
+    uint64_t alarm_val = (80000000.0 / this->Prescalar) * (this->CycleTimeMs / 1000.0);
+    ESP_ERROR_CHECK(timer_set_alarm_value(CyclicTimerGroup, CyclicTimerIndex, alarm_val));
+    
+    // Enable Interrupts
+    ESP_ERROR_CHECK(timer_enable_intr(CyclicTimerGroup, CyclicTimerIndex));
+    
+    // Link ISR
+    ESP_ERROR_CHECK(timer_isr_callback_add(CyclicTimerGroup, CyclicTimerIndex, CyclicISR, NULL, ESP_INTR_FLAG_IRAM));
+    
+    // Start Timer
+    ESP_ERROR_CHECK(timer_start(CyclicTimerGroup, CyclicTimerIndex));
+    
+    // Enable Alarm Action
+    ESP_ERROR_CHECK(timer_set_alarm(CyclicTimerGroup, CyclicTimerIndex, TIMER_ALARM_EN));
 
-    // Configure Watchdog timer
-    timer_config_t WatchdogConfig = 
-    {
+    // Configure Watchdog Timer
+    timer_config_t WatchdogConfig = {
         .alarm_en = TIMER_ALARM_EN,
-        .counter_en = TIMER_PAUSE,
-        .intr_type = TIMER_INTR_LEVEL, 
+        .counter_en = TIMER_PAUSE,         // Starts paused
+        .intr_type = TIMER_INTR_LEVEL,
         .counter_dir = TIMER_COUNT_UP,
         .auto_reload = TIMER_AUTORELOAD_DIS,
         .clk_src = TIMER_SRC_CLK_APB,
-        .divider = ClassInstance->Prescalar       
+        .divider = (uint32_t)this->Prescalar
     };
 
-    // init timer
-    timer_init(WatchdogTimerGroup, WatchdogTimerIndex, &WatchdogConfig);
-    // Set alarm value
-    timer_set_alarm_value(WatchdogTimerGroup, WatchdogTimerIndex, ((80000000/ClassInstance->Prescalar) * (ClassInstance->WatchdogTimeMs/1000)));
-    // Enable interrupt on timer 
-    timer_enable_intr(WatchdogTimerGroup, WatchdogTimerIndex);
-    // Link ISR callback for timer
-    timer_isr_callback_add(WatchdogTimerGroup, WatchdogTimerIndex, WatchdogISR, NULL, 0);
+    ESP_ERROR_CHECK(timer_init(WatchdogTimerGroup, WatchdogTimerIndex, &WatchdogConfig));
+    
+    uint64_t wd_alarm_val = (80000000.0 / this->Prescalar) * (this->WatchdogTimeMs / 1000.0);
+    ESP_ERROR_CHECK(timer_set_alarm_value(WatchdogTimerGroup, WatchdogTimerIndex, wd_alarm_val));
+    
+    ESP_ERROR_CHECK(timer_enable_intr(WatchdogTimerGroup, WatchdogTimerIndex));
+    ESP_ERROR_CHECK(timer_isr_callback_add(WatchdogTimerGroup, WatchdogTimerIndex, WatchdogISR, NULL, ESP_INTR_FLAG_IRAM));
 
-    AreTimersInitated = true;
+    // Mark as ready so the task loop can proceed
+    this->AreTimersInitated = true;
 
-    ESP_LOGI(TAG, "SetupTimer Successful!");
-    printf("\n");
-
+    ESP_LOGI(TAG, "SetupTimer Successful! Alarm Value: %llu", alarm_val);
     return true;
-}   
-
-// Takes a task input and converts it into a cyclically executed task with watchdog protection
-bool TimerClass::SetupCyclicTask(void (*TaskToRun)(void*), uint8_t CoreToUse)
-{
-    printf("\n");
-    ESP_LOGI(TAG, "SetupCyclicTask Executed!");
-
-
-    // Assign vars
-    CoreToRunCyclicTask = CoreToUse;
-    UserTask = TaskToRun;
-
-
-    // Create the cyclic task in static location (fast speeds for deleting and recreating)
-    ESP_LOGI(TAG, "Creating Cyclic Task... ");
-    CyclicTaskHandle = xTaskCreateStaticPinnedToCore
-    (
-        CyclicTask,                     // Task function
-        "Deterministic Task",           // Task name
-        CyclicTaskStackSize,            // Stack depth
-        NULL,                           // Parameters to pass
-        configMAX_PRIORITIES - 2,       // Highest priority - 1
-        CyclicTaskStack,                // Preallocated stack memory
-        &CyclicTaskTCB,                 // Preallocated TCB memory
-        CoreToRunCyclicTask             // Core task is pinned to
-    );
-    if (CyclicTaskHandle == NULL) 
-    {
-        ESP_LOGI(TAG, "Failed To Create CyclicTask");
-        return false;
-    }
-    ESP_LOGI(TAG, "1 - Created Cyclic Task on Core %d!", CoreToRunCyclicTask);
-
-
-    // Create the watchdog task in static location (fast speeds for deleting and recreating)
-    ESP_LOGI(TAG, "Creating Watchdog Task... ");
-    WatchdogTaskHandle = xTaskCreateStaticPinnedToCore
-    (
-        WatchdogTask,                   // Task function
-        "Watchdog Task",                // Task name
-        WatchdogTaskStackSize,          // Stack depth
-        NULL,                           // Parameters to pass
-        configMAX_PRIORITIES - 1,       // Highest priority - 1
-        WatchdogTaskStack,              // Preallocated stack memory
-        &WatchdogTaskTCB,               // Preallocated TCB memory
-        CoreToRunCyclicTask             // Core task is pinned to
-    );   
-    if (WatchdogTaskHandle == NULL) 
-    {
-        ESP_LOGI(TAG, "Failed To Create Watchdog ");
-        return false;
-    }
-    ESP_LOGI(TAG, "2 - Created Watchdog Task on Core %d!", CoreToRunCyclicTask); 
-
-
-    ESP_LOGI(TAG, "SetupCyclicTask Successful!");
-    printf("\n");
-
-    // Initiate the timers after the tasks are created
-    return ClassInstance->SetupTimer(CycleTimeMs, WatchdogTimeMs, Prescalar);
 }
 
-
-
-
-
-//==============================================================================// 
-//                                                                              //
-//                             Get / Set                                        //
-//                                                                              //
-//==============================================================================// 
-
-uint64_t TimerClass::GetCyclicIsrCounter()
+void TimerClass::SetWatchdogOnOff(bool Enabled)
 {
-    return CyclicIsrCounter;
-}
-
-uint64_t TimerClass::GetCyclicTaskCounter()
-{
-    return CyclicTaskCounter;
-}
-
-uint64_t TimerClass::GetWatchdogIsrCounter()
-{
-    return WatchdogISRCounter;
-}
-
-uint64_t TimerClass::GetWatchdogTaskCounter()
-{
-    return WatchdogTaskCounter;
-}
-
-uint64_t TimerClass::GetTimerFrequency()
-{
-    return 80000000/Prescalar;
-}
-
-TaskHandle_t TimerClass::GetCyclicTaskHandle()
-{
-    return CyclicTaskHandle;
-}
-
-TaskHandle_t TimerClass::GetWatchdogTaskHandle()
-{
-    return WatchdogTaskHandle;
-}
-
-// Determines if the Watchdog functionality is used or not.
-void TimerClass::SetWatchdogOnOff(bool IsWatchdogEnabled)
-{
-    ClassInstance->IsWatchdogEnabled = IsWatchdogEnabled;
-    if (ClassInstance->IsWatchdogEnabled)
-    {
+    this->IsWatchdogEnabled = Enabled;
+    if (this->IsWatchdogEnabled) {
         timer_set_alarm(WatchdogTimerGroup, WatchdogTimerIndex, TIMER_ALARM_EN);
+    } else {
+        timer_set_alarm(WatchdogTimerGroup, WatchdogTimerIndex, TIMER_ALARM_DIS);
     }
 }
-
-
-
-

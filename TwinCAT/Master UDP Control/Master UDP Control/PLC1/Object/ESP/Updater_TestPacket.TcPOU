@@ -33,6 +33,22 @@ END_VAR
         <ST><![CDATA[GetVersion := PacketVersion;]]></ST>
       </Implementation>
     </Method>
+    <Method Name="SetSenderTimestamp" Id="{fd32c787-cabf-4a91-a35a-9a3b3b106bab}" FolderPath="ITF_Updater\">
+      <Declaration><![CDATA[{warning 'Add method implementation '}
+METHOD SetSenderTimestamp : BOOL
+]]></Declaration>
+      <Implementation>
+        <ST><![CDATA[]]></ST>
+      </Implementation>
+    </Method>
+    <Method Name="SetTimeDifference" Id="{f83c97dd-471a-42cc-b135-acd3ec3c5347}" FolderPath="ITF_Updater\">
+      <Declaration><![CDATA[{warning 'Add method implementation '}
+METHOD SetTimeDifference : BOOL
+]]></Declaration>
+      <Implementation>
+        <ST><![CDATA[]]></ST>
+      </Implementation>
+    </Method>
     <Method Name="TryApplyPayload" Id="{ddc6e7b4-b65e-41a4-8326-cf3a5a73d169}" FolderPath="ITF_Updater\">
       <Declaration><![CDATA[METHOD TryApplyPayload : HRESULT
 VAR_INPUT

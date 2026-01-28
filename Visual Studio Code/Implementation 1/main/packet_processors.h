@@ -10,6 +10,11 @@
 constexpr uint16_t PACKET_START_DELIMITER   = 0xB502; // on little-endian ESP32
 constexpr size_t   PACKET_HEADER_SIZE       = 48;
 constexpr uint16_t PACKET_END_DELIMITER     = 0x035B; // on little-endian ESP32
+static constexpr uint8_t START0 = 0x02;
+static constexpr uint8_t START1 = 0xB5;
+static constexpr uint8_t END0 = 0x5B;
+static constexpr uint8_t END1 = 0x03;
+static uint8_t WriteIndex = 0;
 
 
 
@@ -56,7 +61,11 @@ struct Payload1
     uint8_t Test9[6];
 };
 
-
+bool ExtractData(uint8_t* InputBuffer,
+                size_t* InputBufferBytes,
+                uint8_t* OutputBuffer,
+                size_t OutputBufferCapacity,
+                size_t* OutputBytes);
 
 class ITF_PacketProcessor 
 {

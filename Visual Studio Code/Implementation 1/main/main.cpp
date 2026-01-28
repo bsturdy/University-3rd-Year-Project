@@ -6,26 +6,31 @@
 #include "WifiClass.h"
 #include "UtilitiesClass.h"
 #include "packet_processors.h"
+#include "tests.h"
+#include <cstddef>
 #include <cstdint>
+#include <cstdlib>
+#include <cstring>
 
 #define TAG "Main"
 #define CYCLIC_TAG "CyclicTask"
 
-TimerClass Timer;
-UtilitiesClass Utilities;
-//WifiClass Wifi;
+// --- UI Helpers ---
+#define BOLD   "\x1b[1m"
+#define RESET  "\x1b[0m"
+#define GREEN  "\x1b[32m"
+#define CYAN   "\x1b[36m"
+#define YELLOW "\x1b[33m"
+
 Station* WifiSta = nullptr;
 Packet1 packet1;
 ITF_PacketProcessor* processor = &packet1;
 
 uint64_t Uid = CONFIG_ESP_NODE_UID;
 uint8_t MainState = 0;
-
 uint64_t CyclicCalls = 0;
 uint8_t CyclicState = 0;
-bool DataReady = false;
-uint8_t RawUdpData[100]{};
-uint8_t ProcessedData[100]{};
+uint8_t TestFails = 0;
 
 
 void CyclicTask1(void* pvParameters)
@@ -37,22 +42,6 @@ void CyclicTask1(void* pvParameters)
     switch(CyclicState)
     {
         case 0:
-            WifiSta->GetDataFromBuffer(&DataReady, RawUdpData);
-            if (DataReady) CyclicState = 1;
-            break;
-
-
-        case 1:
-            if (processor->ProcessPacket(RawUdpData, 64, ProcessedData)) CyclicState = 2;
-            else CyclicState = 5;
-            break;
-
-
-        case 2:
-            ESP_LOGI(CYCLIC_TAG, "Processed payload (bytes):");
-            ESP_LOG_BUFFER_HEX(CYCLIC_TAG, ProcessedData, 14);
-            DataReady = false;
-            CyclicState = 0;
             break;
 
 
@@ -66,56 +55,81 @@ void CyclicTask1(void* pvParameters)
 
 extern "C" void app_main(void)
 {
+
+    // Init singleton instances
     WifiSta = WifiFactory::CreateStation(1, 10050, true);
+    TimerClass::GetInstance();
+    GpioClass::GetInstance();
+    UtilitiesClass::GetInstance();
 
 
+    // Main event loop
     while(true)
     {
         switch(MainState)
         {
-            case 0:
-                GpioClass::Instance().SetupOnboardLed();
+            case 0: // Power on
+                ESP_LOGI(TAG, "POWER ON");
+                if (GpioClass::GetInstance().SetupOnboardLed()) MainState = 1;
+                break;
+            
+            
+            case 1: // Run tests
+                TestFails = RunAllTests();
+                if (TestFails == 0) MainState = 2;
+                else MainState = 99;
+                break;
+
+
+            case 2: // Start cyclic task
+                if (TimerClass::GetInstance().SetupCyclicTask(CyclicTask1, 0)) MainState = 3;
+                else MainState = 99;
+                break;
+
+
+            case 3: // Connect to wifi
+                GpioClass::GetInstance().ChangeOnboardLedColour(0, 0, 255);
                 WifiSta->SetupWifi();
-                if (WifiSta->IsConnectedToHost())
-                {
-                    GpioClass::Instance().ChangeOnboardLedColour(0, 255, 0);
-                    MainState = 1;
-                }
-                else
-                {
-                    ESP_LOGI(TAG, "Waiting to connect to AP...");
-                    GpioClass::Instance().ChangeOnboardLedColour(255, 165, 0);
-                }
-                break;
-    
-
-            case 1:
-                if (Timer.SetupCyclicTask(CyclicTask1, 0))
-                {
-                    MainState = 2;
-                }
-                else
-                {
-                    ESP_LOGE(TAG, "Failed to start cyclic task!");
-                    GpioClass::Instance().ChangeOnboardLedColour(255, 0, 0);
-                }
-
-            case 2:
-                printf("\n\nUptime: %llu ms | Free Heap: %zu bytes | Chip Temp: %.2f C | Cyclic Calls: %llu | Cyclic State: %i | GW Address: %s | My Address: %s\n", 
-                    Utilities.GetUptimeMs(),
-                    Utilities.GetFreeHeapBytes(),
-                    Utilities.GetChipTemperatureC(),
-                    CyclicCalls,
-                    CyclicState,
-                    WifiSta->GetGatewayIpAddress(),
-                    WifiSta->GetMyIpAddress()
-                );
-                vTaskDelay(pdMS_TO_TICKS(900));
+                if (WifiSta->IsConnectedToHost()) MainState = 4;
                 break;
 
 
-            case 99:
-                GpioClass::Instance().ChangeOnboardLedColour(255, 0, 0);
+            case 4: // Normal operation
+                GpioClass::GetInstance().ChangeOnboardLedColour(0, 255, 0);
+                if (not WifiSta->IsConnectedToHost()) MainState = 3;
+                else
+                {
+                    float temp = UtilitiesClass::GetInstance().GetChipTemperatureC();
+                    float rssi = UtilitiesClass::GetInstance().GetWifiSignalStrength();
+                    size_t heap = UtilitiesClass::GetInstance().GetFreeHeapBytes();
+                    uint64_t uptime = UtilitiesClass::GetInstance().GetUptimeMs();
+
+                    //printf("\033[H\033[J"); // Clears terminal so the dashboard stays at the top
+                    printf(BOLD GREEN "┌────────────────────────────────────────────────────────────┐" RESET "\n");
+                    printf(BOLD GREEN "│" RESET BOLD "                   ESP32 S3 NODE DASHBOARD                  " BOLD GREEN "│" RESET "\n");
+                    printf(BOLD GREEN "├──────────────────────────────┬─────────────────────────────┤" RESET "\n");
+
+                    printf(BOLD GREEN "│" RESET "  " BOLD "SYSTEM METRICS" RESET "              " BOLD GREEN "│" RESET "  " BOLD "NETWORK STATUS" RESET "             " BOLD GREEN "│" RESET "\n");
+                    printf(BOLD GREEN "│" RESET "  Uptime: " CYAN "%8llu ms" RESET "         " BOLD GREEN "│" RESET "  RSSI:     " YELLOW "%7.2f dBm" RESET "      " BOLD GREEN "│" RESET "\n", uptime, rssi);
+                    printf(BOLD GREEN "│" RESET "  Heap:   " CYAN "%8zu B " RESET "         " BOLD GREEN "│" RESET "  My IP:  " GREEN "%15s" RESET "    " BOLD GREEN "│" RESET "\n", heap, WifiSta->GetMyIpAddress());
+                    printf(BOLD GREEN "│" RESET "  Temp:   " CYAN "%8.2f C " RESET "         " BOLD GREEN "│" RESET "  GW IP: " GREEN "%15s" RESET "     " BOLD GREEN "│" RESET "\n", temp, WifiSta->GetGatewayIpAddress());
+
+                    printf(BOLD GREEN "├──────────────────────────────┴─────────────────────────────┤" RESET "\n");
+                    printf(BOLD GREEN "│" RESET "  " BOLD "TASK EXECUTION" RESET "                                            " BOLD GREEN "│" RESET "\n");
+                    printf(BOLD GREEN "│" RESET "  Cyclic Calls: " YELLOW "%-10llu" RESET "                                  " BOLD GREEN "│" RESET "\n", CyclicCalls);
+                    printf(BOLD GREEN "│" RESET "  Cyclic State: " YELLOW "%-5i" RESET "                                       " BOLD GREEN "│" RESET "\n", CyclicState);
+                    printf(BOLD GREEN "└────────────────────────────────────────────────────────────┘" RESET "\n");
+                    vTaskDelay(pdMS_TO_TICKS(900));
+                }
+                break;
+
+
+            case 99: // Error state
+                GpioClass::GetInstance().ChangeOnboardLedColour(255, 0, 0);
+                vTaskDelay(pdMS_TO_TICKS(500));
+                GpioClass::GetInstance().ChangeOnboardLedColour(0, 0, 0);
+                vTaskDelay(pdMS_TO_TICKS(400));
+                printf("Critical error occurred! Test fails: %i\n", TestFails);
                 break;
 
 

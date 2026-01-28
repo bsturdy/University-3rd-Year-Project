@@ -15,6 +15,7 @@ VAR
 	// ESP information
 	_Data						: EspPacketHeader;
 	_PacketsReceivedCount		: ULINT;
+	_LastReceivedTimestamp		: ULINT;
 	_DataBuffer					: ARRAY [0..511] OF BYTE;
 	
 END_VAR
@@ -24,6 +25,15 @@ END_VAR
     </Implementation>
     <Folder Name="ITF_EspHost" Id="{3e1ad894-296e-4a6b-bccd-5c988016ec11}" />
     <Folder Name="ITF_Node" Id="{1137c9b1-75b7-4fc7-8824-f307a94e0aea}" />
+    <Method Name="CyclicUpdate" Id="{54910a29-7116-406b-ac34-c30fe7d4116f}">
+      <Declaration><![CDATA[METHOD CyclicUpdate : BOOL
+VAR_INPUT
+END_VAR
+]]></Declaration>
+      <Implementation>
+        <ST><![CDATA[]]></ST>
+      </Implementation>
+    </Method>
     <Method Name="GetDataBuffer" Id="{2ac55e4a-5e5d-4e04-a89a-b3b9e95a64dd}" FolderPath="ITF_EspHost\">
       <Declaration><![CDATA[METHOD GetDataBuffer : BOOL
 VAR_INPUT
@@ -70,6 +80,18 @@ END_VAR
         <ST><![CDATA[GetNextNode := _NextNode;
 
 RETURN;]]></ST>
+      </Implementation>
+    </Method>
+    <Method Name="GetPacketToSend" Id="{b42e5fbc-c601-4a14-b846-b8badd4c1736}">
+      <Declaration><![CDATA[{warning 'Add method implementation '}
+METHOD GetPacketToSend : BOOL
+VAR_INPUT
+	Address	: REFERENCE TO PVOID;
+	Size	: REFERENCE TO UDINT;
+END_VAR
+]]></Declaration>
+      <Implementation>
+        <ST><![CDATA[GetPacketToSend := FALSE;]]></ST>
       </Implementation>
     </Method>
     <Method Name="GetPositionInList" Id="{30f4f578-233f-46f8-bc0a-f0861309c4dc}" FolderPath="ITF_Node\">
@@ -157,30 +179,44 @@ RETURN;]]></ST>
       </Implementation>
     </Method>
     <Method Name="UpdateMetadata" Id="{139b3c3d-2898-4d80-819a-1c7ff810c5c8}" FolderPath="ITF_EspHost\">
-      <Declaration><![CDATA[{warning 'Add method implementation '}
-METHOD UpdateMetadata : BOOL
+      <Declaration><![CDATA[METHOD UpdateMetadata : BOOL
 VAR_INPUT
 	Data	: EspPacketHeader;
 END_VAR
 ]]></Declaration>
       <Implementation>
-        <ST><![CDATA[IF Data.SendersTimestamp <> 0 THEN
+        <ST><![CDATA[IF MEMCPY(ADR(_Data), ADR(Data), 48) = 48 THEN
 	
-	_Data.SendersTimestamp := Data.SendersTimestamp;
+	_PacketsReceivedCount := _PacketsReceivedCount + 1;	
+
+	_LastReceivedTimestamp := F_GetSystemTime();
+
+	UpdateMetadata := TRUE;
+	
+ELSE
+	
+	UpdateMetadata := FALSE;
 
 END_IF
 
-IF Data.TimeDifference <> 0 THEN
-	
-	_Data.TimeDifference := Data.TimeDifference;
 
-END_IF
-
-UpdateMetadata := TRUE;
-
-_PacketsReceivedCount := _PacketsReceivedCount + 1;
-
-RETURN;
+// IF Data.SendersTimestamp <> 0 THEN
+// 	
+// 	_Data.SendersTimestamp := Data.SendersTimestamp;
+// 
+// END_IF
+// 
+// IF Data.TimeDifference <> 0 THEN
+// 	
+// 	_Data.TimeDifference := Data.TimeDifference;
+// 
+// END_IF
+// 
+// UpdateMetadata := TRUE;
+// 
+// _PacketsReceivedCount := _PacketsReceivedCount + 1;
+// 
+// RETURN;
 ]]></ST>
       </Implementation>
     </Method>

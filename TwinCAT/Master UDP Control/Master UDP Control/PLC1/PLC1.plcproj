@@ -97,7 +97,7 @@
     <Compile Include="Object\Linked List\List.TcPOU">
       <SubType>Code</SubType>
     </Compile>
-    <Compile Include="Object\UDP\MetadataDecoder.TcPOU">
+    <Compile Include="Object\UDP\DataDecoder.TcPOU">
       <SubType>Code</SubType>
     </Compile>
     <Compile Include="Object\UDP\UdpRealtimeSocket.TcPOU">

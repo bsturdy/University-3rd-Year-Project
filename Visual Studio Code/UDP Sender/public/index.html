@@ -1,0 +1,89 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <title>UDP Web Tool</title>
+  <link rel="stylesheet" href="style.css" />
+</head>
+<body>
+  <header class="topbar">
+    <div class="title">UDP Web Tool</div>
+    <div class="status" id="wsStatus">WS: disconnected</div>
+  </header>
+
+  <main class="grid">
+    <section class="card">
+      <h2>Manual Send</h2>
+
+      <div class="row"><label>Remote IPv4</label><input id="mRemoteIp" placeholder="192.168.1.50" /></div>
+      <div class="row"><label>Remote Port</label><input id="mRemotePort" type="number" min="1" max="65535" placeholder="5000" /></div>
+      <div class="row"><label>TX Port (source)</label><input id="mTxPort" type="number" min="1" max="65535" placeholder="(optional)" /></div>
+
+      <div class="row">
+        <label>Input Mode</label>
+        <select id="mMode"><option value="hex">HEX</option><option value="dec">DEC</option></select>
+      </div>
+
+      <div class="row"><label>Bytes</label><textarea id="mBytes" rows="4"></textarea></div>
+
+      <div class="row">
+        <div class="hint" id="mParseHint">Parsed: 0 bytes</div>
+        <button id="mSend">Send Once</button>
+      </div>
+
+      <div class="row"><label>Save to Slot (1..25)</label><input id="mSaveSlot" type="number" min="1" max="25" /></div>
+      <div class="row"><label>Slot Name</label><input id="mSaveName" /></div>
+      <div class="row"><label>Note</label><input id="mSaveNote" /></div>
+      <div class="row"><button id="mSave">Save Packet</button></div>
+
+      <div class="error" id="errBox"></div>
+    </section>
+
+    <section class="card">
+      <h2>Create Job (Periodic Send + RX Port per job)</h2>
+
+      <div class="row"><label>Name</label><input id="jName" /></div>
+      <div class="row"><label>Remote IPv4</label><input id="jRemoteIp" /></div>
+      <div class="row"><label>Remote Port</label><input id="jRemotePort" type="number" min="1" max="65535" /></div>
+      <div class="row"><label>TX Port (source)</label><input id="jTxPort" type="number" min="1" max="65535" /></div>
+      <div class="row"><label>RX Port (listen)</label><input id="jRxPort" type="number" min="1" max="65535" /></div>
+      <div class="row"><label>Interval (ms)</label><input id="jInterval" type="number" min="1" value="10" /></div>
+
+      <div class="row">
+        <label>Input Mode</label>
+        <select id="jMode"><option value="hex">HEX</option><option value="dec">DEC</option></select>
+      </div>
+
+      <div class="row"><label>Bytes</label><textarea id="jBytes" rows="4"></textarea></div>
+
+      <div class="row">
+        <div class="hint" id="jParseHint">Parsed: 0 bytes</div>
+        <button id="jCreate">Create Job</button>
+      </div>
+
+      <h3>Jobs</h3>
+      <div id="jobsList" class="list"></div>
+
+      <div class="error" id="errBoxJobs"></div>
+    </section>
+
+    <section class="card">
+      <h2>Saved Packets (25 slots)</h2>
+      <div id="slots" class="slots"></div>
+    </section>
+
+    <section class="card">
+      <h2>Receive Log</h2>
+      <div class="row">
+        <button id="rxClear">Clear</button>
+        <button id="rxPause">Pause</button>
+        <div class="hint" id="rxCount">0</div>
+      </div>
+      <div id="rxLog" class="rxlog"></div>
+    </section>
+  </main>
+
+  <script src="app.js"></script>
+</body>
+</html>

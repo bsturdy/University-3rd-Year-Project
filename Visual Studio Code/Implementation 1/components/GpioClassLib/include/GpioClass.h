@@ -25,13 +25,13 @@ class GpioClass
         rmt_tx_channel_config_t RmtConfig;
         uint8_t SetupRmtState = 0;
         bool RmtChannelSetupComplete = false;
+        bool OnboardLedSetupComplete = false;
 
 
 
     public:
         // Singleton Instance
-        static GpioClass& Instance();
-
+        static GpioClass& GetInstance();
         GpioClass(const GpioClass&) = delete;
         void operator=(const GpioClass&) = delete;
 
@@ -40,14 +40,4 @@ class GpioClass
 
 };
 
-
-
-/*
-static uint8_t LedState = 0;
-static led_strip_handle_t LedStrip;
-
-bool SetupOutputPin(uint8_t Pin, gpio_pullup_t PullUp, gpio_pulldown_t PullDown);
-bool SetupNeopixel(uint8_t Pin, uint16_t Length);
-void OnboardLedColour(uint8_t R, uint8_t G, uint8_t B);
-*/
 #endif

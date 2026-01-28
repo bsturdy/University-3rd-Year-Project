@@ -28,6 +28,12 @@ static UtilitiesClass* ClassInstance;
 //                                                                              //
 //==============================================================================// 
 
+UtilitiesClass& UtilitiesClass::GetInstance()
+{
+    static UtilitiesClass Instance;
+    return Instance;
+}
+
 UtilitiesClass::UtilitiesClass()
     : temp_sensor_ready(false),
       temp_handle(nullptr)
@@ -70,27 +76,6 @@ void UtilitiesClass::InitTemperatureSensor()
     temp_sensor_ready = true;
 }
 
-uint64_t UtilitiesClass::GetUptimeUs()
-{
-    // Microseconds since boot
-    return static_cast<uint64_t>(esp_timer_get_time());
-}
-
-uint64_t UtilitiesClass::GetUptimeMs()
-{
-    return GetUptimeUs() / 1000ULL;
-}
-
-std::size_t UtilitiesClass::GetFreeHeapBytes()
-{
-    return static_cast<std::size_t>(heap_caps_get_free_size(MALLOC_CAP_DEFAULT));
-}
-
-int UtilitiesClass::GetResetReasonRaw()
-{
-    return static_cast<int>(esp_reset_reason());
-}
-
 float UtilitiesClass::GetChipTemperatureC()
 {
     if (!ClassInstance->temp_sensor_ready || ClassInstance->temp_handle == nullptr) {
@@ -103,4 +88,19 @@ float UtilitiesClass::GetChipTemperatureC()
     }
 
     return temp_c;
+}
+
+float UtilitiesClass::GetWifiSignalStrength() 
+{
+    wifi_ap_record_t ap_info;
+    
+    // Attempt to get the connection info from the WiFi stack
+    if (esp_wifi_sta_get_ap_info(&ap_info) == ESP_OK) 
+    {
+        // ap_info.rssi is an int8_t ranging from roughly -100 to 0
+        return static_cast<float>(ap_info.rssi);
+    }
+    
+    // Return a "null" value if not connected or WiFi isn't initialized
+    return 0.0f; 
 }

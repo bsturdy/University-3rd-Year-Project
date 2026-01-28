@@ -20,7 +20,8 @@ ELSE
 	Application();
 	
 END_IF
-]]></ST>
+
+Utility();]]></ST>
     </Implementation>
   </POU>
 </TcPlcObject>

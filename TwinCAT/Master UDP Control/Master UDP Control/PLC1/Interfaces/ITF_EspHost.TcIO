@@ -17,6 +17,14 @@ VAR_INPUT
 END_VAR
 ]]></Declaration>
     </Method>
+    <Method Name="GetPacketToSend" Id="{abdcee37-5220-45a6-94c7-6a0aa945a685}">
+      <Declaration><![CDATA[METHOD GetPacketToSend : BOOL
+VAR_INPUT
+	Address	: REFERENCE TO PVOID;
+	Size	: REFERENCE TO UDINT;
+END_VAR
+]]></Declaration>
+    </Method>
     <Method Name="SetEspType" Id="{e3c007f5-3d89-4e0e-a60d-918d2cfb4649}">
       <Declaration><![CDATA[METHOD SetEspType : BOOL
 VAR_INPUT

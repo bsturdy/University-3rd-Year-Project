@@ -21,6 +21,8 @@
 #include <string.h>
 #include <vector>
 #include <algorithm>
+#include "esp_netif.h"
+#include "esp_netif_types.h"
 #include "nvs_flash.h"
 #include "lwip/err.h"
 #include "lwip/sys.h"
@@ -44,6 +46,7 @@ struct WifiDevice
     uint8_t MacId[6];
     uint16_t aid;
     char IpAddress[16];
+    uint8_t HopCount;
 };
 
 struct UdpPacket
@@ -186,7 +189,6 @@ class Station // Singleton
         // UDP Buffer
         uint8_t RxData[1024]{};
         uint16_t LastPositionWritten = 0;
-        bool DataInBuffer = false;
 
        
         // UDP helper functions
@@ -223,6 +225,89 @@ class Station // Singleton
 
 
 
+class AccessPointStation
+{
+    private:
+
+        // Factory creation only
+        friend class WifiFactory;
+        AccessPointStation(uint8_t CoreToUse, uint16_t UdpPort, bool EnableRuntimeLogging);
+        ~AccessPointStation();
+
+        // Event handlers
+        static void ApWifiEventHandler(void* arg, esp_event_base_t event_base,
+                                    int32_t event_id, void* event_data);
+
+        static void StaWifiEventHandler(void* arg, esp_event_base_t event_base,
+                                    int32_t event_id, void* event_data);                                    
+        
+        static void IpEventHandler(void* arg, esp_event_base_t event_base,
+                                    int32_t event_id, void* event_data);
+                            
+        static void UdpRxTask(void* pvParameters); 
+        TaskHandle_t UdpRxTaskHandle = nullptr;
+
+        // Wifi Configuration
+        esp_err_t Error;
+        wifi_init_config_t WifiDriverConfig = WIFI_INIT_CONFIG_DEFAULT();
+        wifi_country_t WifiCountry = {};
+        wifi_config_t ApWifiServiceConfig = {};
+        wifi_config_t StaWifiServiceConfig = {};
+        esp_netif_t* ApNetif = nullptr;
+        esp_netif_t* StaNetif = nullptr;
+
+
+        // Mesh logic
+        uint8_t MyHopCount = 255; // Default to 'Infinity' until connected
+        void UpdateBeaconMetadata(uint8_t NewHopCount);
+        
+
+        // Critical section for data access
+        portMUX_TYPE CriticalSection = portMUX_INITIALIZER_UNLOCKED;
+
+
+        // UDP Buffer
+        uint8_t RxData[1024]{};
+        uint16_t LastPositionWritten = 0;
+
+       
+        // UDP helper functions
+        bool StartUdp(uint16_t Port, uint8_t Core);
+        bool StopUdp();
+
+
+        // Internal data
+        uint8_t  UdpCore = 0;
+        uint16_t UdpPort = 0;
+        uint8_t SetupState = 0;
+        bool SystemInitialized = false;
+        bool UdpStarted = false;
+        bool IsConnectedToParent = false;
+        bool ApIpAcquired = false;
+        bool IsRuntimeLoggingEnabled = false;
+        int UdpSocket = -1;
+        char MyStaIpAddress[16]; // IP given by parent
+        char MyApIpAddress[16]; // IP of this AP
+        WifiDevice ParentDevice{};  
+        std::vector<WifiDevice> ChildDevices{};
+
+
+
+    public:
+        bool SetupWifi();                                             
+        size_t SendUdpPacket(const char* DataToSend, const char* DestinationIP, uint16_t DestinationPort);  
+        size_t GetDataFromBuffer(bool* IsDataAvailable, uint8_t* DataToReceive);
+
+        bool IsConnectedToHost() const { return IsConnectedToParent && ApIpAcquired; }
+        uint8_t GetHopCount() const { return MyHopCount; }
+        const char* GetParentIpAddress() const { return ParentDevice.IpAddress; }
+        const char* GetMyIpAddress() const { return MyStaIpAddress; }
+        size_t GetNumChildren() const { return ChildDevices.size(); }
+        void SetRuntimeLogging(bool EnableRuntimeLogging) { IsRuntimeLoggingEnabled = EnableRuntimeLogging; }
+};
+
+
+
 class WifiFactory
 {
     private:
@@ -242,7 +327,7 @@ class WifiFactory
     public:
         static Station* CreateStation(uint8_t CoreToUse, uint16_t UdpPort, bool EnableRuntimeLogging);
         // static AccessPoint* CreateAccessPoint(uint8_t CoreToUse, uint16_t UdpPort, bool EnableRuntimeLogging);
-        // static ApSta* CreateApSta(uint8_t CoreToUse, uint16_t UdpPort, bool EnableRuntimeLogging);
+        static AccessPointStation* CreateAccessPointStation(uint8_t CoreToUse, uint16_t UdpPort, bool EnableRuntimeLogging);
 };
 
 

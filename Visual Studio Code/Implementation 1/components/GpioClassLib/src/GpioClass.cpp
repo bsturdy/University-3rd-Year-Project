@@ -40,7 +40,7 @@ static rmt_encoder_handle_t RmtLedEncoder = NULL;
 //==============================================================================// 
 
 // Singleton Instance
-GpioClass& GpioClass::Instance()
+GpioClass& GpioClass::GetInstance()
 {
     static GpioClass Instance;
     return Instance;
@@ -57,76 +57,44 @@ GpioClass::~GpioClass() = default;
 // Configures a TX RMT Channel
 bool GpioClass::SetupRmtTxChannel(gpio_num_t GpioNumber, uint32_t Resolution) 
 {
-    switch (SetupRmtState) 
+    if (RmtChannelSetupComplete) return true;
+
+    if (IsRuntimeLoggingEnabled) ESP_LOGW(TAG, "SETUP RMT TX CHANNEL BEGIN");
+
+    RmtConfig = 
     {
-        case 0: // Begin Setup
-            if (IsRuntimeLoggingEnabled) ESP_LOGW(TAG, "SETUP RMT TX CHANNEL BEGIN");
-            SetupRmtState++;
-            break;
-        
-        
+        .gpio_num = GpioNumber,             // GPIO to use
+        .clk_src = RMT_CLK_SRC_APB,         // Use default clock source
+        .resolution_hz = Resolution,        // Set resolution
+        .mem_block_symbols = 64,            // Memory block size (adjust if needed)
+        .trans_queue_depth = 4,             // Transmission queue depth
+        .flags = 
+        {
+            .with_dma = false,            // No DMA for now
+        }
+    };    
 
-        case 1: // Configure RMT Channel
-            RmtConfig = 
-            {
-                .gpio_num = GpioNumber,             // GPIO to use
-                .clk_src = RMT_CLK_SRC_APB,         // Use default clock source
-                .resolution_hz = Resolution,        // Set resolution
-                .mem_block_symbols = 64,            // Memory block size (adjust if needed)
-                .trans_queue_depth = 4,             // Transmission queue depth
-                .flags = 
-                {
-                    .with_dma = false,            // No DMA for now
-                }
-            };    
-            SetupRmtState++;
-            break;
-        
-        
-        
-        case 2: // Create RMT Channel
-            Error = rmt_new_tx_channel(&RmtConfig, &RmtLedChannel);
-            if (Error != ESP_OK) 
-            {
-                ESP_LOGE("RMT", "Failed to create RMT TX channel: %s", esp_err_to_name(Error));
-                return false;
-            }   
-            SetupRmtState++;
-            break;
-
-
-
-        case 3: // Enable RMT Channel
-            Error = rmt_enable(RmtLedChannel);
-            if (Error != ESP_OK) 
-            {
-                ESP_LOGE("RMT", "Failed to enable RMT channel: %s", esp_err_to_name(Error));
-                return false;
-            }
-            if (IsRuntimeLoggingEnabled)
-            {
-                ESP_LOGW(TAG, "SETUP RMT TX CHANNEL COMPLETED");
-                printf("\n");
-            }
-            SetupRmtState = 100;
-            break;
-
-
-
-        case 100: // Setup Complete
-            RmtChannelSetupComplete = true;
-            break;
-    }
-
-    if (SetupRmtState == 100) 
+    Error = rmt_new_tx_channel(&RmtConfig, &RmtLedChannel);
+    if (Error != ESP_OK) 
     {
-        return true;
-    }
-    else 
+        ESP_LOGE("RMT", "Failed to create RMT TX channel: %s", esp_err_to_name(Error));
+        return false;
+    }   
+
+    Error = rmt_enable(RmtLedChannel);
+    if (Error != ESP_OK) 
     {
+        ESP_LOGE("RMT", "Failed to enable RMT channel: %s", esp_err_to_name(Error));
         return false;
     }
+    if (IsRuntimeLoggingEnabled)
+    {
+        ESP_LOGW(TAG, "SETUP RMT TX CHANNEL COMPLETED");
+    }
 
+    RmtChannelSetupComplete = true;
+
+    return true;
 }
 
 
@@ -142,6 +110,12 @@ bool GpioClass::SetupRmtTxChannel(gpio_num_t GpioNumber, uint32_t Resolution)
 // Configures an RMT channel to communicate with the LED pin
 bool GpioClass::SetupOnboardLed()
 {
+    if (OnboardLedSetupComplete == true)
+    {
+        return true;
+    }
+    
+
     if (IsRuntimeLoggingEnabled)
     {
         printf("\n");
@@ -191,6 +165,8 @@ bool GpioClass::SetupOnboardLed()
         ESP_LOGW(TAG, "SETUP ONBOARD LED COMPLETED");
         printf("\n");
     }
+
+    OnboardLedSetupComplete = true;
     return true;
 }
 
