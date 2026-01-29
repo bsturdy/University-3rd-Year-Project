@@ -57,99 +57,11 @@ struct UdpPacket
     uint16_t SenderPort = 0;
 };
 
-
-
-class WifiClass
-{
-    private:
-        static void WifiEventHandlerAp(void* arg, esp_event_base_t event_base,
-                                    int32_t event_id, void* event_data);                // Handles all of the wifi events when the system is an AP
-
-        static void WifiEventHandlerSta(void* arg, esp_event_base_t event_base,
-                                    int32_t event_id, void* event_data);                // Handles all of the wifi events when the system is a Station
- 
-        static void IpEventHandlerAp(void* arg, esp_event_base_t event_base,
-                                    int32_t event_id, void* event_data);                // Handles all of the IP events when the system is an AP
-        
-        static void IpEventHandlerSta(void* arg, esp_event_base_t event_base,
-                                    int32_t event_id, void* event_data);                // Handles all of the IP events when the system is a Station
-        
-
-
-        portMUX_TYPE SlotMux = portMUX_INITIALIZER_UNLOCKED;
-        uint8_t SlotHead  = 0;                                                          // next write index
-        uint8_t SlotCount = 0;                                                          // number of valid slots (0..UDP_SLOTS)
-
-        static void UdpRxTask(void* pvParameters);                                      // Task that receives UDP packets from the socket
-
-        UdpSlot BufferSlots[UDP_SLOTS];                                                 // Size of UDP buffer
-
-        TaskHandle_t UdpRxTaskHandle = NULL;                                            // Task handle
-       
-        bool SetupWifiAP(uint16_t UdpPort, uint16_t Timeout, uint8_t CoreToUse);        // Sets up system as an Access Point. Parameters are configured through the Menu Config
-        bool SetupWifiSta(uint16_t UdpPort, uint16_t Timeout, uint8_t CoreToUse);       // Sets up system as a station and polls for available Access Points. Parameters are configured through the Menu Config
-
-        bool StartUdp(uint16_t Port, uint8_t Core);
-
-        esp_netif_t* ApNetif = nullptr;
-        esp_netif_t* StaNetif = nullptr;
-
-        int UdpSocket = -1;
-
-        bool NvsReady = false;
-        bool NetifReady = false;
-        bool EventLoopReady = false;
-        bool StationInterfaceReady = false;
-        bool ApInterfaceReady = false;
-        bool WifiStackReady = false;
-        bool CountrySet = false;
-        bool ApEventHandlersRegistered = false;
-        bool StaEventHandlersRegistered = false;
-        bool SetWifiModeDone = false;
-        bool ApplyConfigDone = false;
-        bool StartWifiDone = false;
-        bool StaIpAcquired = false;
-        bool UdpStarted = false;
-        bool UdpTasksCreated = false;
-
-        bool IsRuntimeLoggingEnabled = false;                                           // Print out logs for runtime functions
-        bool IsAp = false;                                                              // Internal check
-        bool IsSta = false;                                                             // Internal check
-        bool IsConnectedToAP;                                                           // Is system connected to an Access Point (used when in station mode)
-        WifiDevice HostWifiDevice;                                                      // AccessPoint that station is connected to (used when in station mode)
-        //std::vector<WifiDevice> ClientWifiDeviceList;                                   // List of devices connected to Access Point (used when in AP mode)
-        const uint16_t UdpPollingTaskCycleTime = 10;                                    // Cycle time of UDP polling task
-        const uint16_t UdpSystemTaskCycleTime = 10;                                     // Cycle time of UDP system task
-        struct sockaddr_in UdpHostServerAddress;                                        // Address of UDP server
-        socklen_t UdpAddressLength = sizeof(UdpHostServerAddress);                      // Length of UDP server address
-        int UdpSocketFD;                                                                // File Descriptor of UDP socket
-
-
-
-    protected:
-
-
-
-    public:
-        WifiClass();
-        ~WifiClass();
-
-        bool SetupWifi(uint8_t CoreToUse);                                              // Sets up system according to Menu Configuration
-        bool SetupEspNow(uint8_t CoreToUse);                                            // Sets up ESP-NOW configuration and detection
-        bool SendUdpPacket(const char* data, const char* dest_ip, uint16_t dest_port);  // Sends a UDP packet to a given IP address and Port
-
-        size_t GetNumClientsConnected();
-        bool GetIsConnectedToHost();
-        bool GetIsAp();
-        bool GetIsSta();
-        const char* GetApIpAddress();
-        size_t GetDataFromBuffer(uint8_t* DataOut, bool* DataAvailable);
-        TaskHandle_t GetEspNowTaskHandle();
-        TaskHandle_t GetUdpPollingTaskHandle();
-        TaskHandle_t GetUdpProcessingTaskHandle();
-
-        void SetRuntimeLogging(bool EnableRuntimeLogging);                           // Produces logs for runtime functions. Useful for debugging
-};
+struct MeshVendorIE {
+    uint8_t  oui[3];     // Handshake (e.g., 0x12, 0x34, 0x56)
+    uint32_t node_uid;   // CONFIG_ESP_NODE_UID
+    uint8_t  hop_count;  // Current distance from Master
+} __attribute__((packed));
 
 
 
@@ -225,7 +137,7 @@ class Station // Singleton
 
 
 
-class AccessPointStation
+class AccessPointStation // Singleton
 {
     private:
 

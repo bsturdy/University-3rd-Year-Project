@@ -4,9 +4,9 @@
     <Declaration><![CDATA[PROGRAM Utility
 VAR
 	LedStrip						: RgbController;
-	Red								: BOOL := TRUE;
-	Green							: BOOL := FALSE;
-	Blue							: BOOL := TRUE;
+	Red								: BOOL := FALSE;
+	Green							: BOOL := TRUE;
+	Blue							: BOOL := FALSE;
 	
 	EL9227Ch1						: MDP5001_922_DEB3C1CF;
 	EL9227Ch2						: MDP5001_922_DEB3C1CF;

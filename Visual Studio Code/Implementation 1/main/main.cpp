@@ -23,6 +23,7 @@
 #define YELLOW "\x1b[33m"
 
 Station* WifiSta = nullptr;
+AccessPointStation* WifiApSta = nullptr;
 Packet1 packet1;
 ITF_PacketProcessor* processor = &packet1;
 
@@ -37,7 +38,7 @@ void CyclicTask1(void* pvParameters)
 {
     CyclicCalls++;
 
-    if (!WifiSta->IsConnectedToHost()) CyclicState = 99;
+    if (!WifiApSta->IsConnectedToHost()) CyclicState = 99;
 
     switch(CyclicState)
     {
@@ -57,7 +58,8 @@ extern "C" void app_main(void)
 {
 
     // Init singleton instances
-    WifiSta = WifiFactory::CreateStation(1, 10050, true);
+    //WifiSta = WifiFactory::CreateStation(1, 10050, true);
+    WifiApSta = WifiFactory::CreateAccessPointStation(1, 10050, true);
     TimerClass::GetInstance();
     GpioClass::GetInstance();
     UtilitiesClass::GetInstance();
@@ -89,14 +91,14 @@ extern "C" void app_main(void)
 
             case 3: // Connect to wifi
                 GpioClass::GetInstance().ChangeOnboardLedColour(0, 0, 255);
-                WifiSta->SetupWifi();
-                if (WifiSta->IsConnectedToHost()) MainState = 4;
+                WifiApSta->SetupWifi();
+                if (WifiApSta->IsConnectedToHost()) MainState = 4;
                 break;
 
 
             case 4: // Normal operation
                 GpioClass::GetInstance().ChangeOnboardLedColour(0, 255, 0);
-                if (not WifiSta->IsConnectedToHost()) MainState = 3;
+                if (not WifiApSta->IsConnectedToHost()) MainState = 3;
                 else
                 {
                     float temp = UtilitiesClass::GetInstance().GetChipTemperatureC();
@@ -111,8 +113,8 @@ extern "C" void app_main(void)
 
                     printf(BOLD GREEN "│" RESET "  " BOLD "SYSTEM METRICS" RESET "              " BOLD GREEN "│" RESET "  " BOLD "NETWORK STATUS" RESET "             " BOLD GREEN "│" RESET "\n");
                     printf(BOLD GREEN "│" RESET "  Uptime: " CYAN "%8llu ms" RESET "         " BOLD GREEN "│" RESET "  RSSI:     " YELLOW "%7.2f dBm" RESET "      " BOLD GREEN "│" RESET "\n", uptime, rssi);
-                    printf(BOLD GREEN "│" RESET "  Heap:   " CYAN "%8zu B " RESET "         " BOLD GREEN "│" RESET "  My IP:  " GREEN "%15s" RESET "    " BOLD GREEN "│" RESET "\n", heap, WifiSta->GetMyIpAddress());
-                    printf(BOLD GREEN "│" RESET "  Temp:   " CYAN "%8.2f C " RESET "         " BOLD GREEN "│" RESET "  GW IP: " GREEN "%15s" RESET "     " BOLD GREEN "│" RESET "\n", temp, WifiSta->GetGatewayIpAddress());
+                    printf(BOLD GREEN "│" RESET "  Heap:   " CYAN "%8zu B " RESET "         " BOLD GREEN "│" RESET "  My IP:  " GREEN "%15s" RESET "    " BOLD GREEN "│" RESET "\n", heap, WifiApSta->GetMyIpAddress());
+                    printf(BOLD GREEN "│" RESET "  Temp:   " CYAN "%8.2f C " RESET "         " BOLD GREEN "│" RESET "  GW IP: " GREEN "%15s" RESET "     " BOLD GREEN "│" RESET "\n", temp, WifiApSta->GetParentIpAddress());
 
                     printf(BOLD GREEN "├──────────────────────────────┴─────────────────────────────┤" RESET "\n");
                     printf(BOLD GREEN "│" RESET "  " BOLD "TASK EXECUTION" RESET "                                            " BOLD GREEN "│" RESET "\n");

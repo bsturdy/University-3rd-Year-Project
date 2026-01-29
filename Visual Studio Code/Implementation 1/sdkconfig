@@ -556,7 +556,7 @@ CONFIG_PARTITION_TABLE_MD5=y
 #
 # Device Configuration
 #
-CONFIG_ESP_NODE_UID=0x0000000000000001
+CONFIG_ESP_NODE_UID=0x2
 # end of Device Configuration
 
 #
