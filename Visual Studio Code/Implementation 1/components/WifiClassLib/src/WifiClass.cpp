@@ -18,597 +18,6 @@
 
 //==============================================================================//
 //                                                                              //
-//                                 Station                                      //
-//                                                                              //
-//==============================================================================// 
-
-#define STA_TAG "Station"
-
-static Station* StaClassInstance;
-
-Station::Station(uint8_t CoreToUse, uint16_t Port, bool EnableRuntimeLogging)
-{
-    StaClassInstance = this;
-    UdpCore = CoreToUse;
-    UdpPort = Port;
-    IsRuntimeLoggingEnabled = EnableRuntimeLogging;
-
-    IsConnected = false;
-    ApIpAcquired = false;
-    memset(&ApWifiDevice, 0, sizeof(ApWifiDevice));
-    memset(&MyIpAddress, 0, sizeof(MyIpAddress));
-}
-
-Station::~Station()
-{
-    ;
-}
-
-void Station::WifiEventHandler(void* arg,
-                               esp_event_base_t event_base,
-                               int32_t event_id,
-                               void* event_data)
-{
-    if (StaClassInstance == nullptr) return;
-    if (event_base != WIFI_EVENT) return;
-
-
-    switch (event_id)
-    {
-        case WIFI_EVENT_STA_START:
-        {
-            // Internal state update
-            StaClassInstance->IsConnected = false;
-            StaClassInstance->ApIpAcquired = false;
-
-            // Stop UDP system
-            StaClassInstance->StopUdp();
-
-            // Initialize wifi data
-            memset(&StaClassInstance->ApWifiDevice, 0, sizeof(StaClassInstance->ApWifiDevice));
-            memset(StaClassInstance->MyIpAddress, 0, sizeof(StaClassInstance->MyIpAddress));
-
-            // Attempt to connect to AP
-            esp_wifi_connect();
-
-            // Logging
-            if (StaClassInstance->IsRuntimeLoggingEnabled)
-            {
-                ESP_LOGW(STA_TAG, "STA started, connecting...");
-            }
-
-            break;
-        }
-
-
-
-        case WIFI_EVENT_STA_STOP:
-        {
-            // Stop UDP system
-            StaClassInstance->StopUdp();
-
-            // Internal state update
-            StaClassInstance->IsConnected = false;
-            StaClassInstance->ApIpAcquired = false;
-
-            // Reset wifi data
-            memset(&StaClassInstance->ApWifiDevice, 0, sizeof(StaClassInstance->ApWifiDevice));
-            memset(StaClassInstance->MyIpAddress, 0, sizeof(StaClassInstance->MyIpAddress));
-
-            // Logging
-            if (StaClassInstance->IsRuntimeLoggingEnabled)
-            {
-                ESP_LOGW(STA_TAG, "STA stopped");
-            }
-
-            break;
-        }
-
-
-
-        case WIFI_EVENT_STA_CONNECTED:
-        {
-            // Parse data to appropriate Event structure
-            wifi_event_sta_connected_t* Event = static_cast<wifi_event_sta_connected_t*>(event_data);
-
-            // Internal state update
-            StaClassInstance->IsConnected = true;
-            StaClassInstance->ApIpAcquired = false;
-
-            // Create AP wifi device with event data
-            StaClassInstance->ApWifiDevice.TimeOfConnection = esp_timer_get_time();
-            StaClassInstance->ApWifiDevice.IpAddress[0] = '\0';
-            StaClassInstance->ApWifiDevice.aid = Event->aid;
-            memcpy(StaClassInstance->ApWifiDevice.MacId, Event->bssid, 6);
-
-            // Logging
-            if (StaClassInstance->IsRuntimeLoggingEnabled)
-            {
-                ESP_LOGW(STA_TAG,
-                         "STA connected\nTime Of Connection: %llu | MacID: " MACSTR " | AID: %d",
-                         StaClassInstance->ApWifiDevice.TimeOfConnection,
-                         MAC2STR(StaClassInstance->ApWifiDevice.MacId),
-                         StaClassInstance->ApWifiDevice.aid);
-            }
-
-            break;
-        }
-
-
-
-        case WIFI_EVENT_STA_DISCONNECTED:
-        {
-            // Parse data to appropriate Event structure
-            wifi_event_sta_disconnected_t* Event = static_cast<wifi_event_sta_disconnected_t*>(event_data);
-
-            // Stop UDP system
-            StaClassInstance->StopUdp();
-
-            // Internal state update
-            StaClassInstance->IsConnected = false;
-            StaClassInstance->ApIpAcquired = false;
-
-            // Wipe wifi data
-            memset(&StaClassInstance->ApWifiDevice, 0, sizeof(StaClassInstance->ApWifiDevice));
-            memset(StaClassInstance->MyIpAddress, 0, sizeof(StaClassInstance->MyIpAddress));
-
-            // Logging
-            if (StaClassInstance->IsRuntimeLoggingEnabled)
-            {
-                ESP_LOGW(STA_TAG, "STA disconnected\nReason = %d | RSSI = %d",
-                         Event->reason, Event->rssi);
-            }
-
-            // Immediate reconnect attempt
-            esp_wifi_connect();
-
-            break;
-        }
-
-
-
-        default:
-            break;
-    }
-}
-
-void Station::IpEventHandler(void* arg,
-                               esp_event_base_t event_base,
-                               int32_t event_id,
-                               void* event_data)
-{
-    if (StaClassInstance == nullptr) return;
-    if (event_base != IP_EVENT) return;
-
-
-    switch (event_id)
-    {
-        case IP_EVENT_STA_GOT_IP:
-        {
-            // Parse data to appropriate Event structure
-            ip_event_got_ip_t* Event = static_cast<ip_event_got_ip_t*>(event_data);
-
-            // Both gateway IP and device IP strings
-            char GwStr[16] = {0};
-            esp_ip4addr_ntoa(&Event->ip_info.gw, GwStr, sizeof(GwStr));
-            char MyStr[16] = {0};
-            esp_ip4addr_ntoa(&Event->ip_info.ip, MyStr, sizeof(MyStr));
-
-            // Store gateway IP and device IP
-            strncpy(StaClassInstance->ApWifiDevice.IpAddress, GwStr,
-                    sizeof(StaClassInstance->ApWifiDevice.IpAddress) - 1);
-            StaClassInstance->ApWifiDevice.IpAddress[sizeof(StaClassInstance->ApWifiDevice.IpAddress) - 1] = '\0';
-            strncpy(StaClassInstance->MyIpAddress, MyStr,
-                    sizeof(StaClassInstance->MyIpAddress) - 1);
-            StaClassInstance->MyIpAddress[sizeof(StaClassInstance->MyIpAddress) - 1] = '\0';
-
-            // Internal state update
-            StaClassInstance->ApIpAcquired = true;
-
-            bool UdpStartedOk = StaClassInstance->StartUdp(StaClassInstance->UdpPort, StaClassInstance->UdpCore);
-
-            // Logging
-            if (StaClassInstance->IsRuntimeLoggingEnabled)
-            {
-                ESP_LOGW(STA_TAG, "STA got IP\nIP = %s | GW(AP) = %s", StaClassInstance->MyIpAddress, StaClassInstance->ApWifiDevice.IpAddress);
-
-                if (UdpStartedOk)
-                {
-                    ESP_LOGW(STA_TAG, "UDP system started on port %d", StaClassInstance->UdpPort);
-                }
-                else
-                {
-                    ESP_LOGE(STA_TAG, "Failed to start UDP system");
-                }
-            }
-
-            break;
-        }
-
-
-
-        case IP_EVENT_STA_LOST_IP:
-        {
-            // Internal state update
-            StaClassInstance->ApIpAcquired = false;
-
-            // Wipe all IP info
-            memset(StaClassInstance->ApWifiDevice.IpAddress, 0, sizeof(StaClassInstance->ApWifiDevice.IpAddress));
-            memset(StaClassInstance->MyIpAddress, 0, sizeof(StaClassInstance->MyIpAddress));
-
-            // Stop UDP system
-            bool UdpStoppedOk = StaClassInstance->StopUdp();
-
-            // Logging
-            if (StaClassInstance->IsRuntimeLoggingEnabled)
-            {
-                ESP_LOGW(STA_TAG, "STA lost IP");
-
-                if (UdpStoppedOk)
-                {
-                    ESP_LOGW(STA_TAG, "UDP system stopped");
-                }
-                else
-                {
-                    ESP_LOGE(STA_TAG, "Failed to stop UDP system");
-                }
-            }
-
-            break;
-        }
-
-
-
-        default:
-            break;
-    }
-}
-
-bool Station::StartUdp(uint16_t Port, uint8_t Core)
-{
-    if (StaClassInstance->UdpStarted) return true;
-    if (!StaClassInstance->IsConnected) return false;  
-    if (!StaClassInstance->ApIpAcquired) return false; 
-    if (Port == 0) return false;
-
-    // Create socket
-    StaClassInstance->UdpSocket = socket(AF_INET, SOCK_DGRAM, IPPROTO_IP);
-    if (StaClassInstance->UdpSocket < 0)
-    {
-        StaClassInstance->UdpSocket = -1;
-        return false;
-    }
-
-    // Bind
-    sockaddr_in addr;
-    memset(&addr, 0, sizeof(addr));
-    addr.sin_family = AF_INET;
-    addr.sin_port = htons(Port);
-    addr.sin_addr.s_addr = htonl(INADDR_ANY);
-
-    if (bind(StaClassInstance->UdpSocket, (struct sockaddr*)&addr, sizeof(addr)) != 0)
-    {
-        close(StaClassInstance->UdpSocket);
-        StaClassInstance->UdpSocket = -1;
-        return false;
-    }
-
-    // Non-blocking-ish receive (polling loop)
-    timeval tv;
-    tv.tv_sec = 0;
-    tv.tv_usec = 1000; // divide by 1000 for milliseconds
-    setsockopt(StaClassInstance->UdpSocket, SOL_SOCKET, SO_RCVTIMEO, &tv, sizeof(tv));
-
-
-    // Create RX task
-    if (xTaskCreatePinnedToCore(&Station::UdpRxTask,
-                                "StaUdpRx",
-                                4096,
-                                nullptr,          // we use StaClassInstance singleton
-                                5,
-                                &StaClassInstance->UdpRxTaskHandle,
-                                Core) != pdPASS)
-    {
-        close(StaClassInstance->UdpSocket);
-        StaClassInstance->UdpSocket = -1;
-        StaClassInstance->UdpRxTaskHandle = nullptr;
-        return false;
-    }
-
-    StaClassInstance->UdpStarted = true;
-    return true;
-}
-
-bool Station::StopUdp()
-{
-    if (!StaClassInstance->UdpStarted) return true;
-
-    // Mark stopped first so UdpRxTask can exit on its next timeout
-    StaClassInstance->UdpStarted = false;
-
-    // Delete RX task (if running)
-    if (StaClassInstance->UdpRxTaskHandle != nullptr)
-    {
-        vTaskDelete(StaClassInstance->UdpRxTaskHandle);
-        StaClassInstance->UdpRxTaskHandle = nullptr;
-    }
-
-    // Close socket (if open)
-    if (StaClassInstance->UdpSocket >= 0)
-    {
-        shutdown(StaClassInstance->UdpSocket, SHUT_RDWR);
-        close(StaClassInstance->UdpSocket);
-        StaClassInstance->UdpSocket = -1;
-    }
-
-    return true;
-}
-
-void Station::UdpRxTask(void* pvParameters)
-{
-    (void)pvParameters;
-
-    //uint8_t RxBuffer[UDP_SLOT_SIZE];
-    uint8_t TempBuffer[1024];
-    sockaddr_in SourceAddr;
-    socklen_t AddrLen = sizeof(SourceAddr);
-
-    while (true)
-    {
-        if (StaClassInstance == nullptr) break;
-        if (!StaClassInstance->UdpStarted) break;
-        if (StaClassInstance->UdpSocket < 0) break;
-
-        AddrLen = sizeof(SourceAddr);
-
-        int BytesReceived = recvfrom(
-            StaClassInstance->UdpSocket,
-            TempBuffer,
-            sizeof(TempBuffer),
-            0,
-            (struct sockaddr*)&SourceAddr,
-            &AddrLen
-        );
-        
-        if (BytesReceived > 0)
-        {
-            portENTER_CRITICAL(&StaClassInstance->CriticalSection);
-
-            size_t Remaining = sizeof(StaClassInstance->RxData) - StaClassInstance->LastPositionWritten;
-
-            // Typecast to avoid signed/unsigned comparison
-            size_t n = (size_t)BytesReceived;
-
-            if (n <= Remaining)
-            {
-                memcpy(StaClassInstance->RxData + StaClassInstance->LastPositionWritten, TempBuffer, n);
-
-                StaClassInstance->LastPositionWritten += n;
-            }
-
-            portEXIT_CRITICAL(&StaClassInstance->CriticalSection);
-        }
-
-        vTaskDelay(1);
-
-    }
-
-    vTaskDelete(nullptr);
-}
-
-bool Station::SetupWifi()
-{
-    switch (SetupState) 
-    {
-        case 0: // NVS
-            if (IsRuntimeLoggingEnabled) ESP_LOGW(STA_TAG, "SetupWifi: nvs_flash_init()");
-            Error = nvs_flash_init();
-            if (Error == ESP_ERR_NVS_NO_FREE_PAGES || Error == ESP_ERR_NVS_NEW_VERSION_FOUND)
-            {
-                if (IsRuntimeLoggingEnabled) ESP_LOGW(STA_TAG, "SetupWifi: nvs_flash_erase()");
-                if (nvs_flash_erase() != ESP_OK) return false;
-                if (IsRuntimeLoggingEnabled) ESP_LOGW(STA_TAG, "SetupWifi: nvs_flash_init() retry");
-                Error = nvs_flash_init();
-            }
-            if (Error != ESP_OK) return false;
-            if (IsRuntimeLoggingEnabled) ESP_LOGW(STA_TAG, "SetupWifi: NVS ready");
-            SetupState++;
-            break;
-
-            
-
-        case 1: // Netif
-            if (IsRuntimeLoggingEnabled) ESP_LOGW(STA_TAG, "SetupWifi: esp_netif_init()");
-            if (esp_netif_init() != ESP_OK) return false;
-            if (IsRuntimeLoggingEnabled) ESP_LOGW(STA_TAG, "SetupWifi: Netif ready");
-            SetupState++;
-            break;
-
-
-
-        case 2: // Event loop
-            if (IsRuntimeLoggingEnabled) ESP_LOGW(STA_TAG, "SetupWifi: esp_event_loop_create_default()");
-            if (esp_event_loop_create_default() != ESP_OK) return false;
-            if (IsRuntimeLoggingEnabled) ESP_LOGW(STA_TAG, "SetupWifi: Event loop ready");
-            SetupState++;
-            break;
-
-
-
-        case 3: // Create STA interface
-            if (IsRuntimeLoggingEnabled) ESP_LOGW(STA_TAG, "SetupWifi: esp_netif_create_default_wifi_sta()");
-            StaNetif = esp_netif_create_default_wifi_sta();
-            if (StaNetif == nullptr) return false;
-            if (IsRuntimeLoggingEnabled) ESP_LOGW(STA_TAG, "SetupWifi: Station interface ready");
-            SetupState++;
-            break;
-
-
-
-        case 4: // Wi-Fi init
-            if (IsRuntimeLoggingEnabled) ESP_LOGW(STA_TAG, "SetupWifi: esp_wifi_init()");
-            if (esp_wifi_init(&WifiDriverConfig) != ESP_OK) return false;
-            if (IsRuntimeLoggingEnabled) ESP_LOGW(STA_TAG, "SetupWifi: Wi-Fi stack ready");
-            SetupState++;
-            break;
-
-
-
-        case 5: // Country
-            if (IsRuntimeLoggingEnabled) ESP_LOGW(STA_TAG, "SetupWifi: esp_wifi_set_country(GB)");
-            memcpy(WifiCountry.cc, "GB", 2);
-            WifiCountry.schan = 1;
-            WifiCountry.nchan = 13;
-            WifiCountry.max_tx_power = 20;
-            WifiCountry.policy = WIFI_COUNTRY_POLICY_AUTO;
-            if (esp_wifi_set_country(&WifiCountry) != ESP_OK) return false;
-            if (IsRuntimeLoggingEnabled) ESP_LOGW(STA_TAG, "SetupWifi: Country set");
-            SetupState++;
-            break;
-
-
-
-        case 6: // Register event handlers
-            if (IsRuntimeLoggingEnabled) ESP_LOGW(STA_TAG, "SetupWifi: register WIFI_EVENT handler");
-            if (esp_event_handler_instance_register(WIFI_EVENT, ESP_EVENT_ANY_ID,
-                                                    &Station::WifiEventHandler, nullptr, nullptr) != ESP_OK)
-                return false;
-            if (IsRuntimeLoggingEnabled) ESP_LOGW(STA_TAG, "SetupWifi: register IP_EVENT handler");
-            if (esp_event_handler_instance_register(IP_EVENT, ESP_EVENT_ANY_ID,
-                                                    &Station::IpEventHandler, nullptr, nullptr) != ESP_OK)
-                return false;
-            if (IsRuntimeLoggingEnabled) ESP_LOGW(STA_TAG, "SetupWifi: Event handlers registered");
-            SetupState++;
-            break;
-
-
-
-        case 7: // Configure STA
-            if (IsRuntimeLoggingEnabled) ESP_LOGW(STA_TAG, "SetupWifi: build wifi_config_t");
-            strncpy((char*)WifiServiceConfig.sta.ssid, PARENT_SSID, sizeof(WifiServiceConfig.sta.ssid) - 1);
-            strncpy((char*)WifiServiceConfig.sta.password, PARENT_PASS, sizeof(WifiServiceConfig.sta.password) - 1);
-            WifiServiceConfig.sta.threshold.authmode = WIFI_AUTH_WPA2_PSK;
-            WifiServiceConfig.sta.pmf_cfg.capable = true;
-            WifiServiceConfig.sta.pmf_cfg.required = false;
-            SetupState++;
-            break;
-
-
-
-        case 8: // Set mode
-            if (IsRuntimeLoggingEnabled) ESP_LOGW(STA_TAG, "SetupWifi: esp_wifi_set_mode(STA)");
-            if (esp_wifi_set_mode(WIFI_MODE_STA) != ESP_OK) return false;
-            if (IsRuntimeLoggingEnabled) ESP_LOGW(STA_TAG, "SetupWifi: Wi-Fi mode set");
-            SetupState++;
-            break;
-
-
-
-        case 9: // Apply config
-            if (IsRuntimeLoggingEnabled) ESP_LOGW(STA_TAG, "SetupWifi: esp_wifi_set_config(STA)");
-            if (esp_wifi_set_config(WIFI_IF_STA, &WifiServiceConfig) != ESP_OK) return false;
-            if (IsRuntimeLoggingEnabled) ESP_LOGW(STA_TAG, "SetupWifi: Config applied");
-            SetupState++;
-            break;
-
-
-
-        case 10: // Start Wi-Fi
-            if (IsRuntimeLoggingEnabled) ESP_LOGW(STA_TAG, "SetupWifi: esp_wifi_start()");
-            if (esp_wifi_start() != ESP_OK) return false;
-            if (IsRuntimeLoggingEnabled) ESP_LOGW(STA_TAG, "SetupWifi: Wi-Fi started");
-            SetupState = 100;
-            break;
-
-
-
-        case 100: // Done
-            SystemInitialized = true;
-            break;
-
-
-
-        default:
-            return false;
-            break;
-    }
-
-    if (SetupState == 100) 
-    {
-        return true;
-    }
-    else 
-    {
-        return false;
-    }
-}
-
-size_t Station::GetDataFromBuffer(bool* IsDataAvailable, uint8_t* DataToReceive)
-{
-    if (IsDataAvailable) *IsDataAvailable = false;
-    if (!IsDataAvailable || !DataToReceive) return 0;
-
-    size_t Copied = 0;
-
-    portENTER_CRITICAL(&CriticalSection);
-
-    const size_t Available = LastPositionWritten;
-
-    if (Available > 0)
-    {
-        memcpy(DataToReceive, RxData, Available);
-
-        Copied = Available;
-
-        LastPositionWritten = 0;
-
-        *IsDataAvailable = true;
-    }
-    else
-    {
-        LastPositionWritten = 0;
-    }
-
-    portEXIT_CRITICAL(&CriticalSection);
-
-    return Copied;
-
-}
-
-size_t Station::SendUdpPacket(const char* Data, const char* DestinationIP, uint16_t DestinationPort)
-{
-    if (!Data || !DestinationIP) return (size_t)-1;
-    if (!UdpStarted) return (size_t)-1;
-    if (UdpSocket < 0) return (size_t)-1;
-    if (DestinationPort == 0) return (size_t)-1;
-
-    sockaddr_in DestAddr{};
-    DestAddr.sin_family = AF_INET;
-    DestAddr.sin_port = htons(DestinationPort);
-
-    if (inet_pton(AF_INET, DestinationIP, &DestAddr.sin_addr) != 1)
-    {
-        return (size_t)-1;
-    }
-
-    ssize_t Sent = sendto(
-        UdpSocket,
-        Data,
-        strlen(Data),
-        0,
-        reinterpret_cast<sockaddr*>(&DestAddr),
-        sizeof(DestAddr)
-    );
-
-    return Sent;
-}
-
-
-
-
-
-//==============================================================================//
-//                                                                              //
 //                                AP + STA                                      //
 //                                                                              //
 //==============================================================================// 
@@ -777,7 +186,7 @@ void AccessPointStation::IpEventHandler(void* arg, esp_event_base_t event_base,
             // If connected to a standard router (255), we assume it's the Root (0) and we become 1.
             if (ApStaClassInstance->ParentDevice.HopCount != 255) 
             {
-                //ApStaClassInstance->MyHopCount = ApStaClassInstance->ParentDevice.HopCount + 1;
+                ApStaClassInstance->MyHopCount = ApStaClassInstance->ParentDevice.HopCount + 1;
             }
             else 
             {
@@ -993,6 +402,15 @@ void AccessPointStation::ParseScanResults()
                 {
                     uint8_t nodeHop = CallbackIeData[j].HopCount;
                     uint8_t nodeChildren = CallbackIeData[j].ChildCount;
+
+                    if (nodeHop == 255)
+                    {
+                        if (IsRuntimeLoggingEnabled) {
+                            ESP_LOGW(STA_TAG, "  -- Ignoring node (Hop = 255)");
+                        }
+                        break;   // skip this AP entirely
+                    }
+
                     foundVendorData = true;
 
                     if (IsRuntimeLoggingEnabled) {
@@ -1027,12 +445,13 @@ void AccessPointStation::ParseScanResults()
         // Copy the winning record into our persistent class member
         ParentAP = *TempBestAp;
 
-        if (!IsMasterFound)
-        {
-            ParentHopCount = CurrentBestHop;
-        }
+        // Persist the hop info for the chosen parent 
+        ParentHopCount = CurrentBestHop;
+        ParentDevice.HopCount = CurrentBestHop;
 
-        MyHopCount = ParentHopCount + 1;
+        // Compute hop (guard 255 just in case)
+        if (CurrentBestHop == 255) MyHopCount = 255;
+        else MyHopCount = (uint8_t)(CurrentBestHop + 1);
     }
 
     memset(CallbackIeData, 0, sizeof(CallbackIeData));
@@ -1063,7 +482,7 @@ void AccessPointStation::ConnectToBestAp()
     }
 
     // Bind to the specific MAC address (BSSID) we found in scan
-    sta_config.sta.bssid_set = false;
+    sta_config.sta.bssid_set = true;
     memcpy(sta_config.sta.bssid, ParentAP.bssid, 6);
     
     // Set the channel to the one BestAp is on to speed up connection
@@ -1300,16 +719,26 @@ bool AccessPointStation::SetupWifi()
             strncpy((char*)StaWifiServiceConfig.sta.ssid, PARENT_SSID, 31);
             strncpy((char*)StaWifiServiceConfig.sta.password, PARENT_PASS, 63);
 
+            // Set PMF to capable (standard for WPA2)
+            StaWifiServiceConfig.sta.pmf_cfg.capable = true;
+            StaWifiServiceConfig.sta.pmf_cfg.required = false;
+
+            ApWifiServiceConfig.ap.pmf_cfg.capable = true;
+            ApWifiServiceConfig.ap.pmf_cfg.required = false;
+
             // ACCESS POINT: Dynamic naming
             snprintf((char*)ApWifiServiceConfig.ap.ssid, sizeof(ApWifiServiceConfig.ap.ssid), 
                     "node%d", CONFIG_ESP_NODE_UID);
+                
+            ApWifiServiceConfig.ap.ssid_len = strlen((char*)ApWifiServiceConfig.ap.ssid);
 
             // Ensure password is set and is at least 8 characters
             strncpy((char*)ApWifiServiceConfig.ap.password, MY_PASS, 63);
+
+            ApWifiServiceConfig.ap.max_connection = 4; 
             
             ApWifiServiceConfig.ap.authmode = WIFI_AUTH_WPA2_PSK;
             ApWifiServiceConfig.ap.channel = 6; 
-
             SetupState++;
             break;
 
@@ -1384,29 +813,29 @@ bool AccessPointStation::SetupWifi()
 
 #define FACTORY_TAG "Factory"
 
-Station* WifiFactory::CreateStation(uint8_t CoreToUse, uint16_t UdpPort, bool EnableRuntimeLogging)
-{
-    if (StaClassInstance != nullptr)
-    {
-        return StaClassInstance;
-    }
+// Station* WifiFactory::CreateStation(uint8_t CoreToUse, uint16_t UdpPort, bool EnableRuntimeLogging)
+// {
+//     if (StaClassInstance != nullptr)
+//     {
+//         return StaClassInstance;
+//     }
 
-    if (ApStaClassInstance != nullptr) // Placeholder for access point and ApSta pointers
-    {
-        return nullptr;
-    }
+//     if (ApStaClassInstance != nullptr) // Placeholder for access point and ApSta pointers
+//     {
+//         return nullptr;
+//     }
 
-    StaClassInstance = new Station(CoreToUse, UdpPort, EnableRuntimeLogging);
+//     StaClassInstance = new Station(CoreToUse, UdpPort, EnableRuntimeLogging);
 
-    if (StaClassInstance == nullptr)
-    {
-        ESP_LOGE(FACTORY_TAG, "Failed to create Station instance!");
-        return nullptr;
-    }
+//     if (StaClassInstance == nullptr)
+//     {
+//         ESP_LOGE(FACTORY_TAG, "Failed to create Station instance!");
+//         return nullptr;
+//     }
 
-    ESP_LOGW(FACTORY_TAG, "Station instance created successfully");
-    return StaClassInstance;
-}
+//     ESP_LOGW(FACTORY_TAG, "Station instance created successfully");
+//     return StaClassInstance;
+// }
 
 AccessPointStation* WifiFactory::CreateAccessPointStation(uint8_t CoreToUse, uint16_t UdpPort, bool EnableRuntimeLogging)
 {
@@ -1415,7 +844,8 @@ AccessPointStation* WifiFactory::CreateAccessPointStation(uint8_t CoreToUse, uin
         return ApStaClassInstance;
     }
 
-    if (StaClassInstance != nullptr) // Placeholder for access point and ApSta pointers
+    if (false)
+    //if (StaClassInstance != nullptr) // Placeholder for access point and ApSta pointers
     {
         return nullptr;
     }

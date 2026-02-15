@@ -97,7 +97,10 @@ extern "C" void app_main(void)
 
 
             case 4: // Normal operation
-                GpioClass::GetInstance().ChangeOnboardLedColour(0, 255, 0);
+                if (WifiApSta->GetHopCount() == 1) GpioClass::GetInstance().ChangeOnboardLedColour(0, 255, 0);
+                if (WifiApSta->GetHopCount() == 2) GpioClass::GetInstance().ChangeOnboardLedColour(0, 200, 50);
+                if (WifiApSta->GetHopCount() == 1) GpioClass::GetInstance().ChangeOnboardLedColour(0, 150, 100);
+
                 if (not WifiApSta->IsConnectedToHost()) MainState = 3;
                 else
                 {
@@ -116,6 +119,7 @@ extern "C" void app_main(void)
                     printf(BOLD GREEN "│" RESET "  Heap:   " CYAN "%8zu B " RESET "         " BOLD GREEN "│" RESET "  My IP:  " GREEN "%15s" RESET "    " BOLD GREEN "│" RESET "\n", heap, WifiApSta->GetMyIpAddress());
                     printf(BOLD GREEN "│" RESET "  Temp:   " CYAN "%8.2f C " RESET "         " BOLD GREEN "│" RESET "  GW IP: " GREEN "%15s" RESET "     " BOLD GREEN "│" RESET "\n", temp, WifiApSta->GetParentIpAddress());
                     printf(BOLD GREEN "│" RESET "                              " BOLD GREEN "│" RESET "  Hop Count: " YELLOW "%-5i" RESET "           " BOLD GREEN "│" RESET "\n", WifiApSta->GetHopCount());
+                    printf(BOLD GREEN "│" RESET "                              " BOLD GREEN "│" RESET "  Children Count: " YELLOW "%zu" RESET "          " BOLD GREEN "│" RESET "\n", WifiApSta->GetNumChildren());
 
                     printf(BOLD GREEN "├──────────────────────────────┴─────────────────────────────┤" RESET "\n");
                     printf(BOLD GREEN "│" RESET "  " BOLD "TASK EXECUTION" RESET "                                            " BOLD GREEN "│" RESET "\n");
