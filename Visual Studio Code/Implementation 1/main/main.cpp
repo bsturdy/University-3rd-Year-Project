@@ -115,6 +115,7 @@ extern "C" void app_main(void)
                     printf(BOLD GREEN "│" RESET "  Uptime: " CYAN "%8llu ms" RESET "         " BOLD GREEN "│" RESET "  RSSI:     " YELLOW "%7.2f dBm" RESET "      " BOLD GREEN "│" RESET "\n", uptime, rssi);
                     printf(BOLD GREEN "│" RESET "  Heap:   " CYAN "%8zu B " RESET "         " BOLD GREEN "│" RESET "  My IP:  " GREEN "%15s" RESET "    " BOLD GREEN "│" RESET "\n", heap, WifiApSta->GetMyIpAddress());
                     printf(BOLD GREEN "│" RESET "  Temp:   " CYAN "%8.2f C " RESET "         " BOLD GREEN "│" RESET "  GW IP: " GREEN "%15s" RESET "     " BOLD GREEN "│" RESET "\n", temp, WifiApSta->GetParentIpAddress());
+                    printf(BOLD GREEN "│" RESET "                              " BOLD GREEN "│" RESET "  Hop Count: " YELLOW "%-5i" RESET "           " BOLD GREEN "│" RESET "\n", WifiApSta->GetHopCount());
 
                     printf(BOLD GREEN "├──────────────────────────────┴─────────────────────────────┤" RESET "\n");
                     printf(BOLD GREEN "│" RESET "  " BOLD "TASK EXECUTION" RESET "                                            " BOLD GREEN "│" RESET "\n");

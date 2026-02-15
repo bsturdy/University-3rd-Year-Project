@@ -17,7 +17,7 @@
 //                                                                              //
 //==============================================================================// 
 
-#define OnboardLedPin           GPIO_NUM_38
+#define OnboardLedPin           GPIO_NUM_48
 #define LedClock                ((uint32_t)40000000)
 #define WS2812_TICKS_0_HIGH     16      // 0.4µs
 #define WS2812_TICKS_0_LOW      34      // 0.85µs

@@ -17,7 +17,7 @@ VAR
 	UpdaterRegistry			: UpdaterRegistry;
 	TestUpdater				: Updater_TestPacket;
 	
-	Init					: BOOL;
+	Init					: BOOL := FALSE;
 	i						: BYTE;
 	j						: UINT;
 	State					: BYTE;
@@ -28,7 +28,6 @@ VAR
 	TempEspPtr				: POINTER TO EspHost;
 	TempEsp					: ITF_EspHost;
 	TempEspHeader			: EspPacketHeader;
-	TempUpdater				: ITF_Updater;
 	
 	PacketToSendAdr			: PVOID;
 	PacketToSendLength		: UDINT;
@@ -38,8 +37,7 @@ VAR
 	ReceivedPacketLength	: UINT;
 	ReceivedDataLength		: UINT;
 	
-	PacketsDone				: ULINT;
-	MessageBuffer			: MessageBuffer;
+	PacketsProcessed		: ULINT;
 END_VAR
 ]]></Declaration>
     <Implementation>
@@ -221,7 +219,7 @@ FOR i := 0 TO 9 BY 1 DO
 			MEMSET(ADR(TempEspHeader), 0, 48);
 			DataDecoder.ClearBufferAtLocation(ReceivedPacketAddress, ReceivedPacketLength);
 			
-			PacketsDone := PacketsDone + 1;
+			PacketsProcessed := PacketsProcessed + 1;
 			State := 0;
 			
 			

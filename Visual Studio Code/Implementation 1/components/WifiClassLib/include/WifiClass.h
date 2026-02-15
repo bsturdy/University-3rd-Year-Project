@@ -12,11 +12,14 @@
 #include "freertos/task.h"
 #include "esp_log.h"
 #include "esp_mac.h"
+#include "esp_private/wifi.h"
 #include "esp_wifi.h"
+#include "esp_wifi_types.h"
 #include "esp_event.h"
 #include "esp_log.h"
 #include "esp_timer.h" 
 #include "esp_now.h"
+#include <cstddef>
 #include <cstdint>
 #include <string.h>
 #include <vector>
@@ -32,13 +35,15 @@
 #include <unistd.h>
 
 static constexpr size_t UDP_SLOTS = 10;
-static constexpr size_t UDP_SLOT_SIZE = 256;
+static constexpr size_t UDP_PACKET_SIZE = 256;
+static const uint8_t MESH_OUI_0 = 0xB5;
+static const uint8_t MESH_OUI_1 = 0x79;
+static const uint8_t MESH_OUI_2 = 0x5B;
 
-struct UdpSlot 
-{
-    uint16_t len;
-    uint8_t  data [UDP_SLOT_SIZE];
-};
+static const char* PARENT_SSID = "SturdyAP";
+static const char* PARENT_PASS = "SturdyAP79";
+
+static const char* MY_PASS = "12345678";
 
 struct WifiDevice
 {
@@ -51,10 +56,21 @@ struct WifiDevice
 
 struct UdpPacket
 {
-    int PacketLength = 0;
-    char Data[128];
     char SenderIp[16];
-    uint16_t SenderPort = 0;
+    uint64_t SenderUID;
+    uint16_t SenderPort;
+    uint64_t ArrivalTime;
+    bool IsFromParent;
+    size_t PacketLength;
+    uint8_t Data[UDP_PACKET_SIZE];
+};
+
+struct MeshMetadata
+{
+    uint8_t MacId[6];
+    uint8_t HopCount;
+    uint8_t ChildCount;
+    bool IsValid;
 };
 
 struct MeshVendorIE {
@@ -146,6 +162,7 @@ class AccessPointStation // Singleton
         AccessPointStation(uint8_t CoreToUse, uint16_t UdpPort, bool EnableRuntimeLogging);
         ~AccessPointStation();
 
+
         // Event handlers
         static void ApWifiEventHandler(void* arg, esp_event_base_t event_base,
                                     int32_t event_id, void* event_data);
@@ -158,6 +175,9 @@ class AccessPointStation // Singleton
                             
         static void UdpRxTask(void* pvParameters); 
         TaskHandle_t UdpRxTaskHandle = nullptr;
+        static void MeshTask(void* pvParameters); 
+        TaskHandle_t MeshTaskHandle = nullptr;
+
 
         // Wifi Configuration
         esp_err_t Error;
@@ -170,8 +190,19 @@ class AccessPointStation // Singleton
 
 
         // Mesh logic
+        static void WifiVendorIeCb(void *ctx, wifi_vendor_ie_type_t type, const uint8_t sa[6], const vendor_ie_data_t *vnd_ie, int rssi);
+        MeshMetadata CallbackIeData[20]{};
         uint8_t MyHopCount = 255; // Default to 'Infinity' until connected
-        void UpdateBeaconMetadata(uint8_t NewHopCount);
+        uint8_t ParentHopCount = 255;
+        wifi_ap_record_t ParentAP{};
+        bool IsMasterFound = false;
+        bool IsScanning = false;
+        bool IsConnecting = false;
+        bool InitiateMeshScan();
+        void ParseScanResults();
+        void UpdateHopCount(uint8_t NewParentHop);
+        void ConnectToBestAp();
+        void UpdateBeaconMetadata(uint8_t Hop, uint8_t Children);
         
 
         // Critical section for data access
@@ -179,8 +210,9 @@ class AccessPointStation // Singleton
 
 
         // UDP Buffer
-        uint8_t RxData[1024]{};
-        uint16_t LastPositionWritten = 0;
+        UdpPacket PacketBuffer[UDP_SLOTS];
+        volatile size_t Head = 0;
+        volatile size_t Tail = 0;
 
        
         // UDP helper functions
@@ -208,10 +240,11 @@ class AccessPointStation // Singleton
     public:
         bool SetupWifi();                                             
         size_t SendUdpPacket(const char* DataToSend, const char* DestinationIP, uint16_t DestinationPort);  
-        size_t GetDataFromBuffer(bool* IsDataAvailable, uint8_t* DataToReceive);
+        bool GetDataFromBuffer(UdpPacket* DataToReceive);
+
+        uint8_t GetHopCount() const { return MyHopCount; }
 
         bool IsConnectedToHost() const { return IsConnectedToParent && ApIpAcquired; }
-        uint8_t GetHopCount() const { return MyHopCount; }
         const char* GetParentIpAddress() const { return ParentDevice.IpAddress; }
         const char* GetMyIpAddress() const { return MyStaIpAddress; }
         size_t GetNumChildren() const { return ChildDevices.size(); }

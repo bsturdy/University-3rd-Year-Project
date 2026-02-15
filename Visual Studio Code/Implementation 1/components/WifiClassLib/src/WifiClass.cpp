@@ -2,6 +2,7 @@
 #include "esp_wifi_types_generic.h"
 #include "portmacro.h"
 #include <cstddef>
+#include <cstdint>
 #include <string.h>
 
 // Author - Ben Sturdy
@@ -484,8 +485,8 @@ bool Station::SetupWifi()
 
         case 7: // Configure STA
             if (IsRuntimeLoggingEnabled) ESP_LOGW(STA_TAG, "SetupWifi: build wifi_config_t");
-            strncpy((char*)WifiServiceConfig.sta.ssid, CONFIG_ESP_WIFI_SSID, sizeof(WifiServiceConfig.sta.ssid) - 1);
-            strncpy((char*)WifiServiceConfig.sta.password, CONFIG_ESP_WIFI_PASSWORD, sizeof(WifiServiceConfig.sta.password) - 1);
+            strncpy((char*)WifiServiceConfig.sta.ssid, PARENT_SSID, sizeof(WifiServiceConfig.sta.ssid) - 1);
+            strncpy((char*)WifiServiceConfig.sta.password, PARENT_PASS, sizeof(WifiServiceConfig.sta.password) - 1);
             WifiServiceConfig.sta.threshold.authmode = WIFI_AUTH_WPA2_PSK;
             WifiServiceConfig.sta.pmf_cfg.capable = true;
             WifiServiceConfig.sta.pmf_cfg.required = false;
@@ -686,12 +687,25 @@ void AccessPointStation::StaWifiEventHandler(void* arg, esp_event_base_t event_b
             ApStaClassInstance->IsConnectedToParent = false;
             ApStaClassInstance->ApIpAcquired = false;
             ApStaClassInstance->StopUdp();
-            esp_wifi_connect();
             break;
+
+
+
+        case WIFI_EVENT_SCAN_DONE:
+            // This is the trigger for our connection logic
+            if (ApStaClassInstance->IsRuntimeLoggingEnabled) {
+                ESP_LOGI(STA_TAG, "WiFi Scan Complete. Parsing results...");
+            }
+            ApStaClassInstance->ParseScanResults();
+            ApStaClassInstance->IsScanning = false;
+            break;
+
+
 
         case WIFI_EVENT_STA_CONNECTED: 
         {
             wifi_event_sta_connected_t* Event = static_cast<wifi_event_sta_connected_t*>(event_data);
+            ApStaClassInstance->IsConnecting = false;
             ApStaClassInstance->IsConnectedToParent = true;
             
             ApStaClassInstance->ParentDevice.TimeOfConnection = esp_timer_get_time();
@@ -704,25 +718,30 @@ void AccessPointStation::StaWifiEventHandler(void* arg, esp_event_base_t event_b
             break;
         }
 
+
+
         case WIFI_EVENT_STA_DISCONNECTED:
         {
             // Precise State Reset
+            ApStaClassInstance->IsConnecting = false;
             ApStaClassInstance->IsConnectedToParent = false;
             ApStaClassInstance->ApIpAcquired = false;
             
-            // Critical Mesh Logic: Poison the path so children drop off and re-scan
+            // Poison the route and wifi data
             ApStaClassInstance->MyHopCount = 255; 
-            ApStaClassInstance->UpdateBeaconMetadata(255); 
+            ApStaClassInstance->ParentDevice.HopCount = 255;
+            ApStaClassInstance->IsConnectedToParent = false;
+            ApStaClassInstance->IsMasterFound = false;
+            ApStaClassInstance->ParentAP.ssid[0] = '\0';
+            ApStaClassInstance->UpdateBeaconMetadata(255, ApStaClassInstance->ChildDevices.size());
             
             ApStaClassInstance->StopUdp();
             
             if (ApStaClassInstance->IsRuntimeLoggingEnabled) {
                  wifi_event_sta_disconnected_t* Event = (wifi_event_sta_disconnected_t*)event_data;
-                 ESP_LOGE(STA_TAG, "Parent Lost (Reason: %d). Reconnecting...", Event->reason);
+                 ESP_LOGE(STA_TAG, "Parent Lost (Reason: %d). System will re-scan soon...", Event->reason);
             }
 
-            // Attempt to re-establish the link
-            esp_wifi_connect();
             break;
         }
     }
@@ -758,7 +777,7 @@ void AccessPointStation::IpEventHandler(void* arg, esp_event_base_t event_base,
             // If connected to a standard router (255), we assume it's the Root (0) and we become 1.
             if (ApStaClassInstance->ParentDevice.HopCount != 255) 
             {
-                ApStaClassInstance->MyHopCount = ApStaClassInstance->ParentDevice.HopCount + 1;
+                //ApStaClassInstance->MyHopCount = ApStaClassInstance->ParentDevice.HopCount + 1;
             }
             else 
             {
@@ -767,7 +786,7 @@ void AccessPointStation::IpEventHandler(void* arg, esp_event_base_t event_base,
             }
 
             // 5. Broadcast our new status (Host + 1)
-            ApStaClassInstance->UpdateBeaconMetadata(ApStaClassInstance->MyHopCount);
+            ApStaClassInstance->UpdateBeaconMetadata(ApStaClassInstance->MyHopCount, 0);
 
             // 6. Start UDP
             bool UdpStartedOk = ApStaClassInstance->StartUdp(ApStaClassInstance->UdpPort, ApStaClassInstance->UdpCore);
@@ -826,7 +845,7 @@ void AccessPointStation::IpEventHandler(void* arg, esp_event_base_t event_base,
 
             // MESH LOGIC: Poison the route
             ApStaClassInstance->MyHopCount = 255; 
-            ApStaClassInstance->UpdateBeaconMetadata(255);
+            ApStaClassInstance->UpdateBeaconMetadata(255, 0);
 
             ApStaClassInstance->StopUdp();
             
@@ -836,37 +855,250 @@ void AccessPointStation::IpEventHandler(void* arg, esp_event_base_t event_base,
     }
 }
 
-void AccessPointStation::UpdateBeaconMetadata(uint8_t NewHopCount) 
+void AccessPointStation::WifiVendorIeCb(void *ctx, wifi_vendor_ie_type_t type, const uint8_t sa[6], const vendor_ie_data_t *vnd_ie, int rssi) 
 {
-    MeshVendorIE payload;
+    const vendor_ie_data_t* data = vnd_ie;
+
+    // 1. Initial check - Is it even a valid pointer?
+    if (data == nullptr) return;
+
+    // 2. Debug: See every vendor IE that flies past the radio
+    if (ApStaClassInstance->IsRuntimeLoggingEnabled) {
+        ESP_LOGI(STA_TAG, "IE Detected from %02x:%02x:%02x:%02x:%02x:%02x | OUI: %02x%02x%02x", 
+                 sa[0], sa[1], sa[2], sa[3], sa[4], sa[5],
+                 data->vendor_oui[0], data->vendor_oui[1], data->vendor_oui[2]);
+    }
+
+    if (data->length < 4) return;
+
+    // 3. Check if the Vendor OUI matches our mesh protocol
+    if (data->vendor_oui[0] != MESH_OUI_0 || 
+        data->vendor_oui[1] != MESH_OUI_1 || 
+        data->vendor_oui[2] != MESH_OUI_2) return;
+
+    // 4. Success Log: We found one of OUR nodes
+    if (ApStaClassInstance->IsRuntimeLoggingEnabled) {
+        ESP_LOGW(STA_TAG, ">>> MESH IE MATCH! Hop: %d, Children: %d", 
+                 data->payload[0], data->payload[1]);
+    }
+
+    for (int i = 0; i < 20; i++)
+    {
+        if (!ApStaClassInstance->CallbackIeData[i].IsValid)
+        {
+            memcpy(ApStaClassInstance->CallbackIeData[i].MacId, sa, 6);
+
+            ApStaClassInstance->CallbackIeData[i].HopCount = data->payload[0];
+            ApStaClassInstance->CallbackIeData[i].ChildCount = data->payload[1];
+            ApStaClassInstance->CallbackIeData[i].IsValid = true;
+
+            break;
+        }
+    }
+}
+
+bool AccessPointStation::InitiateMeshScan()
+{
+    wifi_scan_config_t scan_config = {};
+    scan_config.show_hidden = false;
+    scan_config.scan_type = WIFI_SCAN_TYPE_ACTIVE;
     
-    // Identify our specific mesh traffic
-    payload.oui[0] = 0x12; 
-    payload.oui[1] = 0x34;
-    payload.oui[2] = 0x56;
+    // Non-blocking scan start
+    if (esp_wifi_scan_start(&scan_config, false) == ESP_OK)
+    {
+        IsScanning = true; // Use the bool flag from your header
+        return true;
+    }
+    return false;
+}
 
-    // Set the current state
-    payload.node_uid = CONFIG_ESP_NODE_UID;
-    payload.hop_count = NewHopCount;
+void AccessPointStation::UpdateBeaconMetadata(uint8_t Hop, uint8_t Children)
+{
+    // Define the structure exactly as expected by the hardware
+    typedef struct {
+        vendor_ie_data_t header;
+        uint8_t payload[2];
+    } __attribute__((packed)) mesh_vendor_ie_t;
 
-    // Prepare the IDF container
-    // Size is the struct + 2 bytes for Element ID and Length headers
-    vendor_ie_data_t* ie_data = (vendor_ie_data_t*)malloc(sizeof(vendor_ie_data_t) + sizeof(MeshVendorIE));
-    if (ie_data == nullptr) return;
+    mesh_vendor_ie_t my_ie;
+    my_ie.header.element_id = 0xDD;
+    my_ie.header.length = 5; // 3 (OUI) + 2 (Payload)
+    my_ie.header.vendor_oui[0] = MESH_OUI_0;
+    my_ie.header.vendor_oui[1] = MESH_OUI_1;
+    my_ie.header.vendor_oui[2] = MESH_OUI_2;
+    my_ie.payload[0] = Hop;
+    my_ie.payload[1] = Children;
 
-    ie_data->element_id = WIFI_VENDOR_IE_ELEMENT_ID;
-    ie_data->length = sizeof(MeshVendorIE);
-    memcpy(ie_data->vendor_oui, payload.oui, 3);
-    memcpy(ie_data->payload, &payload, sizeof(MeshVendorIE));
+    // IMPORTANT: If we are in the middle of connecting, the driver will return INVALID_ARG.
+    // We try to set it, and if it fails, we don't spam the logs, we just wait for the next cyclic call.
 
-    // 4. Update the radio (WIFI_VND_IE_ID_0 is our slot)
-    esp_wifi_set_vendor_ie(true, WIFI_VND_IE_TYPE_BEACON, WIFI_VND_IE_ID_0, ie_data);
-    esp_wifi_set_vendor_ie(true, WIFI_VND_IE_TYPE_PROBE_RESP, WIFI_VND_IE_ID_1, ie_data);
+    esp_wifi_set_vendor_ie(false, WIFI_VND_IE_TYPE_BEACON, WIFI_VND_IE_ID_0, nullptr);
+    esp_wifi_set_vendor_ie(false, WIFI_VND_IE_TYPE_PROBE_RESP, WIFI_VND_IE_ID_1, nullptr);
 
-    free(ie_data);
-    
+    esp_err_t res_bcn = esp_wifi_set_vendor_ie(true, WIFI_VND_IE_TYPE_BEACON, WIFI_VND_IE_ID_0, (vendor_ie_data_t*)&my_ie);
+    esp_err_t res_prb = esp_wifi_set_vendor_ie(true, WIFI_VND_IE_TYPE_PROBE_RESP, WIFI_VND_IE_ID_1, (vendor_ie_data_t*)&my_ie);
+
     if (IsRuntimeLoggingEnabled) {
-        ESP_LOGI("MESH_IE", "Broadcast updated: UID %lu, Hop %d", payload.node_uid, NewHopCount);
+        if (res_bcn == ESP_OK && res_prb == ESP_OK) {
+            ESP_LOGI(STA_TAG, "Mesh IE Broadcast Updated: Hop %d", Hop);
+        } else {
+            // Log the error code specifically to see if it's 0x102 (Invalid Arg) or something else
+            ESP_LOGD(STA_TAG, "IE Update Deferred (Driver Busy): 0x%x", res_bcn);
+        }
+    }
+}
+
+void AccessPointStation::ParseScanResults()
+{
+    uint16_t ApCount = 0;
+    uint8_t CurrentBestHop = 255; 
+    uint8_t CurrentBestChildren = 255;
+    
+    Error = esp_wifi_scan_get_ap_num(&ApCount);
+    if (ApCount == 0 || Error != ESP_OK) return;
+
+    std::vector<wifi_ap_record_t> ApList(ApCount);
+    Error = esp_wifi_scan_get_ap_records(&ApCount, ApList.data());
+    if (Error != ESP_OK) return;
+
+    wifi_ap_record_t* TempBestAp = nullptr;
+    IsMasterFound = false; 
+
+    for (int i = 0; i < ApCount; i++) 
+    {
+        wifi_ap_record_t TempRecord = ApList[i];
+
+        // Logging the raw scan result if enabled
+        if (IsRuntimeLoggingEnabled) {
+            ESP_LOGI(STA_TAG, "[Scan Index %d] SSID: %s | RSSI: %d | Channel: %d", 
+                    i, (char*)TempRecord.ssid, TempRecord.rssi, TempRecord.primary);
+        }
+
+        // if (strcmp((char*)TempRecord.ssid, "SturdyAP") == 0) 
+        // {
+        //     TempBestAp = &ApList[i]; 
+        //     ParentHopCount = 0;         
+        //     IsMasterFound = true;         
+        //     if (IsRuntimeLoggingEnabled) ESP_LOGW(STA_TAG, ">>> Master (SturdyAP) Found!");
+        //     break; 
+        // } 
+        if (strstr((char*)TempRecord.ssid, "node") != nullptr) 
+        {
+            // Search our Vendor IE cache for this specific MAC address
+            bool foundVendorData = false;
+            for (int j = 0; j < 20; j++) 
+            {
+                if (CallbackIeData[j].IsValid && 
+                    memcmp(TempRecord.bssid, CallbackIeData[j].MacId, 6) == 0) 
+                {
+                    uint8_t nodeHop = CallbackIeData[j].HopCount;
+                    uint8_t nodeChildren = CallbackIeData[j].ChildCount;
+                    foundVendorData = true;
+
+                    if (IsRuntimeLoggingEnabled) {
+                        ESP_LOGI(STA_TAG, "  -- Match Found in IE Cache! Hop: %d, Children: %d", 
+                                nodeHop, nodeChildren);
+                    }
+
+                    if (nodeHop < CurrentBestHop)
+                    {
+                        TempBestAp = &ApList[i];
+                        CurrentBestHop = nodeHop;
+                        CurrentBestChildren = nodeChildren;
+                    }
+                    else if (nodeHop == CurrentBestHop && nodeChildren < CurrentBestChildren)
+                    {
+                        TempBestAp = &ApList[i];
+                        CurrentBestChildren = nodeChildren;
+                    }
+                    
+                    break; 
+                }
+            }
+
+            if (!foundVendorData && IsRuntimeLoggingEnabled) {
+                ESP_LOGD(STA_TAG, "  -- Node found but no matching Vendor IE data in cache.");
+            }
+        }
+    }
+
+    if (TempBestAp != nullptr)
+    {
+        // Copy the winning record into our persistent class member
+        ParentAP = *TempBestAp;
+
+        if (!IsMasterFound)
+        {
+            ParentHopCount = CurrentBestHop;
+        }
+
+        MyHopCount = ParentHopCount + 1;
+    }
+
+    memset(CallbackIeData, 0, sizeof(CallbackIeData));
+
+    IsScanning = false;
+}
+
+void AccessPointStation::ConnectToBestAp()
+{
+    esp_wifi_disconnect();
+
+    wifi_config_t sta_config = {};
+    
+    // Copy SSID and Password
+    if (IsMasterFound) 
+    {
+        ESP_LOGW(STA_TAG, "ConnectToBestAp: Root Master Found! Connecting to: %s Pass: %s", PARENT_SSID, PARENT_PASS);
+        // Use Master (Root) Credentials
+        strncpy((char*)sta_config.sta.ssid, PARENT_SSID, sizeof(sta_config.sta.ssid));
+        strncpy((char*)sta_config.sta.password, PARENT_PASS, sizeof(sta_config.sta.password));
+    }
+    else 
+    {
+        ESP_LOGW(STA_TAG, "ConnectToBestAp: Master NOT found. Connecting to Mesh Parent SSID: %s Pass: %s", (char*)ParentAP.ssid, MY_PASS);
+        // Use Mesh Node Credentials
+        memcpy(sta_config.sta.ssid, ParentAP.ssid, sizeof(sta_config.sta.ssid));
+        strncpy((char*)sta_config.sta.password, MY_PASS, sizeof(sta_config.sta.password));
+    }
+
+    // Bind to the specific MAC address (BSSID) we found in scan
+    sta_config.sta.bssid_set = false;
+    memcpy(sta_config.sta.bssid, ParentAP.bssid, 6);
+    
+    // Set the channel to the one BestAp is on to speed up connection
+    sta_config.sta.channel = ParentAP.primary;
+
+    ESP_LOGW(STA_TAG, "Connection details: BSSID: " MACSTR " | Channel: %d", 
+             MAC2STR(sta_config.sta.bssid), sta_config.sta.channel);
+
+    ESP_ERROR_CHECK(esp_wifi_set_config(WIFI_IF_STA, &sta_config));
+
+    esp_wifi_connect();
+}
+
+void AccessPointStation::MeshTask(void* pvParameters)
+{    
+    while (true)
+    {
+        if (!ApStaClassInstance->IsConnectedToParent) 
+        {
+            // NEW: Only trigger if we aren't already in the middle of a handshake
+            if (ApStaClassInstance->ParentAP.ssid[0] != '\0' && !ApStaClassInstance->IsConnecting)
+            {
+                ApStaClassInstance->IsConnecting = true; // LOCK the state
+                ESP_LOGW(STA_TAG, "Starting stateful connection to %s", ApStaClassInstance->ParentAP.ssid);
+                
+                ApStaClassInstance->ConnectToBestAp();
+            }
+            else if (!ApStaClassInstance->IsScanning && !ApStaClassInstance->IsConnecting)
+            {
+                ApStaClassInstance->InitiateMeshScan();
+            }
+        }
+        
+        // Use a 2-second heartbeat for the task
+        vTaskDelay(pdMS_TO_TICKS(2000));
     }
 }
 
@@ -977,63 +1209,11 @@ bool AccessPointStation::StopUdp()
 
 void AccessPointStation::UdpRxTask(void* pvParameters)
 {
-    (void)pvParameters;
-
-    uint8_t TempBuffer[1024];
-    sockaddr_in SourceAddr;
-    socklen_t AddrLen = sizeof(SourceAddr);
-
     while (true)
     {
-        // Safety checks using the generic instance
-        if (ApStaClassInstance == nullptr || !ApStaClassInstance->UdpStarted) break;
-        if (ApStaClassInstance->UdpSocket < 0) break;
 
-        AddrLen = sizeof(SourceAddr);
 
-        // Block until data arrives or timeout (10ms) occurs
-        int BytesReceived = recvfrom(
-            ApStaClassInstance->UdpSocket,
-            TempBuffer,
-            sizeof(TempBuffer),
-            0,
-            (struct sockaddr*)&SourceAddr,
-            &AddrLen
-        );
-        
-        if (BytesReceived > 0)
-        {
-            // Extract the Sender's IP (Essential for third-party routing logic)
-            char SenderIp[16];
-            esp_ip4addr_ntoa((const esp_ip4_addr_t*)&SourceAddr.sin_addr.s_addr, SenderIp, sizeof(SenderIp));
-
-            // Thread-safe buffer write
-            portENTER_CRITICAL(&ApStaClassInstance->CriticalSection);
-
-            size_t Remaining = sizeof(ApStaClassInstance->RxData) - ApStaClassInstance->LastPositionWritten;
-            size_t n = (size_t)BytesReceived;
-
-            if (n <= Remaining)
-            {
-                // Copy data to the internal buffer
-                memcpy(ApStaClassInstance->RxData + ApStaClassInstance->LastPositionWritten, TempBuffer, n);
-                ApStaClassInstance->LastPositionWritten += n;
-
-                /* NOTE: Here is where you would call a Callback or 
-                   Post to a Queue for your third-party Mesh Class.
-                   e.g., MeshRouter.ProcessPacket(TempBuffer, n, SenderIp);
-                */
-            }
-
-            portEXIT_CRITICAL(&ApStaClassInstance->CriticalSection);
-
-            if (ApStaClassInstance->IsRuntimeLoggingEnabled) {
-                ESP_LOGI("UDP_RX", "%d bytes from %s", BytesReceived, SenderIp);
-            }
-        }
-
-        // Yield to let other system tasks (like WiFi internal maintenance) run
-        vTaskDelay(pdMS_TO_TICKS(1));
+        vTaskDelay(1);
     }
 
     vTaskDelete(nullptr);
@@ -1043,7 +1223,7 @@ bool AccessPointStation::SetupWifi()
 {
     switch (SetupState) 
     {
-        case 0: // NVS - Identical to Station
+        case 0: // NVS
             Error = nvs_flash_init();
             if (Error == ESP_ERR_NVS_NO_FREE_PAGES || Error == ESP_ERR_NVS_NEW_VERSION_FOUND)
             {
@@ -1054,15 +1234,21 @@ bool AccessPointStation::SetupWifi()
             SetupState++;
             break;
 
+
+
         case 1: // Netif Core
             if (esp_netif_init() != ESP_OK) return false;
             SetupState++;
             break;
 
+
+
         case 2: // Event loop
             if (esp_event_loop_create_default() != ESP_OK) return false;
             SetupState++;
             break;
+
+
 
         case 3: // Create Dual Interfaces
             ApStaClassInstance->StaNetif = esp_netif_create_default_wifi_sta();
@@ -1071,10 +1257,14 @@ bool AccessPointStation::SetupWifi()
             SetupState++;
             break;
 
+
+
         case 4: // Wi-Fi init
             if (esp_wifi_init(&WifiDriverConfig) != ESP_OK) return false;
             SetupState++;
             break;
+
+
 
         case 5: // Country
             memcpy(WifiCountry.cc, "GB", 2);
@@ -1085,7 +1275,9 @@ bool AccessPointStation::SetupWifi()
             SetupState++;
             break;
 
-        case 6: // Register the 3 Handlers we built
+
+
+        case 6: // Register the 3 Handlers
             // 1. Station WiFi Handler
             esp_event_handler_instance_register(WIFI_EVENT, ESP_EVENT_ANY_ID,
                                                 &AccessPointStation::StaWifiEventHandler, nullptr, nullptr);
@@ -1098,52 +1290,77 @@ bool AccessPointStation::SetupWifi()
             SetupState++;
             break;
 
+
+
         case 7: // Configure AP + STA settings
             memset(&StaWifiServiceConfig, 0, sizeof(wifi_config_t));
             memset(&ApWifiServiceConfig, 0, sizeof(wifi_config_t));
 
-            // STATION: Still uses your router credentials from Kconfig
-            strncpy((char*)StaWifiServiceConfig.sta.ssid, CONFIG_ESP_WIFI_SSID, 31);
-            strncpy((char*)StaWifiServiceConfig.sta.password, CONFIG_ESP_WIFI_PASSWORD, 63);
+            // STATION: master credentials
+            strncpy((char*)StaWifiServiceConfig.sta.ssid, PARENT_SSID, 31);
+            strncpy((char*)StaWifiServiceConfig.sta.password, PARENT_PASS, 63);
 
             // ACCESS POINT: Dynamic naming
-            // This creates a string like "node101" if your UID is 101
             snprintf((char*)ApWifiServiceConfig.ap.ssid, sizeof(ApWifiServiceConfig.ap.ssid), 
                     "node%d", CONFIG_ESP_NODE_UID);
 
             // Ensure password is set and is at least 8 characters
-            strncpy((char*)ApWifiServiceConfig.ap.password, CONFIG_ESP_WIFI_PASSWORD, 63);
+            strncpy((char*)ApWifiServiceConfig.ap.password, MY_PASS, 63);
             
             ApWifiServiceConfig.ap.authmode = WIFI_AUTH_WPA2_PSK;
-            ApWifiServiceConfig.ap.channel = 1; 
+            ApWifiServiceConfig.ap.channel = 6; 
 
             SetupState++;
             break;
+
+
 
         case 8: // Set mode to APSTA
             if (esp_wifi_set_mode(WIFI_MODE_APSTA) != ESP_OK) return false;
             SetupState++;
             break;
 
+
+
         case 9: // Apply Configs to specific interfaces
-            // Apply STA config to the Station interface
             if (esp_wifi_set_config(WIFI_IF_STA, &StaWifiServiceConfig) != ESP_OK) return false;
-            
-            // Apply AP config to the Access Point interface
             if (esp_wifi_set_config(WIFI_IF_AP, &ApWifiServiceConfig) != ESP_OK) return false;
-            
             SetupState++;
             break;
 
-        case 10: // Start Wi-Fi & Initial Beacon
+
+
+        case 10: // Register callbacks for vendor information
+        if (esp_wifi_set_vendor_ie_cb(WifiVendorIeCb, this) != ESP_OK) return false;
+            SetupState++;
+            break;
+
+
+
+        case 11: // Start Wi-Fi & Initial Beacon
             if (esp_wifi_start() != ESP_OK) return false;
             
+            vTaskDelay(pdMS_TO_TICKS(100));
+
             // Start by advertising "Inifinity" hop until we get an IP
-            ApStaClassInstance->UpdateBeaconMetadata(255);
-            
+            ApStaClassInstance->UpdateBeaconMetadata(255, 0);
+
+            // Create the Mesh Management Task
+            xTaskCreatePinnedToCore
+            (
+                &AccessPointStation::MeshTask,   // Function pointer
+                "MeshTask",                      // Task name
+                4096,                            // Stack size
+                this,                            // Pass 'this' as pvParameters
+                5,                               // Priority (Medium)
+                &MeshTaskHandle,                 // Task handle
+                UdpCore                          // Use the core assigned in constructor
+            );
             SetupState = 100;
             break;
 
+
+            
         case 100:
             SystemInitialized = true;
             break;
