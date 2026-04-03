@@ -1,0 +1,167 @@
+\doxysection{main/\+main.cpp File Reference}
+\hypertarget{main_8cpp}{}\label{main_8cpp}\index{main/main.cpp@{main/main.cpp}}
+{\ttfamily \+\#include "{}esp\+\_\+log.\+h"{}}\newline
+{\ttfamily \+\#include "{}freertos/\+\+Free\+RTOS.\+h"{}}\newline
+{\ttfamily \+\#include "{}freertos/\+task.\+h"{}}\newline
+{\ttfamily \+\#include "{}Gpio\+Class.\+h"{}}\newline
+{\ttfamily \+\#include "{}Timer\+Class.\+h"{}}\newline
+{\ttfamily \+\#include "{}Wifi\+Class.\+h"{}}\newline
+{\ttfamily \+\#include "{}Utilities\+Class.\+h"{}}\newline
+{\ttfamily \+\#include "{}packet\+\_\+processors.\+h"{}}\newline
+{\ttfamily \+\#include "{}tests.\+h"{}}\newline
+{\ttfamily \+\#include $<$cstddef$>$}\newline
+{\ttfamily \+\#include $<$cstdint$>$}\newline
+{\ttfamily \+\#include $<$cstdlib$>$}\newline
+{\ttfamily \+\#include $<$cstring$>$}\newline
+\doxysubsubsection*{Macros}
+\begin{DoxyCompactItemize}
+\item 
+\+\#define \doxymbox{\hyperlink{main_8cpp_afc3d101f633a076cc1ca84b85b6224b2}{TAG}}~"{}Main"{}
+\item 
+\+\#define \doxymbox{\hyperlink{main_8cpp_abade3daa2d29054255a6312a427686c6}{CYCLIC\+\_\+\+TAG}}~"{}Cyclic\+Task"{}
+\item 
+\+\#define \doxymbox{\hyperlink{main_8cpp_a26cdbb1a00213c810caccf21cd33a631}{BOLD}}~"{}\textbackslash{}x1b\+[1m"{}
+\item 
+\+\#define \doxymbox{\hyperlink{main_8cpp_ab702106cf3b3e96750b6845ded4e0299}{RESET}}~"{}\textbackslash{}x1b\+[0m"{}
+\item 
+\+\#define \doxymbox{\hyperlink{main_8cpp_acfbc006ea433ad708fdee3e82996e721}{GREEN}}~"{}\textbackslash{}x1b\+[32m"{}
+\item 
+\+\#define \doxymbox{\hyperlink{main_8cpp_ad243f93c16bc4c1d3e0a13b84421d760}{CYAN}}~"{}\textbackslash{}x1b\+[36m"{}
+\item 
+\+\#define \doxymbox{\hyperlink{main_8cpp_abf681265909adf3d3e8116c93c0ba179}{YELLOW}}~"{}\textbackslash{}x1b\+[33m"{}
+\end{DoxyCompactItemize}
+\doxysubsubsection*{Functions}
+\begin{DoxyCompactItemize}
+\item 
+void \doxymbox{\hyperlink{main_8cpp_ad0c5863d73035a39ae0d82ec1d0aacdc}{Cyclic\+Task1}} (void \texorpdfstring{$\ast$}{*}pv\+Parameters)
+\item 
+void \doxymbox{\hyperlink{main_8cpp_a630544a7f0a2cc40d8a7fefab7e2fe70}{app\+\_\+main}} (void)
+\end{DoxyCompactItemize}
+\doxysubsubsection*{Variables}
+\begin{DoxyCompactItemize}
+\item 
+\doxymbox{\hyperlink{class_station}{Station}} \texorpdfstring{$\ast$}{*} \doxymbox{\hyperlink{main_8cpp_a255ec2df4036f290b455de6197189c0c}{Wifi\+Sta}} = nullptr
+\item 
+\doxymbox{\hyperlink{class_access_point_station}{Access\+Point\+Station}} \texorpdfstring{$\ast$}{*} \doxymbox{\hyperlink{main_8cpp_a57f7694b9fde29b52329fa48f5ccb62e}{Wifi\+Ap\+Sta}} = nullptr
+\item 
+uint64\+\_\+t \doxymbox{\hyperlink{main_8cpp_a582cbc3f252ecec5dcac03f913bf90e0}{Uid}} = \doxymbox{\hyperlink{config_2sdkconfig_8h_a1c064b46ac9009acd50392bf754e7808}{CONFIG\+\_\+\+ESP\+\_\+\+NODE\+\_\+\+UID}}
+\item 
+uint8\+\_\+t \doxymbox{\hyperlink{main_8cpp_ae810f03d1bad08cca1b98e8c3fca3cfb}{Main\+State}} = 0
+\item 
+uint64\+\_\+t \doxymbox{\hyperlink{main_8cpp_a9b01ec4e6200687b33e81c741ba4343b}{Cyclic\+Calls}} = 0
+\item 
+uint8\+\_\+t \doxymbox{\hyperlink{main_8cpp_a5754664e44775ea4d27200a99483cb96}{Cyclic\+State}} = 0
+\item 
+uint8\+\_\+t \doxymbox{\hyperlink{main_8cpp_a5cbe0a5976367fffc631dca45135bcd6}{Test\+Fails}} = 0
+\end{DoxyCompactItemize}
+
+
+\label{doc-define-members}
+\Hypertarget{main_8cpp_doc-define-members}
+\doxysubsection{Macro Definition Documentation}
+\Hypertarget{main_8cpp_a26cdbb1a00213c810caccf21cd33a631}\index{main.cpp@{main.cpp}!BOLD@{BOLD}}
+\index{BOLD@{BOLD}!main.cpp@{main.cpp}}
+\doxysubsubsection{\texorpdfstring{BOLD}{BOLD}}
+{\footnotesize\ttfamily \label{main_8cpp_a26cdbb1a00213c810caccf21cd33a631} 
+\+\#define BOLD~"{}\textbackslash{}x1b\+[1m"{}}
+
+\Hypertarget{main_8cpp_ad243f93c16bc4c1d3e0a13b84421d760}\index{main.cpp@{main.cpp}!CYAN@{CYAN}}
+\index{CYAN@{CYAN}!main.cpp@{main.cpp}}
+\doxysubsubsection{\texorpdfstring{CYAN}{CYAN}}
+{\footnotesize\ttfamily \label{main_8cpp_ad243f93c16bc4c1d3e0a13b84421d760} 
+\+\#define CYAN~"{}\textbackslash{}x1b\+[36m"{}}
+
+\Hypertarget{main_8cpp_abade3daa2d29054255a6312a427686c6}\index{main.cpp@{main.cpp}!CYCLIC\_TAG@{CYCLIC\_TAG}}
+\index{CYCLIC\_TAG@{CYCLIC\_TAG}!main.cpp@{main.cpp}}
+\doxysubsubsection{\texorpdfstring{CYCLIC\_TAG}{CYCLIC\_TAG}}
+{\footnotesize\ttfamily \label{main_8cpp_abade3daa2d29054255a6312a427686c6} 
+\+\#define CYCLIC\+\_\+\+TAG~"{}Cyclic\+Task"{}}
+
+\Hypertarget{main_8cpp_acfbc006ea433ad708fdee3e82996e721}\index{main.cpp@{main.cpp}!GREEN@{GREEN}}
+\index{GREEN@{GREEN}!main.cpp@{main.cpp}}
+\doxysubsubsection{\texorpdfstring{GREEN}{GREEN}}
+{\footnotesize\ttfamily \label{main_8cpp_acfbc006ea433ad708fdee3e82996e721} 
+\+\#define GREEN~"{}\textbackslash{}x1b\+[32m"{}}
+
+\Hypertarget{main_8cpp_ab702106cf3b3e96750b6845ded4e0299}\index{main.cpp@{main.cpp}!RESET@{RESET}}
+\index{RESET@{RESET}!main.cpp@{main.cpp}}
+\doxysubsubsection{\texorpdfstring{RESET}{RESET}}
+{\footnotesize\ttfamily \label{main_8cpp_ab702106cf3b3e96750b6845ded4e0299} 
+\+\#define RESET~"{}\textbackslash{}x1b\+[0m"{}}
+
+\Hypertarget{main_8cpp_afc3d101f633a076cc1ca84b85b6224b2}\index{main.cpp@{main.cpp}!TAG@{TAG}}
+\index{TAG@{TAG}!main.cpp@{main.cpp}}
+\doxysubsubsection{\texorpdfstring{TAG}{TAG}}
+{\footnotesize\ttfamily \label{main_8cpp_afc3d101f633a076cc1ca84b85b6224b2} 
+\+\#define TAG~"{}Main"{}}
+
+\Hypertarget{main_8cpp_abf681265909adf3d3e8116c93c0ba179}\index{main.cpp@{main.cpp}!YELLOW@{YELLOW}}
+\index{YELLOW@{YELLOW}!main.cpp@{main.cpp}}
+\doxysubsubsection{\texorpdfstring{YELLOW}{YELLOW}}
+{\footnotesize\ttfamily \label{main_8cpp_abf681265909adf3d3e8116c93c0ba179} 
+\+\#define YELLOW~"{}\textbackslash{}x1b\+[33m"{}}
+
+
+
+\label{doc-func-members}
+\Hypertarget{main_8cpp_doc-func-members}
+\doxysubsection{Function Documentation}
+\Hypertarget{main_8cpp_a630544a7f0a2cc40d8a7fefab7e2fe70}\index{main.cpp@{main.cpp}!app\_main@{app\_main}}
+\index{app\_main@{app\_main}!main.cpp@{main.cpp}}
+\doxysubsubsection{\texorpdfstring{app\_main()}{app\_main()}}
+{\footnotesize\ttfamily \label{main_8cpp_a630544a7f0a2cc40d8a7fefab7e2fe70} 
+void app\+\_\+main (\begin{DoxyParamCaption}\item[{void}]{}{}\end{DoxyParamCaption})}
+
+\Hypertarget{main_8cpp_ad0c5863d73035a39ae0d82ec1d0aacdc}\index{main.cpp@{main.cpp}!CyclicTask1@{CyclicTask1}}
+\index{CyclicTask1@{CyclicTask1}!main.cpp@{main.cpp}}
+\doxysubsubsection{\texorpdfstring{CyclicTask1()}{CyclicTask1()}}
+{\footnotesize\ttfamily \label{main_8cpp_ad0c5863d73035a39ae0d82ec1d0aacdc} 
+void Cyclic\+Task1 (\begin{DoxyParamCaption}\item[{void \texorpdfstring{$\ast$}{*}}]{pv\+Parameters}{}\end{DoxyParamCaption})}
+
+
+
+\label{doc-var-members}
+\Hypertarget{main_8cpp_doc-var-members}
+\doxysubsection{Variable Documentation}
+\Hypertarget{main_8cpp_a9b01ec4e6200687b33e81c741ba4343b}\index{main.cpp@{main.cpp}!CyclicCalls@{CyclicCalls}}
+\index{CyclicCalls@{CyclicCalls}!main.cpp@{main.cpp}}
+\doxysubsubsection{\texorpdfstring{CyclicCalls}{CyclicCalls}}
+{\footnotesize\ttfamily \label{main_8cpp_a9b01ec4e6200687b33e81c741ba4343b} 
+uint64\+\_\+t Cyclic\+Calls = 0}
+
+\Hypertarget{main_8cpp_a5754664e44775ea4d27200a99483cb96}\index{main.cpp@{main.cpp}!CyclicState@{CyclicState}}
+\index{CyclicState@{CyclicState}!main.cpp@{main.cpp}}
+\doxysubsubsection{\texorpdfstring{CyclicState}{CyclicState}}
+{\footnotesize\ttfamily \label{main_8cpp_a5754664e44775ea4d27200a99483cb96} 
+uint8\+\_\+t Cyclic\+State = 0}
+
+\Hypertarget{main_8cpp_ae810f03d1bad08cca1b98e8c3fca3cfb}\index{main.cpp@{main.cpp}!MainState@{MainState}}
+\index{MainState@{MainState}!main.cpp@{main.cpp}}
+\doxysubsubsection{\texorpdfstring{MainState}{MainState}}
+{\footnotesize\ttfamily \label{main_8cpp_ae810f03d1bad08cca1b98e8c3fca3cfb} 
+uint8\+\_\+t Main\+State = 0}
+
+\Hypertarget{main_8cpp_a5cbe0a5976367fffc631dca45135bcd6}\index{main.cpp@{main.cpp}!TestFails@{TestFails}}
+\index{TestFails@{TestFails}!main.cpp@{main.cpp}}
+\doxysubsubsection{\texorpdfstring{TestFails}{TestFails}}
+{\footnotesize\ttfamily \label{main_8cpp_a5cbe0a5976367fffc631dca45135bcd6} 
+uint8\+\_\+t Test\+Fails = 0}
+
+\Hypertarget{main_8cpp_a582cbc3f252ecec5dcac03f913bf90e0}\index{main.cpp@{main.cpp}!Uid@{Uid}}
+\index{Uid@{Uid}!main.cpp@{main.cpp}}
+\doxysubsubsection{\texorpdfstring{Uid}{Uid}}
+{\footnotesize\ttfamily \label{main_8cpp_a582cbc3f252ecec5dcac03f913bf90e0} 
+uint64\+\_\+t Uid = \doxymbox{\hyperlink{config_2sdkconfig_8h_a1c064b46ac9009acd50392bf754e7808}{CONFIG\+\_\+\+ESP\+\_\+\+NODE\+\_\+\+UID}}}
+
+\Hypertarget{main_8cpp_a57f7694b9fde29b52329fa48f5ccb62e}\index{main.cpp@{main.cpp}!WifiApSta@{WifiApSta}}
+\index{WifiApSta@{WifiApSta}!main.cpp@{main.cpp}}
+\doxysubsubsection{\texorpdfstring{WifiApSta}{WifiApSta}}
+{\footnotesize\ttfamily \label{main_8cpp_a57f7694b9fde29b52329fa48f5ccb62e} 
+\doxymbox{\hyperlink{class_access_point_station}{Access\+Point\+Station}}\texorpdfstring{$\ast$}{*} Wifi\+Ap\+Sta = nullptr}
+
+\Hypertarget{main_8cpp_a255ec2df4036f290b455de6197189c0c}\index{main.cpp@{main.cpp}!WifiSta@{WifiSta}}
+\index{WifiSta@{WifiSta}!main.cpp@{main.cpp}}
+\doxysubsubsection{\texorpdfstring{WifiSta}{WifiSta}}
+{\footnotesize\ttfamily \label{main_8cpp_a255ec2df4036f290b455de6197189c0c} 
+\doxymbox{\hyperlink{class_station}{Station}}\texorpdfstring{$\ast$}{*} Wifi\+Sta = nullptr}
+

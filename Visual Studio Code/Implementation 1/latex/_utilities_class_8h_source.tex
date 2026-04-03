@@ -1,0 +1,47 @@
+\doxysection{Utilities\+Class.\+h}
+\hypertarget{_utilities_class_8h_source}{}\label{_utilities_class_8h_source}\index{components/UtilitiesClassLib/include/UtilitiesClass.h@{components/UtilitiesClassLib/include/UtilitiesClass.h}}
+
+\begin{DoxyCode}{0}
+\DoxyCodeLine{00001\ \textcolor{preprocessor}{\#ifndef\ UtilitiesClass\_H}}
+\DoxyCodeLine{00002\ \textcolor{preprocessor}{\#define\ UtilitiesClass\_H}}
+\DoxyCodeLine{00003\ }
+\DoxyCodeLine{00004\ \textcolor{comment}{//\ Author\ -\/\ Ben\ Sturdy}}
+\DoxyCodeLine{00005\ \textcolor{comment}{//\ This\ file\ implements\ a\ class\ 'Utilities\ Class'.\ This\ class\ should\ be\ instantiated}}
+\DoxyCodeLine{00006\ \textcolor{comment}{//\ only\ once\ in\ a\ project.}}
+\DoxyCodeLine{00007\ }
+\DoxyCodeLine{00008\ \textcolor{preprocessor}{\#include\ "{}esp\_timer.h"{}}}
+\DoxyCodeLine{00009\ \textcolor{preprocessor}{\#include\ "{}esp\_system.h"{}}}
+\DoxyCodeLine{00010\ \textcolor{preprocessor}{\#include\ "{}esp\_heap\_caps.h"{}}}
+\DoxyCodeLine{00011\ \textcolor{preprocessor}{\#include\ "{}driver/temperature\_sensor.h"{}}}
+\DoxyCodeLine{00012\ \textcolor{preprocessor}{\#include\ "{}esp\_wifi.h"{}}}
+\DoxyCodeLine{00013\ }
+\DoxyCodeLine{00014\ \textcolor{keyword}{class\ }UtilitiesClass}
+\DoxyCodeLine{00015\ \{}
+\DoxyCodeLine{00016\ \ \ \ \ \textcolor{keyword}{private}:\ \ \ \ }
+\DoxyCodeLine{00017\ \ \ \ \ \ \ \ \ UtilitiesClass();}
+\DoxyCodeLine{00018\ \ \ \ \ \ \ \ \ \string~UtilitiesClass();}
+\DoxyCodeLine{00019\ }
+\DoxyCodeLine{00020\ \ \ \ \ \ \ \ \ \textcolor{keywordtype}{void}\ InitTemperatureSensor();\ }
+\DoxyCodeLine{00021\ }
+\DoxyCodeLine{00022\ \ \ \ \ \ \ \ \ \textcolor{keywordtype}{bool}\ temp\_sensor\_ready;}
+\DoxyCodeLine{00023\ \ \ \ \ \ \ \ \ temperature\_sensor\_handle\_t\ temp\_handle;}
+\DoxyCodeLine{00024\ }
+\DoxyCodeLine{00025\ }
+\DoxyCodeLine{00026\ \ \ \ \ \textcolor{keyword}{public}:}
+\DoxyCodeLine{00027\ \ \ \ \ \ \ \ \ \textcolor{keyword}{static}\ UtilitiesClass\&\ GetInstance();}
+\DoxyCodeLine{00028\ \ \ \ \ \ \ \ \ UtilitiesClass(\textcolor{keyword}{const}\ UtilitiesClass\&)\ =\ \textcolor{keyword}{delete};}
+\DoxyCodeLine{00029\ \ \ \ \ \ \ \ \ \textcolor{keywordtype}{void}\ operator=(\textcolor{keyword}{const}\ UtilitiesClass\&)\ =\ \textcolor{keyword}{delete};}
+\DoxyCodeLine{00030\ }
+\DoxyCodeLine{00031\ \ \ \ \ \ \ \ \ \textcolor{keyword}{static}\ uint64\_t\ GetUptimeUs()\ \{\ \textcolor{keywordflow}{return}\ \textcolor{keyword}{static\_cast<}uint64\_t\textcolor{keyword}{>}(esp\_timer\_get\_time());\ \}}
+\DoxyCodeLine{00032\ \ \ \ \ \ \ \ \ \textcolor{keyword}{static}\ uint64\_t\ GetUptimeMs()\ \{\ \textcolor{keywordflow}{return}\ GetUptimeUs()\ /\ 1000ULL;\ \}}
+\DoxyCodeLine{00033\ \ \ \ \ \ \ \ \ \textcolor{keyword}{static}\ \textcolor{keywordtype}{size\_t}\ GetFreeHeapBytes()\ \{\ \textcolor{keywordflow}{return}\ \textcolor{keyword}{static\_cast<}\textcolor{keywordtype}{size\_t}\textcolor{keyword}{>}(heap\_caps\_get\_free\_size(MALLOC\_CAP\_DEFAULT));\ \}}
+\DoxyCodeLine{00034\ \ \ \ \ \ \ \ \ \textcolor{keyword}{static}\ \textcolor{keywordtype}{int}\ GetResetReasonRaw()\ \{\ \textcolor{keywordflow}{return}\ \textcolor{keyword}{static\_cast<}\textcolor{keywordtype}{int}\textcolor{keyword}{>}(esp\_reset\_reason());\ \}}
+\DoxyCodeLine{00035\ }
+\DoxyCodeLine{00036\ \ \ \ \ \ \ \ \ \textcolor{keywordtype}{float}\ GetChipTemperatureC();}
+\DoxyCodeLine{00037\ \ \ \ \ \ \ \ \ \textcolor{keywordtype}{float}\ GetWifiSignalStrength();}
+\DoxyCodeLine{00038\ \};}
+\DoxyCodeLine{00039\ }
+\DoxyCodeLine{00040\ }
+\DoxyCodeLine{00041\ \textcolor{preprocessor}{\#endif}}
+
+\end{DoxyCode}

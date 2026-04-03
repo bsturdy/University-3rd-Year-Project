@@ -1,0 +1,49 @@
+\doxysection{Gpio\+Class.\+h}
+\hypertarget{_gpio_class_8h_source}{}\label{_gpio_class_8h_source}\index{components/GpioClassLib/include/GpioClass.h@{components/GpioClassLib/include/GpioClass.h}}
+
+\begin{DoxyCode}{0}
+\DoxyCodeLine{00001\ \textcolor{preprocessor}{\#ifndef\ GpioClass\_H}}
+\DoxyCodeLine{00002\ \textcolor{preprocessor}{\#define\ GpioClass\_H}}
+\DoxyCodeLine{00003\ }
+\DoxyCodeLine{00004\ \textcolor{comment}{//\ Author\ -\/\ Ben\ Sturdy}}
+\DoxyCodeLine{00005\ \textcolor{comment}{//\ This\ file\ implements\ a\ class\ 'GPIO\ Class'.\ This\ class\ should\ be\ instantiated}}
+\DoxyCodeLine{00006\ \textcolor{comment}{//\ only\ once\ in\ a\ project.\ This\ class\ provides\ general\ functions\ for\ the\ GPIO\ features}}
+\DoxyCodeLine{00007\ \textcolor{comment}{//\ that\ are\ found\ on\ the\ ESP32\ S3\ board\ -\/\ including\ control\ of\ the\ on\ board\ LED,}}
+\DoxyCodeLine{00008\ \textcolor{comment}{//\ controlling\ analog\ input\ and\ output\ pins,\ creating\ PWM\ functionality\ and\ more.}}
+\DoxyCodeLine{00009\ \textcolor{comment}{//\ This\ class\ is\ a\ work\ in\ progress}}
+\DoxyCodeLine{00010\ }
+\DoxyCodeLine{00011\ \textcolor{preprocessor}{\#include\ "{}esp\_log.h"{}}}
+\DoxyCodeLine{00012\ \textcolor{preprocessor}{\#include\ "{}driver/rmt\_tx.h"{}}\ \ \ \ \ \ \ \ \ }
+\DoxyCodeLine{00013\ \textcolor{preprocessor}{\#include\ <cstdint>}}
+\DoxyCodeLine{00014\ }
+\DoxyCodeLine{00015\ \textcolor{keyword}{class\ }GpioClass}
+\DoxyCodeLine{00016\ \{}
+\DoxyCodeLine{00017\ \ \ \ \ \textcolor{keyword}{private}:}
+\DoxyCodeLine{00018\ \ \ \ \ \ \ \ \ GpioClass();}
+\DoxyCodeLine{00019\ \ \ \ \ \ \ \ \ \string~GpioClass();}
+\DoxyCodeLine{00020\ }
+\DoxyCodeLine{00021\ \ \ \ \ \ \ \ \ \textcolor{keywordtype}{bool}\ IsRuntimeLoggingEnabled\ =\ \textcolor{keyword}{true};}
+\DoxyCodeLine{00022\ \ \ \ \ \ \ \ \ \textcolor{keywordtype}{bool}\ SetupRmtTxChannel(gpio\_num\_t\ GpioNumber,\ uint32\_t\ Resolution);\ \ \ \ \ \ \ \ \ \textcolor{comment}{//\ Configures\ a\ TX\ RMT\ Channel}}
+\DoxyCodeLine{00023\ }
+\DoxyCodeLine{00024\ \ \ \ \ \ \ \ \ esp\_err\_t\ Error;}
+\DoxyCodeLine{00025\ \ \ \ \ \ \ \ \ rmt\_tx\_channel\_config\_t\ RmtConfig;}
+\DoxyCodeLine{00026\ \ \ \ \ \ \ \ \ uint8\_t\ SetupRmtState\ =\ 0;}
+\DoxyCodeLine{00027\ \ \ \ \ \ \ \ \ \textcolor{keywordtype}{bool}\ RmtChannelSetupComplete\ =\ \textcolor{keyword}{false};}
+\DoxyCodeLine{00028\ \ \ \ \ \ \ \ \ \textcolor{keywordtype}{bool}\ OnboardLedSetupComplete\ =\ \textcolor{keyword}{false};}
+\DoxyCodeLine{00029\ }
+\DoxyCodeLine{00030\ }
+\DoxyCodeLine{00031\ }
+\DoxyCodeLine{00032\ \ \ \ \ \textcolor{keyword}{public}:}
+\DoxyCodeLine{00033\ \ \ \ \ \ \ \ \ \textcolor{comment}{//\ Singleton\ Instance}}
+\DoxyCodeLine{00034\ \ \ \ \ \ \ \ \ \textcolor{keyword}{static}\ GpioClass\&\ GetInstance();}
+\DoxyCodeLine{00035\ \ \ \ \ \ \ \ \ GpioClass(\textcolor{keyword}{const}\ GpioClass\&)\ =\ \textcolor{keyword}{delete};}
+\DoxyCodeLine{00036\ \ \ \ \ \ \ \ \ \textcolor{keywordtype}{void}\ operator=(\textcolor{keyword}{const}\ GpioClass\&)\ =\ \textcolor{keyword}{delete};}
+\DoxyCodeLine{00037\ }
+\DoxyCodeLine{00038\ \ \ \ \ \ \ \ \ \textcolor{keywordtype}{bool}\ SetupOnboardLed();\ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \textcolor{comment}{//\ Configures\ an\ RMT\ channel\ to\ communicate\ with\ the\ LED\ pin}}
+\DoxyCodeLine{00039\ \ \ \ \ \ \ \ \ \textcolor{keywordtype}{bool}\ ChangeOnboardLedColour(uint8\_t\ Red,\ uint8\_t\ Green,\ uint8\_t\ Blue);\ \ \ \ \ \ \textcolor{comment}{//\ Changes\ the\ colour\ of\ the\ onboard\ LED}}
+\DoxyCodeLine{00040\ }
+\DoxyCodeLine{00041\ \};}
+\DoxyCodeLine{00042\ }
+\DoxyCodeLine{00043\ \textcolor{preprocessor}{\#endif}}
+
+\end{DoxyCode}

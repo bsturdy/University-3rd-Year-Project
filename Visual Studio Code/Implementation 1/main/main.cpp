@@ -24,8 +24,8 @@
 
 Station* WifiSta = nullptr;
 AccessPointStation* WifiApSta = nullptr;
-Packet1 packet1;
-ITF_PacketProcessor* processor = &packet1;
+//Packet1 packet1;
+//ITF_PacketProcessor* processor = &packet1;
 
 uint64_t Uid = CONFIG_ESP_NODE_UID;
 uint8_t MainState = 0;
@@ -65,6 +65,7 @@ extern "C" void app_main(void)
     UtilitiesClass::GetInstance();
 
 
+
     // Main event loop
     while(true)
     {
@@ -90,16 +91,19 @@ extern "C" void app_main(void)
 
 
             case 3: // Connect to wifi
-                GpioClass::GetInstance().ChangeOnboardLedColour(0, 0, 255);
+                GpioClass::GetInstance().ChangeOnboardLedColour(255, 165, 0);
                 WifiApSta->SetupWifi();
                 if (WifiApSta->IsConnectedToHost()) MainState = 4;
                 break;
 
 
             case 4: // Normal operation
-                if (WifiApSta->GetHopCount() == 1) GpioClass::GetInstance().ChangeOnboardLedColour(0, 255, 0);
-                if (WifiApSta->GetHopCount() == 2) GpioClass::GetInstance().ChangeOnboardLedColour(0, 200, 50);
-                if (WifiApSta->GetHopCount() == 1) GpioClass::GetInstance().ChangeOnboardLedColour(0, 150, 100);
+
+                if(WifiApSta->GetHopCount() == 1) GpioClass::GetInstance().ChangeOnboardLedColour(0, 255, 0);
+                if(WifiApSta->GetHopCount() == 2) GpioClass::GetInstance().ChangeOnboardLedColour(0, 200, 50);
+                if(WifiApSta->GetHopCount() == 3) GpioClass::GetInstance().ChangeOnboardLedColour(0, 150, 100);
+                if(WifiApSta->GetHopCount() == 4) GpioClass::GetInstance().ChangeOnboardLedColour(0, 50, 200);
+                if(WifiApSta->GetHopCount() == 5) GpioClass::GetInstance().ChangeOnboardLedColour(0, 0, 255);
 
                 if (not WifiApSta->IsConnectedToHost()) MainState = 3;
                 else

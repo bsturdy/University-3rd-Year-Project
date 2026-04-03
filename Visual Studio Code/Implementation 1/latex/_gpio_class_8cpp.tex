@@ -1,0 +1,75 @@
+\doxysection{components/\+\+Gpio\+Class\+Lib/\+src/\+\+Gpio\+Class.cpp File Reference}
+\hypertarget{_gpio_class_8cpp}{}\label{_gpio_class_8cpp}\index{components/GpioClassLib/src/GpioClass.cpp@{components/GpioClassLib/src/GpioClass.cpp}}
+{\ttfamily \+\#include "{}Gpio\+Class.\+h"{}}\newline
+\doxysubsubsection*{Macros}
+\begin{DoxyCompactItemize}
+\item 
+\+\#define \doxymbox{\hyperlink{_gpio_class_8cpp_a5377fdd9438fcdc776321df8ffffc77b}{Onboard\+Led\+Pin}}~GPIO\+\_\+\+NUM\+\_\+48
+\item 
+\+\#define \doxymbox{\hyperlink{_gpio_class_8cpp_a8b8186e3df4583b535565c9d8c8ed91e}{Led\+Clock}}~((uint32\+\_\+t)40000000)
+\item 
+\+\#define \doxymbox{\hyperlink{_gpio_class_8cpp_ac5006c46b6451997cf01db757495acac}{WS2812\+\_\+\+TICKS\+\_\+0\+\_\+\+HIGH}}~16
+\item 
+\+\#define \doxymbox{\hyperlink{_gpio_class_8cpp_af4f09e468337b6e7bb91922a333800db}{WS2812\+\_\+\+TICKS\+\_\+0\+\_\+\+LOW}}~34
+\item 
+\+\#define \doxymbox{\hyperlink{_gpio_class_8cpp_ab0d5891cf954b88b0608c6df78430021}{WS2812\+\_\+\+TICKS\+\_\+1\+\_\+\+HIGH}}~34
+\item 
+\+\#define \doxymbox{\hyperlink{_gpio_class_8cpp_a7a82929b878d39d79378a59eba45c6cd}{WS2812\+\_\+\+TICKS\+\_\+1\+\_\+\+LOW}}~16
+\item 
+\+\#define \doxymbox{\hyperlink{_gpio_class_8cpp_a4b70af552be7c4b50f137fe28f323189}{WS2812\+\_\+\+RESET\+\_\+\+TICKS}}~2000
+\item 
+\+\#define \doxymbox{\hyperlink{_gpio_class_8cpp_afc3d101f633a076cc1ca84b85b6224b2}{TAG}}~"{}GPIO Class"{}
+\end{DoxyCompactItemize}
+
+
+\label{doc-define-members}
+\Hypertarget{_gpio_class_8cpp_doc-define-members}
+\doxysubsection{Macro Definition Documentation}
+\Hypertarget{_gpio_class_8cpp_a8b8186e3df4583b535565c9d8c8ed91e}\index{GpioClass.cpp@{GpioClass.cpp}!LedClock@{LedClock}}
+\index{LedClock@{LedClock}!GpioClass.cpp@{GpioClass.cpp}}
+\doxysubsubsection{\texorpdfstring{LedClock}{LedClock}}
+{\footnotesize\ttfamily \label{_gpio_class_8cpp_a8b8186e3df4583b535565c9d8c8ed91e} 
+\+\#define Led\+Clock~((uint32\+\_\+t)40000000)}
+
+\Hypertarget{_gpio_class_8cpp_a5377fdd9438fcdc776321df8ffffc77b}\index{GpioClass.cpp@{GpioClass.cpp}!OnboardLedPin@{OnboardLedPin}}
+\index{OnboardLedPin@{OnboardLedPin}!GpioClass.cpp@{GpioClass.cpp}}
+\doxysubsubsection{\texorpdfstring{OnboardLedPin}{OnboardLedPin}}
+{\footnotesize\ttfamily \label{_gpio_class_8cpp_a5377fdd9438fcdc776321df8ffffc77b} 
+\+\#define Onboard\+Led\+Pin~GPIO\+\_\+\+NUM\+\_\+48}
+
+\Hypertarget{_gpio_class_8cpp_afc3d101f633a076cc1ca84b85b6224b2}\index{GpioClass.cpp@{GpioClass.cpp}!TAG@{TAG}}
+\index{TAG@{TAG}!GpioClass.cpp@{GpioClass.cpp}}
+\doxysubsubsection{\texorpdfstring{TAG}{TAG}}
+{\footnotesize\ttfamily \label{_gpio_class_8cpp_afc3d101f633a076cc1ca84b85b6224b2} 
+\+\#define TAG~"{}GPIO Class"{}}
+
+\Hypertarget{_gpio_class_8cpp_a4b70af552be7c4b50f137fe28f323189}\index{GpioClass.cpp@{GpioClass.cpp}!WS2812\_RESET\_TICKS@{WS2812\_RESET\_TICKS}}
+\index{WS2812\_RESET\_TICKS@{WS2812\_RESET\_TICKS}!GpioClass.cpp@{GpioClass.cpp}}
+\doxysubsubsection{\texorpdfstring{WS2812\_RESET\_TICKS}{WS2812\_RESET\_TICKS}}
+{\footnotesize\ttfamily \label{_gpio_class_8cpp_a4b70af552be7c4b50f137fe28f323189} 
+\+\#define WS2812\+\_\+\+RESET\+\_\+\+TICKS~2000}
+
+\Hypertarget{_gpio_class_8cpp_ac5006c46b6451997cf01db757495acac}\index{GpioClass.cpp@{GpioClass.cpp}!WS2812\_TICKS\_0\_HIGH@{WS2812\_TICKS\_0\_HIGH}}
+\index{WS2812\_TICKS\_0\_HIGH@{WS2812\_TICKS\_0\_HIGH}!GpioClass.cpp@{GpioClass.cpp}}
+\doxysubsubsection{\texorpdfstring{WS2812\_TICKS\_0\_HIGH}{WS2812\_TICKS\_0\_HIGH}}
+{\footnotesize\ttfamily \label{_gpio_class_8cpp_ac5006c46b6451997cf01db757495acac} 
+\+\#define WS2812\+\_\+\+TICKS\+\_\+0\+\_\+\+HIGH~16}
+
+\Hypertarget{_gpio_class_8cpp_af4f09e468337b6e7bb91922a333800db}\index{GpioClass.cpp@{GpioClass.cpp}!WS2812\_TICKS\_0\_LOW@{WS2812\_TICKS\_0\_LOW}}
+\index{WS2812\_TICKS\_0\_LOW@{WS2812\_TICKS\_0\_LOW}!GpioClass.cpp@{GpioClass.cpp}}
+\doxysubsubsection{\texorpdfstring{WS2812\_TICKS\_0\_LOW}{WS2812\_TICKS\_0\_LOW}}
+{\footnotesize\ttfamily \label{_gpio_class_8cpp_af4f09e468337b6e7bb91922a333800db} 
+\+\#define WS2812\+\_\+\+TICKS\+\_\+0\+\_\+\+LOW~34}
+
+\Hypertarget{_gpio_class_8cpp_ab0d5891cf954b88b0608c6df78430021}\index{GpioClass.cpp@{GpioClass.cpp}!WS2812\_TICKS\_1\_HIGH@{WS2812\_TICKS\_1\_HIGH}}
+\index{WS2812\_TICKS\_1\_HIGH@{WS2812\_TICKS\_1\_HIGH}!GpioClass.cpp@{GpioClass.cpp}}
+\doxysubsubsection{\texorpdfstring{WS2812\_TICKS\_1\_HIGH}{WS2812\_TICKS\_1\_HIGH}}
+{\footnotesize\ttfamily \label{_gpio_class_8cpp_ab0d5891cf954b88b0608c6df78430021} 
+\+\#define WS2812\+\_\+\+TICKS\+\_\+1\+\_\+\+HIGH~34}
+
+\Hypertarget{_gpio_class_8cpp_a7a82929b878d39d79378a59eba45c6cd}\index{GpioClass.cpp@{GpioClass.cpp}!WS2812\_TICKS\_1\_LOW@{WS2812\_TICKS\_1\_LOW}}
+\index{WS2812\_TICKS\_1\_LOW@{WS2812\_TICKS\_1\_LOW}!GpioClass.cpp@{GpioClass.cpp}}
+\doxysubsubsection{\texorpdfstring{WS2812\_TICKS\_1\_LOW}{WS2812\_TICKS\_1\_LOW}}
+{\footnotesize\ttfamily \label{_gpio_class_8cpp_a7a82929b878d39d79378a59eba45c6cd} 
+\+\#define WS2812\+\_\+\+TICKS\+\_\+1\+\_\+\+LOW~16}
+

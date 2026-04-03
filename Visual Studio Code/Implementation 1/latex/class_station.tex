@@ -1,0 +1,124 @@
+\doxysection{Station Class Reference}
+\hypertarget{class_station}{}\label{class_station}\index{Station@{Station}}
+\doxysubsubsection*{Public Member Functions}
+\begin{DoxyCompactItemize}
+\item 
+\Hypertarget{class_station_a3a10575867866bb58b59ef75d75a73c6}\label{class_station_a3a10575867866bb58b59ef75d75a73c6} 
+bool {\bfseries Setup\+Wifi} ()
+\item 
+\Hypertarget{class_station_aeefc94b512dceb9e2d3badefa19f0a22}\label{class_station_aeefc94b512dceb9e2d3badefa19f0a22} 
+size\+\_\+t {\bfseries Send\+Udp\+Packet} (const char \texorpdfstring{$\ast$}{*}Data\+To\+Send, const char \texorpdfstring{$\ast$}{*}Destination\+IP, uint16\+\_\+t Destination\+Port)
+\item 
+\Hypertarget{class_station_aea93b950a5f1e6a1e32c2770e889052c}\label{class_station_aea93b950a5f1e6a1e32c2770e889052c} 
+size\+\_\+t {\bfseries Get\+Data\+From\+Buffer} (bool \texorpdfstring{$\ast$}{*}Is\+Data\+Available, uint8\+\_\+t \texorpdfstring{$\ast$}{*}Data\+To\+Receive)
+\item 
+\Hypertarget{class_station_a1adb7d452ef3ef86c615beed16e54771}\label{class_station_a1adb7d452ef3ef86c615beed16e54771} 
+bool {\bfseries Is\+Connected\+To\+Host} () const
+\item 
+\Hypertarget{class_station_a25f8365467f5259b11d624a7a02d12d8}\label{class_station_a25f8365467f5259b11d624a7a02d12d8} 
+const char \texorpdfstring{$\ast$}{*} {\bfseries Get\+Gateway\+Ip\+Address} () const
+\item 
+\Hypertarget{class_station_ac29ab6565f5944bacf3ac0ed089c9f8b}\label{class_station_ac29ab6565f5944bacf3ac0ed089c9f8b} 
+const char \texorpdfstring{$\ast$}{*} {\bfseries Get\+My\+Ip\+Address} () const
+\item 
+\Hypertarget{class_station_ae7083a2fe45117f861536fce8d8908db}\label{class_station_ae7083a2fe45117f861536fce8d8908db} 
+void {\bfseries Set\+Runtime\+Logging} (bool Enable\+Runtime\+Logging)
+\end{DoxyCompactItemize}
+\doxysubsubsection*{Private Member Functions}
+\begin{DoxyCompactItemize}
+\item 
+\Hypertarget{class_station_aea02f662406fac7b34543129ef6b4b5b}\label{class_station_aea02f662406fac7b34543129ef6b4b5b} 
+{\bfseries Station} (uint8\+\_\+t Core\+To\+Use, uint16\+\_\+t Udp\+Port, bool Enable\+Runtime\+Logging)
+\item 
+\Hypertarget{class_station_a8c084c99e2a30ae36ceb151c54e1f06d}\label{class_station_a8c084c99e2a30ae36ceb151c54e1f06d} 
+bool {\bfseries Start\+Udp} (uint16\+\_\+t Port, uint8\+\_\+t Core)
+\item 
+\Hypertarget{class_station_a9905ef77e23fb538aaf7dbda911c5a50}\label{class_station_a9905ef77e23fb538aaf7dbda911c5a50} 
+bool {\bfseries Stop\+Udp} ()
+\end{DoxyCompactItemize}
+\doxysubsubsection*{Static Private Member Functions}
+\begin{DoxyCompactItemize}
+\item 
+\Hypertarget{class_station_a6ea31d537ae467fad4f3e8236ab70cf1}\label{class_station_a6ea31d537ae467fad4f3e8236ab70cf1} 
+static void {\bfseries Wifi\+Event\+Handler} (void \texorpdfstring{$\ast$}{*}arg, esp\+\_\+event\+\_\+base\+\_\+t event\+\_\+base, int32\+\_\+t event\+\_\+id, void \texorpdfstring{$\ast$}{*}event\+\_\+data)
+\item 
+\Hypertarget{class_station_abc46585677d7a3a6a3f83edf7930b665}\label{class_station_abc46585677d7a3a6a3f83edf7930b665} 
+static void {\bfseries Ip\+Event\+Handler} (void \texorpdfstring{$\ast$}{*}arg, esp\+\_\+event\+\_\+base\+\_\+t event\+\_\+base, int32\+\_\+t event\+\_\+id, void \texorpdfstring{$\ast$}{*}event\+\_\+data)
+\item 
+\Hypertarget{class_station_a22bb206c1e7ee23489b21bf11cc7e59b}\label{class_station_a22bb206c1e7ee23489b21bf11cc7e59b} 
+static void {\bfseries Udp\+Rx\+Task} (void \texorpdfstring{$\ast$}{*}pv\+Parameters)
+\end{DoxyCompactItemize}
+\doxysubsubsection*{Private Attributes}
+\begin{DoxyCompactItemize}
+\item 
+\Hypertarget{class_station_aab024961b3b67caeb7aa0309110aeb97}\label{class_station_aab024961b3b67caeb7aa0309110aeb97} 
+Task\+Handle\+\_\+t {\bfseries Udp\+Rx\+Task\+Handle} = nullptr
+\item 
+\Hypertarget{class_station_a9e2f729b64fb17bbbc88855e22e69e4f}\label{class_station_a9e2f729b64fb17bbbc88855e22e69e4f} 
+esp\+\_\+err\+\_\+t {\bfseries Error}
+\item 
+\Hypertarget{class_station_a9156a88815577ce50bb3e6e5f65bd298}\label{class_station_a9156a88815577ce50bb3e6e5f65bd298} 
+wifi\+\_\+init\+\_\+config\+\_\+t {\bfseries Wifi\+Driver\+Config} = WIFI\+\_\+\+INIT\+\_\+\+CONFIG\+\_\+\+DEFAULT()
+\item 
+\Hypertarget{class_station_a09683c8d548aa312d05720ce7b51d2af}\label{class_station_a09683c8d548aa312d05720ce7b51d2af} 
+wifi\+\_\+country\+\_\+t {\bfseries Wifi\+Country} = \{\}
+\item 
+\Hypertarget{class_station_a11b5f8f27d1c627e4d1f97635599e9d5}\label{class_station_a11b5f8f27d1c627e4d1f97635599e9d5} 
+wifi\+\_\+config\+\_\+t {\bfseries Wifi\+Service\+Config} = \{\}
+\item 
+\Hypertarget{class_station_a62932b7c632490e497fb1ee25fda7c4b}\label{class_station_a62932b7c632490e497fb1ee25fda7c4b} 
+esp\+\_\+netif\+\_\+t \texorpdfstring{$\ast$}{*} {\bfseries Sta\+Netif} = nullptr
+\item 
+\Hypertarget{class_station_a162e164ba7e226b06e3bba51fed12f18}\label{class_station_a162e164ba7e226b06e3bba51fed12f18} 
+port\+MUX\+\_\+\+TYPE {\bfseries Critical\+Section} = port\+MUX\+\_\+\+INITIALIZER\+\_\+\+UNLOCKED
+\item 
+\Hypertarget{class_station_a0bcde2991f7dfc992a5e88b4e604469a}\label{class_station_a0bcde2991f7dfc992a5e88b4e604469a} 
+uint8\+\_\+t {\bfseries Rx\+Data} \+[1024]\+ \{\}
+\item 
+\Hypertarget{class_station_a4be5596bd1ee69d5ddb4eaf99ac77083}\label{class_station_a4be5596bd1ee69d5ddb4eaf99ac77083} 
+uint16\+\_\+t {\bfseries Last\+Position\+Written} = 0
+\item 
+\Hypertarget{class_station_a0a9a8b72b5ec6afcbd953cae1529419d}\label{class_station_a0a9a8b72b5ec6afcbd953cae1529419d} 
+uint8\+\_\+t {\bfseries Udp\+Core} = 0
+\item 
+\Hypertarget{class_station_a70e89e6146965b01e5891e93615a194b}\label{class_station_a70e89e6146965b01e5891e93615a194b} 
+uint16\+\_\+t {\bfseries Udp\+Port} = 0
+\item 
+\Hypertarget{class_station_a4e44bc2cb7594865cfe1c83fcb5a7452}\label{class_station_a4e44bc2cb7594865cfe1c83fcb5a7452} 
+uint8\+\_\+t {\bfseries Setup\+State} = 0
+\item 
+\Hypertarget{class_station_ad1d62e06eef26381b1c757ce2d3543e5}\label{class_station_ad1d62e06eef26381b1c757ce2d3543e5} 
+bool {\bfseries System\+Initialized} = false
+\item 
+\Hypertarget{class_station_a91c050af7da0fbabcb05755f0c2ae574}\label{class_station_a91c050af7da0fbabcb05755f0c2ae574} 
+bool {\bfseries Udp\+Started} = false
+\item 
+\Hypertarget{class_station_a845383467ff80aaf974068452bbb96c7}\label{class_station_a845383467ff80aaf974068452bbb96c7} 
+bool {\bfseries Is\+Connected} = false
+\item 
+\Hypertarget{class_station_a69d74b54214774ac798a4a3012cd4927}\label{class_station_a69d74b54214774ac798a4a3012cd4927} 
+bool {\bfseries Ap\+Ip\+Acquired} = false
+\item 
+\Hypertarget{class_station_a321d67f3270cef50673956589fcd2507}\label{class_station_a321d67f3270cef50673956589fcd2507} 
+bool {\bfseries Is\+Runtime\+Logging\+Enabled} = false
+\item 
+\Hypertarget{class_station_a488b54e86575032edb863d254bcd3bcb}\label{class_station_a488b54e86575032edb863d254bcd3bcb} 
+int {\bfseries Udp\+Socket} = -\/1
+\item 
+\Hypertarget{class_station_a4fced6f8f17b8643d061d4a8aa3a012e}\label{class_station_a4fced6f8f17b8643d061d4a8aa3a012e} 
+char {\bfseries My\+Ip\+Address} \+[16]\+
+\item 
+\Hypertarget{class_station_a162fa598a3dad50b84abf39bccfc7828}\label{class_station_a162fa598a3dad50b84abf39bccfc7828} 
+\doxymbox{\hyperlink{struct_wifi_device}{Wifi\+Device}} {\bfseries Ap\+Wifi\+Device} \{\}
+\end{DoxyCompactItemize}
+\doxysubsubsection*{Friends}
+\begin{DoxyCompactItemize}
+\item 
+\Hypertarget{class_station_a6114c5d107fca8afbba30141927f48ba}\label{class_station_a6114c5d107fca8afbba30141927f48ba} 
+class {\bfseries Wifi\+Factory}
+\end{DoxyCompactItemize}
+
+
+The documentation for this class was generated from the following file:\+\begin{DoxyCompactItemize}
+\item 
+components/\+\+Wifi\+Class\+Lib/\+include/\+Wifi\+Class.\+h\end{DoxyCompactItemize}

@@ -1,0 +1,102 @@
+\doxysection{packet\+\_\+processors.\+h}
+\hypertarget{packet__processors_8h_source}{}\label{packet__processors_8h_source}\index{main/packet\_processors.h@{main/packet\_processors.h}}
+
+\begin{DoxyCode}{0}
+\DoxyCodeLine{00001\ \textcolor{comment}{//\ \#ifndef\ packet\_processors\_H}}
+\DoxyCodeLine{00002\ \textcolor{comment}{//\ \#define\ packet\_processors\_H}}
+\DoxyCodeLine{00003\ }
+\DoxyCodeLine{00004\ \textcolor{comment}{//\ \#include\ <cstddef>}}
+\DoxyCodeLine{00005\ \textcolor{comment}{//\ \#include\ <cstdint>}}
+\DoxyCodeLine{00006\ \textcolor{comment}{//\ \#include\ "{}UtilitiesClass.h"{}}}
+\DoxyCodeLine{00007\ \textcolor{comment}{//\ \#include\ "{}sdkconfig.h"{}}}
+\DoxyCodeLine{00008\ \textcolor{comment}{//\ \#include\ <cstring>}}
+\DoxyCodeLine{00009\ }
+\DoxyCodeLine{00010\ \textcolor{comment}{//\ //\ constexpr\ uint16\_t\ PACKET\_START\_DELIMITER\ \ \ =\ 0xB502;\ //\ on\ little-\/endian\ ESP32}}
+\DoxyCodeLine{00011\ \textcolor{comment}{//\ //\ constexpr\ size\_t\ \ \ PACKET\_HEADER\_SIZE\ \ \ \ \ \ \ =\ 48;}}
+\DoxyCodeLine{00012\ \textcolor{comment}{//\ //\ constexpr\ uint16\_t\ PACKET\_END\_DELIMITER\ \ \ \ \ =\ 0x035B;\ //\ on\ little-\/endian\ ESP32}}
+\DoxyCodeLine{00013\ \textcolor{comment}{//\ //\ static\ constexpr\ uint8\_t\ START0\ =\ 0x02;}}
+\DoxyCodeLine{00014\ \textcolor{comment}{//\ //\ static\ constexpr\ uint8\_t\ START1\ =\ 0xB5;}}
+\DoxyCodeLine{00015\ \textcolor{comment}{//\ //\ static\ constexpr\ uint8\_t\ END0\ =\ 0x5B;}}
+\DoxyCodeLine{00016\ \textcolor{comment}{//\ //\ static\ constexpr\ uint8\_t\ END1\ =\ 0x03;}}
+\DoxyCodeLine{00017\ \textcolor{comment}{//\ //\ static\ uint8\_t\ WriteIndex\ =\ 0;}}
+\DoxyCodeLine{00018\ }
+\DoxyCodeLine{00019\ }
+\DoxyCodeLine{00020\ }
+\DoxyCodeLine{00021\ \textcolor{comment}{//\ //\ \#pragma\ pack(push,\ 1)}}
+\DoxyCodeLine{00022\ \textcolor{comment}{//\ //\ struct\ PacketHeader}}
+\DoxyCodeLine{00023\ \textcolor{comment}{//\ //\ \{}}
+\DoxyCodeLine{00024\ \textcolor{comment}{//\ //\ \ \ \ \ uint16\_t\ startDelimiter;\ \ \ \ \ \ //\ 0x02B5}}
+\DoxyCodeLine{00025\ \textcolor{comment}{//\ //\ \ \ \ \ uint16\_t\ payloadSize;\ \ \ \ \ \ \ \ \ //\ bytes\ after\ header}}
+\DoxyCodeLine{00026\ \textcolor{comment}{//\ //\ \ \ \ \ uint32\_t\ reserved0;}}
+\DoxyCodeLine{00027\ }
+\DoxyCodeLine{00028\ \textcolor{comment}{//\ //\ \ \ \ \ uint64\_t\ slaveUid;}}
+\DoxyCodeLine{00029\ \textcolor{comment}{//\ //\ \ \ \ \ uint64\_t\ messageCounter;}}
+\DoxyCodeLine{00030\ \textcolor{comment}{//\ //\ \ \ \ \ uint64\_t\ senderTimestampUs;}}
+\DoxyCodeLine{00031\ }
+\DoxyCodeLine{00032\ \textcolor{comment}{//\ //\ \ \ \ \ uint32\_t\ prevCycleTimeUs;}}
+\DoxyCodeLine{00033\ }
+\DoxyCodeLine{00034\ \textcolor{comment}{//\ //\ \ \ \ \ uint8\_t\ \ chainedSlaveCount;}}
+\DoxyCodeLine{00035\ \textcolor{comment}{//\ //\ \ \ \ \ uint8\_t\ \ espType;}}
+\DoxyCodeLine{00036\ \textcolor{comment}{//\ //\ \ \ \ \ uint8\_t\ \ flags;}}
+\DoxyCodeLine{00037\ \textcolor{comment}{//\ //\ \ \ \ \ uint8\_t\ \ headerVersion;}}
+\DoxyCodeLine{00038\ \textcolor{comment}{//\ //\ \ \ \ \ uint8\_t\ \ networkId;}}
+\DoxyCodeLine{00039\ \textcolor{comment}{//\ //\ \ \ \ \ uint8\_t\ \ chainDistance;}}
+\DoxyCodeLine{00040\ \textcolor{comment}{//\ //\ \ \ \ \ uint8\_t\ \ ttl;}}
+\DoxyCodeLine{00041\ \textcolor{comment}{//\ //\ \ \ \ \ uint8\_t\ \ reserved1;}}
+\DoxyCodeLine{00042\ }
+\DoxyCodeLine{00043\ \textcolor{comment}{//\ //\ \ \ \ \ uint32\_t\ crc32;}}
+\DoxyCodeLine{00044\ \textcolor{comment}{//\ //\ \};}}
+\DoxyCodeLine{00045\ \textcolor{comment}{//\ //\ \#pragma\ pack(pop)}}
+\DoxyCodeLine{00046\ }
+\DoxyCodeLine{00047\ \textcolor{comment}{//\ //\ static\_assert(sizeof(PacketHeader)\ ==\ 48,\ "{}PacketHeader\ must\ be\ 48\ bytes"{});}}
+\DoxyCodeLine{00048\ }
+\DoxyCodeLine{00049\ }
+\DoxyCodeLine{00050\ }
+\DoxyCodeLine{00051\ \textcolor{comment}{//\ struct\ Payload1}}
+\DoxyCodeLine{00052\ \textcolor{comment}{//\ \{}}
+\DoxyCodeLine{00053\ \textcolor{comment}{//\ \ \ \ \ uint8\_t\ Test1;}}
+\DoxyCodeLine{00054\ \textcolor{comment}{//\ \ \ \ \ uint8\_t\ Test2;}}
+\DoxyCodeLine{00055\ \textcolor{comment}{//\ \ \ \ \ uint8\_t\ Test3;}}
+\DoxyCodeLine{00056\ \textcolor{comment}{//\ \ \ \ \ uint8\_t\ Test4;}}
+\DoxyCodeLine{00057\ \textcolor{comment}{//\ \ \ \ \ uint8\_t\ Test5;}}
+\DoxyCodeLine{00058\ \textcolor{comment}{//\ \ \ \ \ uint8\_t\ Test6;}}
+\DoxyCodeLine{00059\ \textcolor{comment}{//\ \ \ \ \ uint8\_t\ Test7;}}
+\DoxyCodeLine{00060\ \textcolor{comment}{//\ \ \ \ \ uint8\_t\ Test8;}}
+\DoxyCodeLine{00061\ \textcolor{comment}{//\ \ \ \ \ uint8\_t\ Test9[6];}}
+\DoxyCodeLine{00062\ \textcolor{comment}{//\ \};}}
+\DoxyCodeLine{00063\ }
+\DoxyCodeLine{00064\ \textcolor{comment}{//\ bool\ ExtractData(uint8\_t*\ InputBuffer,}}
+\DoxyCodeLine{00065\ \textcolor{comment}{//\ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ size\_t*\ InputBufferBytes,}}
+\DoxyCodeLine{00066\ \textcolor{comment}{//\ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ uint8\_t*\ OutputBuffer,}}
+\DoxyCodeLine{00067\ \textcolor{comment}{//\ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ size\_t\ OutputBufferCapacity,}}
+\DoxyCodeLine{00068\ \textcolor{comment}{//\ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ size\_t*\ OutputBytes);}}
+\DoxyCodeLine{00069\ }
+\DoxyCodeLine{00070\ \textcolor{comment}{//\ class\ ITF\_PacketProcessor\ }}
+\DoxyCodeLine{00071\ \textcolor{comment}{//\ \{}}
+\DoxyCodeLine{00072\ \textcolor{comment}{//\ \ \ \ \ public:}}
+\DoxyCodeLine{00073\ \textcolor{comment}{//\ \ \ \ \ \ \ \ \ virtual\ \string~ITF\_PacketProcessor()\ =\ default;}}
+\DoxyCodeLine{00074\ }
+\DoxyCodeLine{00075\ \textcolor{comment}{//\ \ \ \ \ \ \ \ \ virtual\ bool\ ProcessPacket(const\ uint8\_t*\ UdpPacketIn,\ size\_t\ Length,\ uint8\_t*\ ProcessedDataOut)\ =\ 0;}}
+\DoxyCodeLine{00076\ \textcolor{comment}{//\ \ \ \ \ \ \ \ \ virtual\ size\_t\ PreparePacket(uint8\_t*\ ProcessedDataIn,\ size\_t\ Length,\ uint8\_t*\ UdpPacketOut)\ =\ 0;}}
+\DoxyCodeLine{00077\ \textcolor{comment}{//\ \};}}
+\DoxyCodeLine{00078\ }
+\DoxyCodeLine{00079\ \textcolor{comment}{//\ class\ Packet1\ final\ :\ public\ ITF\_PacketProcessor}}
+\DoxyCodeLine{00080\ \textcolor{comment}{//\ \{}}
+\DoxyCodeLine{00081\ \textcolor{comment}{//\ \ \ \ \ private:}}
+\DoxyCodeLine{00082\ \textcolor{comment}{//\ \ \ \ \ \ \ \ \ PacketHeader\ LastHeader\{\};}}
+\DoxyCodeLine{00083\ \textcolor{comment}{//\ \ \ \ \ \ \ \ \ Payload1\ LastTx\{\};}}
+\DoxyCodeLine{00084\ \textcolor{comment}{//\ \ \ \ \ \ \ \ \ Payload1\ LastRx\{\};}}
+\DoxyCodeLine{00085\ }
+\DoxyCodeLine{00086\ \textcolor{comment}{//\ \ \ \ \ \ \ \ \ uint8\_t\ LastFullPacket[PACKET\_HEADER\_SIZE\ +\ sizeof(Payload1)\ +\ sizeof(PACKET\_END\_DELIMITER)]\{\};}}
+\DoxyCodeLine{00087\ }
+\DoxyCodeLine{00088\ \textcolor{comment}{//\ \ \ \ \ public:}}
+\DoxyCodeLine{00089\ \textcolor{comment}{//\ \ \ \ \ \ \ \ \ bool\ ProcessPacket(const\ uint8\_t*\ UdpPacketIn,\ size\_t\ Length,\ uint8\_t*\ ProcessedDataOut)\ override;}}
+\DoxyCodeLine{00090\ \textcolor{comment}{//\ \ \ \ \ \ \ \ \ size\_t\ PreparePacket(uint8\_t*\ ProcessedDataIn,\ size\_t\ Length,\ uint8\_t*\ UdpPacketOut)\ override;}}
+\DoxyCodeLine{00091\ \textcolor{comment}{//\ \};}}
+\DoxyCodeLine{00092\ }
+\DoxyCodeLine{00093\ }
+\DoxyCodeLine{00094\ }
+\DoxyCodeLine{00095\ }
+\DoxyCodeLine{00096\ \textcolor{comment}{//\ \#endif}}
+
+\end{DoxyCode}

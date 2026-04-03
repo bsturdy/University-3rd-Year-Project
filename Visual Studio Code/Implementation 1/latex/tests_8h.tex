@@ -1,0 +1,89 @@
+\doxysection{main/\+tests.h File Reference}
+\hypertarget{tests_8h}{}\label{tests_8h}\index{main/tests.h@{main/tests.h}}
+{\ttfamily \+\#include $<$cstddef$>$}\newline
+{\ttfamily \+\#include $<$cstdint$>$}\newline
+\doxysubsubsection*{Classes}
+\begin{DoxyCompactItemize}
+\item 
+struct \doxymbox{\hyperlink{struct_test_context}{Test\+Context}}
+\end{DoxyCompactItemize}
+\doxysubsubsection*{Functions}
+\begin{DoxyCompactItemize}
+\item 
+void \doxymbox{\hyperlink{tests_8h_a5b954cb5d17f8d4ec84441f925769945}{Test\+\_\+\+Begin\+Suite}} (\doxymbox{\hyperlink{struct_test_context}{Test\+Context}} \&T, const char \texorpdfstring{$\ast$}{*}Suite\+Name)
+\item 
+void \doxymbox{\hyperlink{tests_8h_afe8972242aa53fa05aa71e83e69bd469}{Test\+\_\+\+Begin\+Case}} (\doxymbox{\hyperlink{struct_test_context}{Test\+Context}} \&T, int Case\+Number, const char \texorpdfstring{$\ast$}{*}Description)
+\item 
+void \doxymbox{\hyperlink{tests_8h_aa73a300e9a3639484205100bd98c1f51}{Test\+\_\+\+End\+Suite}} (\doxymbox{\hyperlink{struct_test_context}{Test\+Context}} \&T)
+\item 
+void \doxymbox{\hyperlink{tests_8h_af804b70d2e5dc500f7b97502390d9082}{Test\+\_\+\+Assert\+True}} (\doxymbox{\hyperlink{struct_test_context}{Test\+Context}} \&T, bool Cond, const char \texorpdfstring{$\ast$}{*}Msg)
+\item 
+void \doxymbox{\hyperlink{tests_8h_a51c7d66f29760a211be09c8bbb00cf6c}{Test\+\_\+\+Assert\+False}} (\doxymbox{\hyperlink{struct_test_context}{Test\+Context}} \&T, bool Cond, const char \texorpdfstring{$\ast$}{*}Msg)
+\item 
+void \doxymbox{\hyperlink{tests_8h_a94f446568fb08d0482c5c580dc0227e5}{Test\+\_\+\+Assert\+Eq\+Bool}} (\doxymbox{\hyperlink{struct_test_context}{Test\+Context}} \&T, bool Actual, bool Expected, const char \texorpdfstring{$\ast$}{*}Msg)
+\item 
+void \doxymbox{\hyperlink{tests_8h_a1645350385fdf55aa657213ae218142c}{Test\+\_\+\+Assert\+Eq\+Size}} (\doxymbox{\hyperlink{struct_test_context}{Test\+Context}} \&T, size\+\_\+t Actual, size\+\_\+t Expected, const char \texorpdfstring{$\ast$}{*}Msg)
+\item 
+void \doxymbox{\hyperlink{tests_8h_a712a53a246cf95f72b1e5bdd3e3e08d9}{Test\+\_\+\+Print\+Hex}} (const char \texorpdfstring{$\ast$}{*}Tag, const uint8\+\_\+t \texorpdfstring{$\ast$}{*}Buf, size\+\_\+t Len)
+\item 
+int \doxymbox{\hyperlink{tests_8h_ae0ca194f6b730e168850ce3179ad4f63}{Run\+All\+Tests}} ()
+\end{DoxyCompactItemize}
+
+
+\label{doc-func-members}
+\Hypertarget{tests_8h_doc-func-members}
+\doxysubsection{Function Documentation}
+\Hypertarget{tests_8h_ae0ca194f6b730e168850ce3179ad4f63}\index{tests.h@{tests.h}!RunAllTests@{RunAllTests}}
+\index{RunAllTests@{RunAllTests}!tests.h@{tests.h}}
+\doxysubsubsection{\texorpdfstring{RunAllTests()}{RunAllTests()}}
+{\footnotesize\ttfamily \label{tests_8h_ae0ca194f6b730e168850ce3179ad4f63} 
+int Run\+All\+Tests (\begin{DoxyParamCaption}{}{}\end{DoxyParamCaption})}
+
+\Hypertarget{tests_8h_a94f446568fb08d0482c5c580dc0227e5}\index{tests.h@{tests.h}!Test\_AssertEqBool@{Test\_AssertEqBool}}
+\index{Test\_AssertEqBool@{Test\_AssertEqBool}!tests.h@{tests.h}}
+\doxysubsubsection{\texorpdfstring{Test\_AssertEqBool()}{Test\_AssertEqBool()}}
+{\footnotesize\ttfamily \label{tests_8h_a94f446568fb08d0482c5c580dc0227e5} 
+void Test\+\_\+\+Assert\+Eq\+Bool (\begin{DoxyParamCaption}\item[{\doxymbox{\hyperlink{struct_test_context}{Test\+Context}} \&}]{T}{, }\item[{bool}]{Actual}{, }\item[{bool}]{Expected}{, }\item[{const char \texorpdfstring{$\ast$}{*}}]{Msg}{}\end{DoxyParamCaption})}
+
+\Hypertarget{tests_8h_a1645350385fdf55aa657213ae218142c}\index{tests.h@{tests.h}!Test\_AssertEqSize@{Test\_AssertEqSize}}
+\index{Test\_AssertEqSize@{Test\_AssertEqSize}!tests.h@{tests.h}}
+\doxysubsubsection{\texorpdfstring{Test\_AssertEqSize()}{Test\_AssertEqSize()}}
+{\footnotesize\ttfamily \label{tests_8h_a1645350385fdf55aa657213ae218142c} 
+void Test\+\_\+\+Assert\+Eq\+Size (\begin{DoxyParamCaption}\item[{\doxymbox{\hyperlink{struct_test_context}{Test\+Context}} \&}]{T}{, }\item[{size\+\_\+t}]{Actual}{, }\item[{size\+\_\+t}]{Expected}{, }\item[{const char \texorpdfstring{$\ast$}{*}}]{Msg}{}\end{DoxyParamCaption})}
+
+\Hypertarget{tests_8h_a51c7d66f29760a211be09c8bbb00cf6c}\index{tests.h@{tests.h}!Test\_AssertFalse@{Test\_AssertFalse}}
+\index{Test\_AssertFalse@{Test\_AssertFalse}!tests.h@{tests.h}}
+\doxysubsubsection{\texorpdfstring{Test\_AssertFalse()}{Test\_AssertFalse()}}
+{\footnotesize\ttfamily \label{tests_8h_a51c7d66f29760a211be09c8bbb00cf6c} 
+void Test\+\_\+\+Assert\+False (\begin{DoxyParamCaption}\item[{\doxymbox{\hyperlink{struct_test_context}{Test\+Context}} \&}]{T}{, }\item[{bool}]{Cond}{, }\item[{const char \texorpdfstring{$\ast$}{*}}]{Msg}{}\end{DoxyParamCaption})}
+
+\Hypertarget{tests_8h_af804b70d2e5dc500f7b97502390d9082}\index{tests.h@{tests.h}!Test\_AssertTrue@{Test\_AssertTrue}}
+\index{Test\_AssertTrue@{Test\_AssertTrue}!tests.h@{tests.h}}
+\doxysubsubsection{\texorpdfstring{Test\_AssertTrue()}{Test\_AssertTrue()}}
+{\footnotesize\ttfamily \label{tests_8h_af804b70d2e5dc500f7b97502390d9082} 
+void Test\+\_\+\+Assert\+True (\begin{DoxyParamCaption}\item[{\doxymbox{\hyperlink{struct_test_context}{Test\+Context}} \&}]{T}{, }\item[{bool}]{Cond}{, }\item[{const char \texorpdfstring{$\ast$}{*}}]{Msg}{}\end{DoxyParamCaption})}
+
+\Hypertarget{tests_8h_afe8972242aa53fa05aa71e83e69bd469}\index{tests.h@{tests.h}!Test\_BeginCase@{Test\_BeginCase}}
+\index{Test\_BeginCase@{Test\_BeginCase}!tests.h@{tests.h}}
+\doxysubsubsection{\texorpdfstring{Test\_BeginCase()}{Test\_BeginCase()}}
+{\footnotesize\ttfamily \label{tests_8h_afe8972242aa53fa05aa71e83e69bd469} 
+void Test\+\_\+\+Begin\+Case (\begin{DoxyParamCaption}\item[{\doxymbox{\hyperlink{struct_test_context}{Test\+Context}} \&}]{T}{, }\item[{int}]{Case\+Number}{, }\item[{const char \texorpdfstring{$\ast$}{*}}]{Description}{}\end{DoxyParamCaption})}
+
+\Hypertarget{tests_8h_a5b954cb5d17f8d4ec84441f925769945}\index{tests.h@{tests.h}!Test\_BeginSuite@{Test\_BeginSuite}}
+\index{Test\_BeginSuite@{Test\_BeginSuite}!tests.h@{tests.h}}
+\doxysubsubsection{\texorpdfstring{Test\_BeginSuite()}{Test\_BeginSuite()}}
+{\footnotesize\ttfamily \label{tests_8h_a5b954cb5d17f8d4ec84441f925769945} 
+void Test\+\_\+\+Begin\+Suite (\begin{DoxyParamCaption}\item[{\doxymbox{\hyperlink{struct_test_context}{Test\+Context}} \&}]{T}{, }\item[{const char \texorpdfstring{$\ast$}{*}}]{Suite\+Name}{}\end{DoxyParamCaption})}
+
+\Hypertarget{tests_8h_aa73a300e9a3639484205100bd98c1f51}\index{tests.h@{tests.h}!Test\_EndSuite@{Test\_EndSuite}}
+\index{Test\_EndSuite@{Test\_EndSuite}!tests.h@{tests.h}}
+\doxysubsubsection{\texorpdfstring{Test\_EndSuite()}{Test\_EndSuite()}}
+{\footnotesize\ttfamily \label{tests_8h_aa73a300e9a3639484205100bd98c1f51} 
+void Test\+\_\+\+End\+Suite (\begin{DoxyParamCaption}\item[{\doxymbox{\hyperlink{struct_test_context}{Test\+Context}} \&}]{T}{}\end{DoxyParamCaption})}
+
+\Hypertarget{tests_8h_a712a53a246cf95f72b1e5bdd3e3e08d9}\index{tests.h@{tests.h}!Test\_PrintHex@{Test\_PrintHex}}
+\index{Test\_PrintHex@{Test\_PrintHex}!tests.h@{tests.h}}
+\doxysubsubsection{\texorpdfstring{Test\_PrintHex()}{Test\_PrintHex()}}
+{\footnotesize\ttfamily \label{tests_8h_a712a53a246cf95f72b1e5bdd3e3e08d9} 
+void Test\+\_\+\+Print\+Hex (\begin{DoxyParamCaption}\item[{const char \texorpdfstring{$\ast$}{*}}]{Tag}{, }\item[{const uint8\+\_\+t \texorpdfstring{$\ast$}{*}}]{Buf}{, }\item[{size\+\_\+t}]{Len}{}\end{DoxyParamCaption})}
+

@@ -1,0 +1,146 @@
+\doxysection{Timer\+Class Class Reference}
+\hypertarget{class_timer_class}{}\label{class_timer_class}\index{TimerClass@{TimerClass}}
+\doxysubsubsection*{Public Member Functions}
+\begin{DoxyCompactItemize}
+\item 
+\Hypertarget{class_timer_class_a89ce69c4188da6412f8c0e7d27d5f4a6}\label{class_timer_class_a89ce69c4188da6412f8c0e7d27d5f4a6} 
+{\bfseries Timer\+Class} (const \doxymbox{\hyperlink{class_timer_class}{Timer\+Class}} \&)=delete
+\item 
+\Hypertarget{class_timer_class_a2cc39734c16e7f235bfbb6db9ab0c554}\label{class_timer_class_a2cc39734c16e7f235bfbb6db9ab0c554} 
+void {\bfseries operator=} (const \doxymbox{\hyperlink{class_timer_class}{Timer\+Class}} \&)=delete
+\item 
+\Hypertarget{class_timer_class_ad193e75247dab676c139baede0168f8e}\label{class_timer_class_ad193e75247dab676c139baede0168f8e} 
+bool {\bfseries Setup\+Cyclic\+Task} (void(\texorpdfstring{$\ast$}{*}Task\+To\+Run)(void \texorpdfstring{$\ast$}{*}), uint8\+\_\+t Core\+To\+Use)
+\item 
+\Hypertarget{class_timer_class_ad4f775764b33f11f668d057762647771}\label{class_timer_class_ad4f775764b33f11f668d057762647771} 
+void {\bfseries Set\+Watchdog\+On\+Off} (bool Is\+Watchdog\+Enabled)
+\item 
+\Hypertarget{class_timer_class_a6153dd1e292fd788c06a205017f08478}\label{class_timer_class_a6153dd1e292fd788c06a205017f08478} 
+uint64\+\_\+t {\bfseries Get\+Cyclic\+Isr\+Counter} () const
+\item 
+\Hypertarget{class_timer_class_a32ac63fd11d684066ed3a7965fe25524}\label{class_timer_class_a32ac63fd11d684066ed3a7965fe25524} 
+uint64\+\_\+t {\bfseries Get\+Cyclic\+Task\+Counter} () const
+\item 
+\Hypertarget{class_timer_class_a9f2ab10adb5ec6835b2af8b8cbdd018f}\label{class_timer_class_a9f2ab10adb5ec6835b2af8b8cbdd018f} 
+uint64\+\_\+t {\bfseries Get\+Watchdog\+Isr\+Counter} () const
+\item 
+\Hypertarget{class_timer_class_a9e6cbca581c9c8c89fdcf72fdc598de1}\label{class_timer_class_a9e6cbca581c9c8c89fdcf72fdc598de1} 
+uint64\+\_\+t {\bfseries Get\+Watchdog\+Task\+Counter} () const
+\item 
+\Hypertarget{class_timer_class_a2de271200e0a96713b2e0621d57c2f8e}\label{class_timer_class_a2de271200e0a96713b2e0621d57c2f8e} 
+uint64\+\_\+t {\bfseries Get\+Timer\+Frequency} () const
+\item 
+\Hypertarget{class_timer_class_ae7d1069bc3896fcff5cbbe1117655751}\label{class_timer_class_ae7d1069bc3896fcff5cbbe1117655751} 
+Task\+Handle\+\_\+t {\bfseries Get\+Cyclic\+Task\+Handle} () const
+\item 
+\Hypertarget{class_timer_class_ad9d15f10c58d312545c031efec2c502c}\label{class_timer_class_ad9d15f10c58d312545c031efec2c502c} 
+Task\+Handle\+\_\+t {\bfseries Get\+Watchdog\+Task\+Handle} () const
+\end{DoxyCompactItemize}
+\doxysubsubsection*{Static Public Member Functions}
+\begin{DoxyCompactItemize}
+\item 
+\Hypertarget{class_timer_class_add3a497858a236fcf137272dcc1860db}\label{class_timer_class_add3a497858a236fcf137272dcc1860db} 
+static \doxymbox{\hyperlink{class_timer_class}{Timer\+Class}} \& {\bfseries Get\+Instance} ()
+\end{DoxyCompactItemize}
+\doxysubsubsection*{Private Member Functions}
+\begin{DoxyCompactItemize}
+\item 
+\Hypertarget{class_timer_class_a88e94bde14905cc617f55ae5b1689ea8}\label{class_timer_class_a88e94bde14905cc617f55ae5b1689ea8} 
+bool {\bfseries Setup\+Timer} (float Cycle\+Time\+In\+Ms, float Watchdog\+Time, uint16\+\_\+t Prescalar)
+\end{DoxyCompactItemize}
+\doxysubsubsection*{Static Private Member Functions}
+\begin{DoxyCompactItemize}
+\item 
+\Hypertarget{class_timer_class_ab17060b016532d5b242ce36f66742fd8}\label{class_timer_class_ab17060b016532d5b242ce36f66742fd8} 
+static bool IRAM\+\_\+\+ATTR {\bfseries Cyclic\+ISR} (void \texorpdfstring{$\ast$}{*}arg)
+\item 
+\Hypertarget{class_timer_class_a63e0754a4045bc2b9524ade68636ce20}\label{class_timer_class_a63e0754a4045bc2b9524ade68636ce20} 
+static bool IRAM\+\_\+\+ATTR {\bfseries Watchdog\+ISR} (void \texorpdfstring{$\ast$}{*}arg)
+\item 
+\Hypertarget{class_timer_class_adeae806bb4cf84ca7dff5e2ea6491a04}\label{class_timer_class_adeae806bb4cf84ca7dff5e2ea6491a04} 
+static void {\bfseries Cyclic\+Task} (void \texorpdfstring{$\ast$}{*}pv\+Parameters)
+\item 
+\Hypertarget{class_timer_class_adfc219e5516cfecea1c0735fbbb1a5cb}\label{class_timer_class_adfc219e5516cfecea1c0735fbbb1a5cb} 
+static void {\bfseries Watchdog\+Task} (void \texorpdfstring{$\ast$}{*}pv\+Parameters)
+\end{DoxyCompactItemize}
+\doxysubsubsection*{Private Attributes}
+\begin{DoxyCompactItemize}
+\item 
+\Hypertarget{class_timer_class_af15a93d2a425526ae1a337b0a676a931}\label{class_timer_class_af15a93d2a425526ae1a337b0a676a931} 
+bool {\bfseries Is\+Setup\+Done}
+\item 
+\Hypertarget{class_timer_class_a8c528586a73c16e2919e9cb1843d2a2d}\label{class_timer_class_a8c528586a73c16e2919e9cb1843d2a2d} 
+Stack\+Type\+\_\+t {\bfseries Cyclic\+Task\+Stack} \+[Cyclic\+Task\+Stack\+Size]\+
+\item 
+\Hypertarget{class_timer_class_a92257eace95aa11ebe2b5c8f3e5ce340}\label{class_timer_class_a92257eace95aa11ebe2b5c8f3e5ce340} 
+Static\+Task\+\_\+t {\bfseries Cyclic\+Task\+TCB}
+\item 
+\Hypertarget{class_timer_class_ac7f8321a2a4428b1da5fad5e3c40c031}\label{class_timer_class_ac7f8321a2a4428b1da5fad5e3c40c031} 
+Stack\+Type\+\_\+t {\bfseries Watchdog\+Task\+Stack} \+[Watchdog\+Task\+Stack\+Size]\+
+\item 
+\Hypertarget{class_timer_class_a2d774a2600f1c27aea11af30def7ddc6}\label{class_timer_class_a2d774a2600f1c27aea11af30def7ddc6} 
+Static\+Task\+\_\+t {\bfseries Watchdog\+Task\+TCB}
+\item 
+\Hypertarget{class_timer_class_abfe352b02692f86e556d55e164ee5346}\label{class_timer_class_abfe352b02692f86e556d55e164ee5346} 
+volatile bool {\bfseries Are\+Timers\+Initated} = false
+\item 
+\Hypertarget{class_timer_class_aeb8fb2765c5f805f398db97669aafbc5}\label{class_timer_class_aeb8fb2765c5f805f398db97669aafbc5} 
+volatile uint64\+\_\+t {\bfseries Cyclic\+Isr\+Counter} = 0
+\item 
+\Hypertarget{class_timer_class_a5f7569c9ddc7fe1478379a51fe1dd44b}\label{class_timer_class_a5f7569c9ddc7fe1478379a51fe1dd44b} 
+volatile uint64\+\_\+t {\bfseries Cyclic\+Task\+Counter} = 0
+\item 
+\Hypertarget{class_timer_class_aa122df4821feaaad377ba4df90d608fd}\label{class_timer_class_aa122df4821feaaad377ba4df90d608fd} 
+volatile uint64\+\_\+t {\bfseries Watchdog\+ISRCounter} = 0
+\item 
+\Hypertarget{class_timer_class_a8b2e37e607deff64ca0380daf4e7bfb0}\label{class_timer_class_a8b2e37e607deff64ca0380daf4e7bfb0} 
+volatile uint64\+\_\+t {\bfseries Watchdog\+Task\+Counter} = 0
+\item 
+\Hypertarget{class_timer_class_a1540aa0ec9d0b30fa884086c8e97d038}\label{class_timer_class_a1540aa0ec9d0b30fa884086c8e97d038} 
+Task\+Handle\+\_\+t {\bfseries Cyclic\+Task\+Handle} = NULL
+\item 
+\Hypertarget{class_timer_class_a0d9c1ff39f9b2ac66745bb34d4d5f9d3}\label{class_timer_class_a0d9c1ff39f9b2ac66745bb34d4d5f9d3} 
+Task\+Handle\+\_\+t {\bfseries Watchdog\+Task\+Handle} = NULL
+\item 
+\Hypertarget{class_timer_class_a11012226f0e6627a851b63c3729b8f9a}\label{class_timer_class_a11012226f0e6627a851b63c3729b8f9a} 
+Base\+Type\+\_\+t {\bfseries x\+Higher\+Priority\+Task\+Woken\+False} = pd\+FALSE
+\item 
+\Hypertarget{class_timer_class_a7a8da0509f61ff9b813ea675f71471cd}\label{class_timer_class_a7a8da0509f61ff9b813ea675f71471cd} 
+Base\+Type\+\_\+t {\bfseries x\+Higher\+Priority\+Task\+Woken\+True} = pd\+TRUE
+\item 
+\Hypertarget{class_timer_class_a1864d973db0120a43a90cda5b681eee9}\label{class_timer_class_a1864d973db0120a43a90cda5b681eee9} 
+void(\texorpdfstring{$\ast$}{*} {\bfseries User\+Task} )(void \texorpdfstring{$\ast$}{*}) = nullptr
+\item 
+\Hypertarget{class_timer_class_a2c515e48a497d2045af5a3e7f5eee85a}\label{class_timer_class_a2c515e48a497d2045af5a3e7f5eee85a} 
+float {\bfseries Cycle\+Time\+Ms} = 0
+\item 
+\Hypertarget{class_timer_class_aa1d4dd4332fcbcfac1661666bbb6c8d1}\label{class_timer_class_aa1d4dd4332fcbcfac1661666bbb6c8d1} 
+float {\bfseries Watchdog\+Time\+Ms} = 0
+\item 
+\Hypertarget{class_timer_class_a3476cf02f6c618079555c68c2f3d4035}\label{class_timer_class_a3476cf02f6c618079555c68c2f3d4035} 
+uint16\+\_\+t {\bfseries Prescalar} = 1
+\item 
+\Hypertarget{class_timer_class_a2fdecd2d90f564ffd11123edf80fd308}\label{class_timer_class_a2fdecd2d90f564ffd11123edf80fd308} 
+bool {\bfseries Is\+Watchdog\+Enabled} = true
+\item 
+\Hypertarget{class_timer_class_a73d725129fe094126b8b0db397fc536b}\label{class_timer_class_a73d725129fe094126b8b0db397fc536b} 
+uint8\+\_\+t {\bfseries Core\+To\+Run\+Cyclic\+Task} = 1
+\end{DoxyCompactItemize}
+\doxysubsubsection*{Static Private Attributes}
+\begin{DoxyCompactItemize}
+\item 
+\Hypertarget{class_timer_class_ac78be150bf53e0e0cf2727c078c35848}\label{class_timer_class_ac78be150bf53e0e0cf2727c078c35848} 
+static const int {\bfseries Cyclic\+Task\+Stack\+Size} = 4096
+\item 
+\Hypertarget{class_timer_class_afb6a595c8f90acba19384fc90901e6f5}\label{class_timer_class_afb6a595c8f90acba19384fc90901e6f5} 
+static const int {\bfseries Watchdog\+Task\+Stack\+Size} = 1024
+\item 
+\Hypertarget{class_timer_class_a1abc4dc96b85df1fcf80b2da2448b529}\label{class_timer_class_a1abc4dc96b85df1fcf80b2da2448b529} 
+static \doxymbox{\hyperlink{class_timer_class}{Timer\+Class}} \texorpdfstring{$\ast$}{*} {\bfseries isr\+\_\+instance} = nullptr
+\end{DoxyCompactItemize}
+
+
+The documentation for this class was generated from the following files:\+\begin{DoxyCompactItemize}
+\item 
+components/\+\+Timer\+Class\+Lib/\+include/\+Timer\+Class.\+h\item 
+components/\+\+Timer\+Class\+Lib/\+src/\+Timer\+Class.\+cpp\end{DoxyCompactItemize}

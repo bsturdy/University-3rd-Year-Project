@@ -1,0 +1,56 @@
+\doxysection{Gpio\+Class Class Reference}
+\hypertarget{class_gpio_class}{}\label{class_gpio_class}\index{GpioClass@{GpioClass}}
+\doxysubsubsection*{Public Member Functions}
+\begin{DoxyCompactItemize}
+\item 
+\Hypertarget{class_gpio_class_a7ed4e164cb65541fa3ac4f3046faf966}\label{class_gpio_class_a7ed4e164cb65541fa3ac4f3046faf966} 
+{\bfseries Gpio\+Class} (const \doxymbox{\hyperlink{class_gpio_class}{Gpio\+Class}} \&)=delete
+\item 
+\Hypertarget{class_gpio_class_a1fed163a80aa42eda91ac630c7da57e0}\label{class_gpio_class_a1fed163a80aa42eda91ac630c7da57e0} 
+void {\bfseries operator=} (const \doxymbox{\hyperlink{class_gpio_class}{Gpio\+Class}} \&)=delete
+\item 
+\Hypertarget{class_gpio_class_acf0b4c943a8f38948ef2acfb474afdba}\label{class_gpio_class_acf0b4c943a8f38948ef2acfb474afdba} 
+bool {\bfseries Setup\+Onboard\+Led} ()
+\item 
+\Hypertarget{class_gpio_class_a77c007b9ebcbeed5b3d6c6c26fa0bf6f}\label{class_gpio_class_a77c007b9ebcbeed5b3d6c6c26fa0bf6f} 
+bool {\bfseries Change\+Onboard\+Led\+Colour} (uint8\+\_\+t Red, uint8\+\_\+t Green, uint8\+\_\+t Blue)
+\end{DoxyCompactItemize}
+\doxysubsubsection*{Static Public Member Functions}
+\begin{DoxyCompactItemize}
+\item 
+\Hypertarget{class_gpio_class_af2b20fc0f1c63fe05fc0709941c935e7}\label{class_gpio_class_af2b20fc0f1c63fe05fc0709941c935e7} 
+static \doxymbox{\hyperlink{class_gpio_class}{Gpio\+Class}} \& {\bfseries Get\+Instance} ()
+\end{DoxyCompactItemize}
+\doxysubsubsection*{Private Member Functions}
+\begin{DoxyCompactItemize}
+\item 
+\Hypertarget{class_gpio_class_a5c4bf6ed258b1a7da9124228f5ff83c8}\label{class_gpio_class_a5c4bf6ed258b1a7da9124228f5ff83c8} 
+bool {\bfseries Setup\+Rmt\+Tx\+Channel} (gpio\+\_\+num\+\_\+t Gpio\+Number, uint32\+\_\+t Resolution)
+\end{DoxyCompactItemize}
+\doxysubsubsection*{Private Attributes}
+\begin{DoxyCompactItemize}
+\item 
+\Hypertarget{class_gpio_class_a67078d268d6a7dd53d72be1de55acd92}\label{class_gpio_class_a67078d268d6a7dd53d72be1de55acd92} 
+bool {\bfseries Is\+Runtime\+Logging\+Enabled} = true
+\item 
+\Hypertarget{class_gpio_class_abbd191e5f9ff8f8c3da6fb18b9112966}\label{class_gpio_class_abbd191e5f9ff8f8c3da6fb18b9112966} 
+esp\+\_\+err\+\_\+t {\bfseries Error}
+\item 
+\Hypertarget{class_gpio_class_a4faa22c13ab99cd47c6ddbe508e7d397}\label{class_gpio_class_a4faa22c13ab99cd47c6ddbe508e7d397} 
+rmt\+\_\+tx\+\_\+channel\+\_\+config\+\_\+t {\bfseries Rmt\+Config}
+\item 
+\Hypertarget{class_gpio_class_a8a4c946c96dcad6a75c1713dfbbdcec6}\label{class_gpio_class_a8a4c946c96dcad6a75c1713dfbbdcec6} 
+uint8\+\_\+t {\bfseries Setup\+Rmt\+State} = 0
+\item 
+\Hypertarget{class_gpio_class_a6a9da0c31cfc0b3377e2d51448f4b998}\label{class_gpio_class_a6a9da0c31cfc0b3377e2d51448f4b998} 
+bool {\bfseries Rmt\+Channel\+Setup\+Complete} = false
+\item 
+\Hypertarget{class_gpio_class_ab3a114d7c4e3e348d6e6062298a1fa89}\label{class_gpio_class_ab3a114d7c4e3e348d6e6062298a1fa89} 
+bool {\bfseries Onboard\+Led\+Setup\+Complete} = false
+\end{DoxyCompactItemize}
+
+
+The documentation for this class was generated from the following files:\+\begin{DoxyCompactItemize}
+\item 
+components/\+\+Gpio\+Class\+Lib/\+include/\+Gpio\+Class.\+h\item 
+components/\+\+Gpio\+Class\+Lib/\+src/\+Gpio\+Class.\+cpp\end{DoxyCompactItemize}

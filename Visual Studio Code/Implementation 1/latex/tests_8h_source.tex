@@ -1,0 +1,36 @@
+\doxysection{tests.\+h}
+\hypertarget{tests_8h_source}{}\label{tests_8h_source}\index{main/tests.h@{main/tests.h}}
+
+\begin{DoxyCode}{0}
+\DoxyCodeLine{00001\ \textcolor{preprocessor}{\#ifndef\ Tests\_H}}
+\DoxyCodeLine{00002\ \textcolor{preprocessor}{\#define\ Tests\_H}}
+\DoxyCodeLine{00003\ }
+\DoxyCodeLine{00004\ }
+\DoxyCodeLine{00005\ \textcolor{preprocessor}{\#pragma\ once}}
+\DoxyCodeLine{00006\ \textcolor{preprocessor}{\#include\ <cstddef>}}
+\DoxyCodeLine{00007\ \textcolor{preprocessor}{\#include\ <cstdint>}}
+\DoxyCodeLine{00008\ }
+\DoxyCodeLine{00009\ \textcolor{keyword}{struct\ }\doxymbox{\hyperlink{struct_test_context}{TestContext}}}
+\DoxyCodeLine{00010\ \{}
+\DoxyCodeLine{00011\ \ \ \ \ \textcolor{keywordtype}{int}\ Pass\ =\ 0;}
+\DoxyCodeLine{00012\ \ \ \ \ \textcolor{keywordtype}{int}\ Fail\ =\ 0;}
+\DoxyCodeLine{00013\ \};}
+\DoxyCodeLine{00014\ }
+\DoxyCodeLine{00015\ \textcolor{keywordtype}{void}\ Test\_BeginSuite(\doxymbox{\hyperlink{struct_test_context}{TestContext}}\&\ T,\ \textcolor{keyword}{const}\ \textcolor{keywordtype}{char}*\ SuiteName);}
+\DoxyCodeLine{00016\ \textcolor{keywordtype}{void}\ Test\_BeginCase(\doxymbox{\hyperlink{struct_test_context}{TestContext}}\&\ T,\ \textcolor{keywordtype}{int}\ CaseNumber,\ \textcolor{keyword}{const}\ \textcolor{keywordtype}{char}*\ Description);}
+\DoxyCodeLine{00017\ \textcolor{keywordtype}{void}\ Test\_EndSuite(\doxymbox{\hyperlink{struct_test_context}{TestContext}}\&\ T);}
+\DoxyCodeLine{00018\ }
+\DoxyCodeLine{00019\ \textcolor{keywordtype}{void}\ Test\_AssertTrue(\doxymbox{\hyperlink{struct_test_context}{TestContext}}\&\ T,\ \textcolor{keywordtype}{bool}\ Cond,\ \textcolor{keyword}{const}\ \textcolor{keywordtype}{char}*\ Msg);}
+\DoxyCodeLine{00020\ \textcolor{keywordtype}{void}\ Test\_AssertFalse(\doxymbox{\hyperlink{struct_test_context}{TestContext}}\&\ T,\ \textcolor{keywordtype}{bool}\ Cond,\ \textcolor{keyword}{const}\ \textcolor{keywordtype}{char}*\ Msg);}
+\DoxyCodeLine{00021\ }
+\DoxyCodeLine{00022\ \textcolor{keywordtype}{void}\ Test\_AssertEqBool(\doxymbox{\hyperlink{struct_test_context}{TestContext}}\&\ T,\ \textcolor{keywordtype}{bool}\ Actual,\ \textcolor{keywordtype}{bool}\ Expected,\ \textcolor{keyword}{const}\ \textcolor{keywordtype}{char}*\ Msg);}
+\DoxyCodeLine{00023\ \textcolor{keywordtype}{void}\ Test\_AssertEqSize(\doxymbox{\hyperlink{struct_test_context}{TestContext}}\&\ T,\ \textcolor{keywordtype}{size\_t}\ Actual,\ \textcolor{keywordtype}{size\_t}\ Expected,\ \textcolor{keyword}{const}\ \textcolor{keywordtype}{char}*\ Msg);}
+\DoxyCodeLine{00024\ }
+\DoxyCodeLine{00025\ \textcolor{comment}{//\ Optional:\ print\ bytes}}
+\DoxyCodeLine{00026\ \textcolor{keywordtype}{void}\ Test\_PrintHex(\textcolor{keyword}{const}\ \textcolor{keywordtype}{char}*\ Tag,\ \textcolor{keyword}{const}\ uint8\_t*\ Buf,\ \textcolor{keywordtype}{size\_t}\ Len);}
+\DoxyCodeLine{00027\ }
+\DoxyCodeLine{00028\ \textcolor{keywordtype}{int}\ RunAllTests();}
+\DoxyCodeLine{00029\ }
+\DoxyCodeLine{00030\ \textcolor{preprocessor}{\#endif}}
+
+\end{DoxyCode}

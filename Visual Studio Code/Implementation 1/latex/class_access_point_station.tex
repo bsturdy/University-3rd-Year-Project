@@ -1,0 +1,715 @@
+\doxysection{Access\+Point\+Station Class Reference}
+\hypertarget{class_access_point_station}{}\label{class_access_point_station}\index{AccessPointStation@{AccessPointStation}}
+\doxysubsubsection*{Public Member Functions}
+\begin{DoxyCompactItemize}
+\item 
+bool \doxymbox{\hyperlink{class_access_point_station_afebb4161ae07fc8b1bce3d3f02004955}{Setup\+Wifi}} ()
+\begin{DoxyCompactList}\small\item\em Setup the Wi\+Fi system as an Access Point + \doxylink{class_station}{Station} (Mesh Node). This function initializes the Wi\+Fi driver, configures the device as both an AP and a STA, registers event handlers, and starts the necessary Free\+RTOS tasks for handling Wi\+Fi events, UDP communication, and mesh operations. \end{DoxyCompactList}\item 
+size\+\_\+t \doxymbox{\hyperlink{class_access_point_station_ae838ad3299eb693eea392ff47557fe6b}{Send\+Data}} (const uint8\+\_\+t \texorpdfstring{$\ast$}{*}Tx\+Data, int Tx\+Length, const sockaddr\+\_\+in \&Destination\+Address)
+\begin{DoxyCompactList}\small\item\em Transmit a UDP packet to a specified destination IP and port. This function prepares the packet and signals the transmit task to send it. \end{DoxyCompactList}\item 
+size\+\_\+t \doxymbox{\hyperlink{class_access_point_station_a70e4ec220af0fe7d15cbf998d811742a}{Get\+Data\+From\+Buffer}} (\doxymbox{\hyperlink{struct_udp_packet}{Udp\+Packet}} \texorpdfstring{$\ast$}{*}Data\+To\+Receive)
+\begin{DoxyCompactList}\small\item\em Retrieve received UDP data from the internal buffer. This function checks if there are any packets available, and if so, copies the data to the provided buffer and returns the length of the data. \end{DoxyCompactList}\item 
+uint8\+\_\+t \doxymbox{\hyperlink{class_access_point_station_a690913885aff054d644919fa4db8edbb}{Get\+Hop\+Count}} () const
+\begin{DoxyCompactList}\small\item\em Get the Hop Count of this node in the mesh network. The Hop Count represents the number of hops to the root node (or master). A value of 255 indicates that the node is not currently connected to a parent and is effectively "{}infinite"{} hops away from the root. \end{DoxyCompactList}\item 
+bool \doxymbox{\hyperlink{class_access_point_station_ab91ec5a26e6b2dd3ca2c9aa0bb1990ef}{Is\+Connected\+To\+Host}} () const
+\begin{DoxyCompactList}\small\item\em Check if the device is currently connected to a parent AP (host) and has acquired an IP address. This indicates that the device is successfully part of the mesh network and can communicate with other nodes. \end{DoxyCompactList}\item 
+const char \texorpdfstring{$\ast$}{*} \doxymbox{\hyperlink{class_access_point_station_a6d0ecc155c011fd6012694dbe91fc222}{Get\+Parent\+Ip\+Address}} () const
+\begin{DoxyCompactList}\small\item\em Get the Parent Ip Address object. This is the IP address of the AP that this device is currently connected to as a station. If the device is not currently connected to a parent, this will return an empty string or an invalid IP. \end{DoxyCompactList}\item 
+const char \texorpdfstring{$\ast$}{*} \doxymbox{\hyperlink{class_access_point_station_a4df9fb50bf007cd892382a7ee1da2268}{Get\+My\+Ip\+Address}} () const
+\begin{DoxyCompactList}\small\item\em Get the IP address of this device as a station. This is the IP address assigned to this device by the parent AP. If the device is not currently connected to a parent, this will return an empty string or an invalid IP. \end{DoxyCompactList}\item 
+size\+\_\+t \doxymbox{\hyperlink{class_access_point_station_ad7b6c7115831244f1ebccc9006f9e817}{Get\+Num\+Children}} () const
+\begin{DoxyCompactList}\small\item\em Get the number of child devices currently connected to this device\textquotesingle{}s AP. This indicates how many other devices are currently connected to this node as their parent in the mesh network. \end{DoxyCompactList}\item 
+void \doxymbox{\hyperlink{class_access_point_station_ab3fe668a269ee7af97e3c03f28572986}{Set\+Runtime\+Logging}} (bool Enable\+Runtime\+Logging)
+\begin{DoxyCompactList}\small\item\em Enable or disable runtime logging for this class. When enabled, the class will output informational and error logs to the console using ESP\+\_\+\+LOGI and ESP\+\_\+\+LOGE. This can be useful for debugging and monitoring the behavior of the mesh network, especially during development and testing. \end{DoxyCompactList}\end{DoxyCompactItemize}
+\doxysubsubsection*{Private Member Functions}
+\begin{DoxyCompactItemize}
+\item 
+\doxymbox{\hyperlink{class_access_point_station_afdd8f830a20094a3fd799e3ce1b41728}{Access\+Point\+Station}} (uint8\+\_\+t Core\+To\+Use, uint16\+\_\+t Udp\+Port, bool Enable\+Runtime\+Logging)
+\begin{DoxyCompactList}\small\item\em Constructor for \doxylink{class_access_point_station}{Access\+Point\+Station} class. Never used manually, always created through the factory. \end{DoxyCompactList}\item 
+\doxymbox{\hyperlink{class_access_point_station_a32cb51239b3985f573305b62011648bc}{\texorpdfstring{$\sim$}{\string~}\+Access\+Point\+Station}} ()
+\begin{DoxyCompactList}\small\item\em Destructor for \doxylink{class_access_point_station}{Access\+Point\+Station} class. Cleans up resources, stops UDP if running, and resets the singleton instance pointer. \end{DoxyCompactList}\item 
+bool \doxymbox{\hyperlink{class_access_point_station_a1c7fc7822b0fcd0b268a84a85afbb424}{Initiate\+Mesh\+Scan}} ()
+\begin{DoxyCompactList}\small\item\em Initiates a mesh scan to discover nearby mesh nodes. \end{DoxyCompactList}\item 
+void \doxymbox{\hyperlink{class_access_point_station_ac12a0c360082f04637b9ad1745153fe2}{Update\+Beacon\+Metadata}} (uint8\+\_\+t Hop, uint8\+\_\+t Children)
+\begin{DoxyCompactList}\small\item\em Updates the beacon metadata with the current hop count and child count. This function constructs a vendor-\/specific IE with the mesh information and sets it for both beacon and probe response frames. This allows other devices scanning for Wi\+Fi networks to receive up-\/to-\/date information about this node\textquotesingle{}s position in the mesh network. \end{DoxyCompactList}\item 
+void \doxymbox{\hyperlink{class_access_point_station_aba9714d767bfecc6fb7e7a7d62223fab}{Parse\+Scan\+Results}} ()
+\begin{DoxyCompactList}\small\item\em Parses the results of a Wi\+Fi scan to identify potential parent nodes for the mesh network. This function processes the list of scanned APs, checks for the presence of the custom mesh IE, and extracts metadata such as hop count and child count. Based on this information, it determines if there is a better parent node to connect to and updates internal state accordingly. \end{DoxyCompactList}\item 
+void \doxymbox{\hyperlink{class_access_point_station_ae9cc7b74759d8d06cc4de2c06d0c418a}{Connect\+To\+Best\+Ap}} ()
+\begin{DoxyCompactList}\small\item\em Connects to the best available parent AP based on the results of the Wi\+Fi scan and the extracted mesh metadata. This function evaluates potential parent nodes, compares their hop counts and child counts, and initiates a connection to the most suitable parent AP to optimize the mesh network topology. \end{DoxyCompactList}\item 
+size\+\_\+t \doxymbox{\hyperlink{class_access_point_station_a3b38f4014cc49d726bb29b3881d86c6e}{Create\+Packet}} (const uint8\+\_\+t \texorpdfstring{$\ast$}{*}Data\+To\+Include, size\+\_\+t Data\+Length, uint8\+\_\+t Packet\+Type, uint8\+\_\+t \texorpdfstring{$\ast$}{*}Packet\+Out, size\+\_\+t Output\+Buffer\+Size)
+\begin{DoxyCompactList}\small\item\em Creates a mesh packet with the specified data and metadata. Called in other methods. \end{DoxyCompactList}\item 
+void \doxymbox{\hyperlink{class_access_point_station_aec4d3af2d63049323fe8e70aa00a8531}{Process\+Data}} (uint8\+\_\+t \texorpdfstring{$\ast$}{*}data, int length)
+\begin{DoxyCompactList}\small\item\em Processes received data from the UDP buffer, extracting complete packets and handling them according to their type. This function is called by the receive task when new data is available, and it manages the internal state of received packets, ensuring that they are properly parsed and processed. \end{DoxyCompactList}\item 
+size\+\_\+t \doxymbox{\hyperlink{class_access_point_station_a21c0aa25b94c957b6801ba763ed50231}{Prepare\+Tx\+Packet}} (const uint8\+\_\+t \texorpdfstring{$\ast$}{*}rx\+Data, int rx\+Length, uint8\+\_\+t \texorpdfstring{$\ast$}{*}tx\+Buffer, int \&tx\+Length)
+\begin{DoxyCompactList}\small\item\em Prepares a packet for transmission by taking the data to include, creating the appropriate packet structure, and storing it in an internal buffer for the transmit task to send. This function handles the critical section for preparing the packet and ensures that the transmit task can safely access the prepared packet when it is ready to be sent. \end{DoxyCompactList}\item 
+bool \doxymbox{\hyperlink{class_access_point_station_a864e81056032273a802da668fad3b213}{Determine\+Destination\+Address}} (const sockaddr\+\_\+in \&Source\+Address, const uint8\+\_\+t \texorpdfstring{$\ast$}{*}Data, int Data\+Length, sockaddr\+\_\+in \&Destination\+Address)
+\begin{DoxyCompactList}\small\item\em Determines the destination address for a packet based on its forwarding mode and sender address. \end{DoxyCompactList}\item 
+bool \doxymbox{\hyperlink{class_access_point_station_a7519ef6dcc9874460c9958002a64c3f0}{Start\+Udp}} (uint16\+\_\+t Port, uint8\+\_\+t Core)
+\begin{DoxyCompactList}\small\item\em Helper function to start all UDP-\/based services. \end{DoxyCompactList}\item 
+bool \doxymbox{\hyperlink{class_access_point_station_a5fce0fa1885c51e596e7987a0ee00e43}{Stop\+Udp}} ()
+\begin{DoxyCompactList}\small\item\em Helper function to stop all UDP-\/based services, including closing sockets and deleting tasks. \end{DoxyCompactList}\end{DoxyCompactItemize}
+\doxysubsubsection*{Static Private Member Functions}
+\begin{DoxyCompactItemize}
+\item 
+static void \doxymbox{\hyperlink{class_access_point_station_a84fe60115a97f7cd358f364287ffd62a}{Ap\+Wifi\+Event\+Handler}} (void \texorpdfstring{$\ast$}{*}arg, esp\+\_\+event\+\_\+base\+\_\+t event\+\_\+base, int32\+\_\+t event\+\_\+id, void \texorpdfstring{$\ast$}{*}event\+\_\+data)
+\begin{DoxyCompactList}\small\item\em Event handler for Wi\+Fi events related to the Access Point interface. Handles station connection and disconnection events, updates internal state, manages child device list, and updates beacon metadata accordingly. \end{DoxyCompactList}\item 
+static void \doxymbox{\hyperlink{class_access_point_station_afa5f8336c8f9b9f93af25e68fe94da41}{Sta\+Wifi\+Event\+Handler}} (void \texorpdfstring{$\ast$}{*}arg, esp\+\_\+event\+\_\+base\+\_\+t event\+\_\+base, int32\+\_\+t event\+\_\+id, void \texorpdfstring{$\ast$}{*}event\+\_\+data)
+\begin{DoxyCompactList}\small\item\em Event handler for Wi\+Fi events related to the \doxylink{class_station}{Station} interface. Handles connection and disconnection events, updates internal state, manages mesh hop count, and starts/\+stops UDP accordingly. \end{DoxyCompactList}\item 
+static void \doxymbox{\hyperlink{class_access_point_station_abad8cab118c024489abcaad9cfb9a55f}{Ip\+Event\+Handler}} (void \texorpdfstring{$\ast$}{*}arg, esp\+\_\+event\+\_\+base\+\_\+t event\+\_\+base, int32\+\_\+t event\+\_\+id, void \texorpdfstring{$\ast$}{*}event\+\_\+data)
+\begin{DoxyCompactList}\small\item\em Event handler for IP events related to the \doxylink{class_station}{Station} interface. Handles IP acquisition and loss, updates internal state, manages mesh hop count, and starts/\+stops UDP accordingly. \end{DoxyCompactList}\item 
+static void \doxymbox{\hyperlink{class_access_point_station_ac73a700f99ce8df0d9d67e67df80fca3}{Receive\+Task}} (void \texorpdfstring{$\ast$}{*}pv\+Parameters)
+\begin{DoxyCompactList}\small\item\em Receive task for handling incoming UDP packets. This function runs in a Free\+RTOS task and processes received data, storing it in an internal buffer for later retrieval. \end{DoxyCompactList}\item 
+static void \doxymbox{\hyperlink{class_access_point_station_a34f4669718b7aab9b3d4e0591bfdb695}{Transmit\+Task}} (void \texorpdfstring{$\ast$}{*}pv\+Parameters)
+\begin{DoxyCompactList}\small\item\em Transmit task for sending UDP packets. This function runs in a Free\+RTOS task and checks for prepared packets to send, transmitting them to the appropriate destination based on the current connection status. \end{DoxyCompactList}\item 
+static void \doxymbox{\hyperlink{class_access_point_station_afd383122d78c5dd1bae61252b87a15fd}{Mesh\+Task}} (void \texorpdfstring{$\ast$}{*}pv\+Parameters)
+\begin{DoxyCompactList}\small\item\em Mesh task for handling mesh-\/specific operations such as scanning for parent nodes, managing hop counts, and updating beacon metadata. This function runs in a Free\+RTOS task and performs periodic checks and updates related to the mesh network. \end{DoxyCompactList}\item 
+static void \doxymbox{\hyperlink{class_access_point_station_acf73657f2c524a40e9fab8d48a787112}{Wifi\+Vendor\+Ie\+Cb}} (void \texorpdfstring{$\ast$}{*}ctx, wifi\+\_\+vendor\+\_\+ie\+\_\+type\+\_\+t type, const uint8\+\_\+t sa\+[6]\+, const vendor\+\_\+ie\+\_\+data\+\_\+t \texorpdfstring{$\ast$}{*}vnd\+\_\+ie, int rssi)
+\begin{DoxyCompactList}\small\item\em Callback function for handling vendor-\/specific Information Elements (IEs) received during Wi\+Fi scanning. This function processes the IEs to extract mesh-\/related metadata such as hop count and child count, and updates an internal cache for use in AP selection logic. \end{DoxyCompactList}\end{DoxyCompactItemize}
+\doxysubsubsection*{Private Attributes}
+\begin{DoxyCompactItemize}
+\item 
+\Hypertarget{class_access_point_station_a4cf8a8fc3a479d020440d7a881f7f85f}\label{class_access_point_station_a4cf8a8fc3a479d020440d7a881f7f85f} 
+Task\+Handle\+\_\+t {\bfseries Receive\+Task\+Handle} = nullptr
+\item 
+\Hypertarget{class_access_point_station_a1884c6689a9707148e1ece303949c7a4}\label{class_access_point_station_a1884c6689a9707148e1ece303949c7a4} 
+Task\+Handle\+\_\+t {\bfseries Transmit\+Task\+Handle} = nullptr
+\item 
+\Hypertarget{class_access_point_station_a2615463db3135bd02d60ee65d3e7782f}\label{class_access_point_station_a2615463db3135bd02d60ee65d3e7782f} 
+Task\+Handle\+\_\+t {\bfseries Mesh\+Task\+Handle} = nullptr
+\item 
+\Hypertarget{class_access_point_station_ad11c8cef7c3dae12ac20300a66760f85}\label{class_access_point_station_ad11c8cef7c3dae12ac20300a66760f85} 
+esp\+\_\+err\+\_\+t {\bfseries Error}
+\item 
+\Hypertarget{class_access_point_station_a107b5bd7e9766f236b3505b91e122b08}\label{class_access_point_station_a107b5bd7e9766f236b3505b91e122b08} 
+wifi\+\_\+init\+\_\+config\+\_\+t {\bfseries Wifi\+Driver\+Config} = WIFI\+\_\+\+INIT\+\_\+\+CONFIG\+\_\+\+DEFAULT()
+\item 
+\Hypertarget{class_access_point_station_a25b9ea185884dc3b0aa1a413eccee71c}\label{class_access_point_station_a25b9ea185884dc3b0aa1a413eccee71c} 
+wifi\+\_\+country\+\_\+t {\bfseries Wifi\+Country} = \{\}
+\item 
+\Hypertarget{class_access_point_station_a78593e2c6ffc1572add3250ef84d51f6}\label{class_access_point_station_a78593e2c6ffc1572add3250ef84d51f6} 
+wifi\+\_\+config\+\_\+t {\bfseries Ap\+Wifi\+Service\+Config} = \{\}
+\item 
+\Hypertarget{class_access_point_station_ac7e318da7effe6addff111a785a90ae0}\label{class_access_point_station_ac7e318da7effe6addff111a785a90ae0} 
+wifi\+\_\+config\+\_\+t {\bfseries Sta\+Wifi\+Service\+Config} = \{\}
+\item 
+\Hypertarget{class_access_point_station_afa1055786ed59fd8c297aea4443ecfe5}\label{class_access_point_station_afa1055786ed59fd8c297aea4443ecfe5} 
+esp\+\_\+netif\+\_\+t \texorpdfstring{$\ast$}{*} {\bfseries Ap\+Netif} = nullptr
+\item 
+\Hypertarget{class_access_point_station_ada72090dedaa5070a1e94aa4be046397}\label{class_access_point_station_ada72090dedaa5070a1e94aa4be046397} 
+esp\+\_\+netif\+\_\+t \texorpdfstring{$\ast$}{*} {\bfseries Sta\+Netif} = nullptr
+\item 
+\Hypertarget{class_access_point_station_a5cb6b6f3d2126fc8253e25822756d044}\label{class_access_point_station_a5cb6b6f3d2126fc8253e25822756d044} 
+\doxymbox{\hyperlink{struct_mesh_metadata}{Mesh\+Metadata}} {\bfseries Callback\+Ie\+Data} \+[20]\+ \{\}
+\item 
+\Hypertarget{class_access_point_station_a3a129f333cf7c7d8e841983ea03ae133}\label{class_access_point_station_a3a129f333cf7c7d8e841983ea03ae133} 
+uint8\+\_\+t {\bfseries My\+Hop\+Count} = 255
+\item 
+\Hypertarget{class_access_point_station_a7947a60e7f08c66afeb7e12fb6bae137}\label{class_access_point_station_a7947a60e7f08c66afeb7e12fb6bae137} 
+wifi\+\_\+ap\+\_\+record\+\_\+t {\bfseries Candidate\+Wifi\+Record} \{\}
+\item 
+\Hypertarget{class_access_point_station_a465e7e7acc4b0b13c19539be9932ed3e}\label{class_access_point_station_a465e7e7acc4b0b13c19539be9932ed3e} 
+wifi\+\_\+ap\+\_\+record\+\_\+t {\bfseries Parent\+Wifi\+Record} \{\}
+\item 
+\Hypertarget{class_access_point_station_a43e59297d3334e74d2f3179f490a2a38}\label{class_access_point_station_a43e59297d3334e74d2f3179f490a2a38} 
+bool {\bfseries Is\+Candidate\+Valid} = false
+\item 
+\Hypertarget{class_access_point_station_aaef06a4a14b1517e5fccbdd8a3afbb37}\label{class_access_point_station_aaef06a4a14b1517e5fccbdd8a3afbb37} 
+bool {\bfseries Is\+Candidate\+Master} = false
+\item 
+\Hypertarget{class_access_point_station_a1bc71a62b05302f9db49bbf66cbd58be}\label{class_access_point_station_a1bc71a62b05302f9db49bbf66cbd58be} 
+bool {\bfseries Roam\+Requested} = false
+\item 
+\Hypertarget{class_access_point_station_a8a11f44da6a2d23391b0cd049805988d}\label{class_access_point_station_a8a11f44da6a2d23391b0cd049805988d} 
+uint8\+\_\+t {\bfseries Candidate\+Hop} = 0
+\item 
+\Hypertarget{class_access_point_station_a916fdb127712671f60cd221ab51cd423}\label{class_access_point_station_a916fdb127712671f60cd221ab51cd423} 
+uint8\+\_\+t {\bfseries Candidate\+Children} = 0
+\item 
+\Hypertarget{class_access_point_station_ac5c866911b8499b0eb55cd2d88aa27e9}\label{class_access_point_station_ac5c866911b8499b0eb55cd2d88aa27e9} 
+bool {\bfseries Is\+Master\+Found} = false
+\item 
+\Hypertarget{class_access_point_station_afb71bfd3615ec110e5348fb23da7ee02}\label{class_access_point_station_afb71bfd3615ec110e5348fb23da7ee02} 
+bool {\bfseries Is\+Scanning} = false
+\item 
+\Hypertarget{class_access_point_station_afc780f36a3b0706345417f5126fdc0e6}\label{class_access_point_station_afc780f36a3b0706345417f5126fdc0e6} 
+bool {\bfseries Is\+Connecting} = false
+\item 
+\Hypertarget{class_access_point_station_a69e047833d51f01e6309e7d707ffe106}\label{class_access_point_station_a69e047833d51f01e6309e7d707ffe106} 
+uint8\+\_\+t {\bfseries Latest\+Payload} \+[Max\+Payload]\+ \{\}
+\item 
+\Hypertarget{class_access_point_station_ade19dfee1eaaf39e1047ca2ee423f607}\label{class_access_point_station_ade19dfee1eaaf39e1047ca2ee423f607} 
+uint16\+\_\+t {\bfseries Latest\+Payload\+Size} = 0
+\item 
+\Hypertarget{class_access_point_station_af8483bb530432e0472fa74775be24623}\label{class_access_point_station_af8483bb530432e0472fa74775be24623} 
+uint8\+\_\+t {\bfseries Latest\+Payload\+Type} = 0
+\item 
+\Hypertarget{class_access_point_station_a182831ac77d4beab0c89d231ae79da4b}\label{class_access_point_station_a182831ac77d4beab0c89d231ae79da4b} 
+int64\+\_\+t {\bfseries Latest\+Payload\+Us} = 0
+\item 
+\Hypertarget{class_access_point_station_a5cde40886d383b80e0632b1641ea95e5}\label{class_access_point_station_a5cde40886d383b80e0632b1641ea95e5} 
+volatile uint32\+\_\+t {\bfseries Payload\+Seq} = 0
+\item 
+\Hypertarget{class_access_point_station_a37752bbf1dc64ab560ea31e42436563e}\label{class_access_point_station_a37752bbf1dc64ab560ea31e42436563e} 
+uint8\+\_\+t {\bfseries Prepared\+Tx\+Packet} \+[Max\+Payload]\+ \{\}
+\item 
+\Hypertarget{class_access_point_station_a291faa6c0a2162e0478603922ee7a9a7}\label{class_access_point_station_a291faa6c0a2162e0478603922ee7a9a7} 
+int {\bfseries Prepared\+Tx\+Length} = 0
+\item 
+\Hypertarget{class_access_point_station_a47065e229996469ad43e820fa5de2a3c}\label{class_access_point_station_a47065e229996469ad43e820fa5de2a3c} 
+port\+MUX\+\_\+\+TYPE {\bfseries Tx\+Critical\+Section} = port\+MUX\+\_\+\+INITIALIZER\+\_\+\+UNLOCKED
+\item 
+\Hypertarget{class_access_point_station_adebdded18ea6e11df74539adf1ca8b4f}\label{class_access_point_station_adebdded18ea6e11df74539adf1ca8b4f} 
+port\+MUX\+\_\+\+TYPE {\bfseries Critical\+Section} = port\+MUX\+\_\+\+INITIALIZER\+\_\+\+UNLOCKED
+\item 
+\Hypertarget{class_access_point_station_ab3906f5bf2ad054be81b3b42ac56c0d8}\label{class_access_point_station_ab3906f5bf2ad054be81b3b42ac56c0d8} 
+\doxymbox{\hyperlink{struct_udp_packet}{Udp\+Packet}} {\bfseries Packet\+Buffer} \+[UDP\+\_\+\+SLOTS]\+
+\item 
+\Hypertarget{class_access_point_station_a6fa2499bed2beffebb73b7f945786181}\label{class_access_point_station_a6fa2499bed2beffebb73b7f945786181} 
+volatile size\+\_\+t {\bfseries Head} = 0
+\item 
+\Hypertarget{class_access_point_station_a334df8863bfb02558947c634dfdf4794}\label{class_access_point_station_a334df8863bfb02558947c634dfdf4794} 
+volatile size\+\_\+t {\bfseries Tail} = 0
+\item 
+\Hypertarget{class_access_point_station_a1349e4847afe3cc2e0366f51eb0c4c8e}\label{class_access_point_station_a1349e4847afe3cc2e0366f51eb0c4c8e} 
+uint8\+\_\+t {\bfseries Udp\+Core} = 0
+\item 
+\Hypertarget{class_access_point_station_a40c24d1d0d219a784be687a53de85ed9}\label{class_access_point_station_a40c24d1d0d219a784be687a53de85ed9} 
+uint16\+\_\+t {\bfseries Udp\+Port} = 0
+\item 
+\Hypertarget{class_access_point_station_a40756f9a81e2a5c36fc80600c966b826}\label{class_access_point_station_a40756f9a81e2a5c36fc80600c966b826} 
+uint8\+\_\+t {\bfseries Setup\+State} = 0
+\item 
+\Hypertarget{class_access_point_station_a03ee84080acf59e589b1c605aca6259e}\label{class_access_point_station_a03ee84080acf59e589b1c605aca6259e} 
+bool {\bfseries System\+Initialized} = false
+\item 
+\Hypertarget{class_access_point_station_ae27f654167dfff750fe0c1358bc45941}\label{class_access_point_station_ae27f654167dfff750fe0c1358bc45941} 
+bool {\bfseries Udp\+Started} = false
+\item 
+\Hypertarget{class_access_point_station_a3d1eda3a8378427a322c21e809619711}\label{class_access_point_station_a3d1eda3a8378427a322c21e809619711} 
+bool {\bfseries Is\+Connected\+To\+Parent} = false
+\item 
+\Hypertarget{class_access_point_station_a1ed7866316c917d339ac51c37a789b1b}\label{class_access_point_station_a1ed7866316c917d339ac51c37a789b1b} 
+bool {\bfseries Ap\+Ip\+Acquired} = false
+\item 
+\Hypertarget{class_access_point_station_a4e2f68bc36ffd5d6bf91dfbf8214dd1e}\label{class_access_point_station_a4e2f68bc36ffd5d6bf91dfbf8214dd1e} 
+bool {\bfseries Is\+Runtime\+Logging\+Enabled} = false
+\item 
+\Hypertarget{class_access_point_station_a17b03130a3a59a83606374d6df312d16}\label{class_access_point_station_a17b03130a3a59a83606374d6df312d16} 
+int {\bfseries Udp\+Socket} = -\/1
+\item 
+\Hypertarget{class_access_point_station_a4288ce286b9a5e5088903c0c36db1f98}\label{class_access_point_station_a4288ce286b9a5e5088903c0c36db1f98} 
+char {\bfseries My\+Sta\+Ip\+Address} \+[16]\+
+\item 
+\Hypertarget{class_access_point_station_a711af08c5ffa64d0d6d98f65eb402f5f}\label{class_access_point_station_a711af08c5ffa64d0d6d98f65eb402f5f} 
+char {\bfseries My\+Ap\+Ip\+Address} \+[16]\+
+\item 
+\Hypertarget{class_access_point_station_a96b8e98c6e3aa5d93a5c1bbac7e893e4}\label{class_access_point_station_a96b8e98c6e3aa5d93a5c1bbac7e893e4} 
+volatile int64\+\_\+t {\bfseries Last\+Heartbeat\+Us} = 0
+\item 
+\Hypertarget{class_access_point_station_ae72572295a64826eaacbb27cac9066b2}\label{class_access_point_station_ae72572295a64826eaacbb27cac9066b2} 
+\doxymbox{\hyperlink{struct_wifi_device}{Wifi\+Device}} {\bfseries Parent\+Device} \{\}
+\item 
+\Hypertarget{class_access_point_station_a39759f2cf11d5103478901f62ef36013}\label{class_access_point_station_a39759f2cf11d5103478901f62ef36013} 
+std::\+vector$<$ \doxymbox{\hyperlink{struct_wifi_device}{Wifi\+Device}} $>$ {\bfseries Child\+Devices} \{\}
+\end{DoxyCompactItemize}
+\doxysubsubsection*{Static Private Attributes}
+\begin{DoxyCompactItemize}
+\item 
+\Hypertarget{class_access_point_station_a868e329eee1c61417ea15fb23ce9cfc1}\label{class_access_point_station_a868e329eee1c61417ea15fb23ce9cfc1} 
+static constexpr int {\bfseries Max\+Payload} = 1024
+\end{DoxyCompactItemize}
+\doxysubsubsection*{Friends}
+\begin{DoxyCompactItemize}
+\item 
+\Hypertarget{class_access_point_station_a6114c5d107fca8afbba30141927f48ba}\label{class_access_point_station_a6114c5d107fca8afbba30141927f48ba} 
+class {\bfseries Wifi\+Factory}
+\end{DoxyCompactItemize}
+
+
+\label{doc-constructors}
+\Hypertarget{class_access_point_station_doc-constructors}
+\doxysubsection{Constructor \& Destructor Documentation}
+\Hypertarget{class_access_point_station_afdd8f830a20094a3fd799e3ce1b41728}\index{AccessPointStation@{AccessPointStation}!AccessPointStation@{AccessPointStation}}
+\index{AccessPointStation@{AccessPointStation}!AccessPointStation@{AccessPointStation}}
+\doxysubsubsection{\texorpdfstring{AccessPointStation()}{AccessPointStation()}}
+{\footnotesize\ttfamily \label{class_access_point_station_afdd8f830a20094a3fd799e3ce1b41728} 
+Access\+Point\+Station::\+\+Access\+Point\+Station (\begin{DoxyParamCaption}\item[{uint8\+\_\+t}]{Core\+To\+Use}{, }\item[{uint16\+\_\+t}]{Udp\+Port}{, }\item[{bool}]{Enable\+Runtime\+Logging}{}\end{DoxyParamCaption})\hspace{0.3cm}{\ttfamily [private]}}
+
+
+
+Constructor for \doxylink{class_access_point_station}{Access\+Point\+Station} class. Never used manually, always created through the factory. 
+
+
+\begin{DoxyParams}{Parameters}
+{\em Core\+To\+Use} & The core to use for UDP operations. \\
+\hline
+{\em Port} & The port to use for UDP operations. \\
+\hline
+{\em Enable\+Runtime\+Logging} & Whether to enable runtime logging. \\
+\hline
+\end{DoxyParams}
+\begin{DoxyReturn}{Returns}
+None. 
+\end{DoxyReturn}
+\Hypertarget{class_access_point_station_a32cb51239b3985f573305b62011648bc}\index{AccessPointStation@{AccessPointStation}!````~AccessPointStation@{\texorpdfstring{$\sim$}{\string~}AccessPointStation}}
+\index{````~AccessPointStation@{\texorpdfstring{$\sim$}{\string~}AccessPointStation}!AccessPointStation@{AccessPointStation}}
+\doxysubsubsection{\texorpdfstring{\texorpdfstring{$\sim$}{\string~}AccessPointStation()}{\string~AccessPointStation()}}
+{\footnotesize\ttfamily \label{class_access_point_station_a32cb51239b3985f573305b62011648bc} 
+Access\+Point\+Station::\+\texorpdfstring{$\sim$}{\string~}\+Access\+Point\+Station (\begin{DoxyParamCaption}{}{}\end{DoxyParamCaption})\hspace{0.3cm}{\ttfamily [private]}}
+
+
+
+Destructor for \doxylink{class_access_point_station}{Access\+Point\+Station} class. Cleans up resources, stops UDP if running, and resets the singleton instance pointer. 
+
+\begin{DoxyReturn}{Returns}
+None. 
+\end{DoxyReturn}
+
+
+\label{doc-func-members}
+\Hypertarget{class_access_point_station_doc-func-members}
+\doxysubsection{Member Function Documentation}
+\Hypertarget{class_access_point_station_a84fe60115a97f7cd358f364287ffd62a}\index{AccessPointStation@{AccessPointStation}!ApWifiEventHandler@{ApWifiEventHandler}}
+\index{ApWifiEventHandler@{ApWifiEventHandler}!AccessPointStation@{AccessPointStation}}
+\doxysubsubsection{\texorpdfstring{ApWifiEventHandler()}{ApWifiEventHandler()}}
+{\footnotesize\ttfamily \label{class_access_point_station_a84fe60115a97f7cd358f364287ffd62a} 
+void Access\+Point\+Station::\+\+Ap\+Wifi\+Event\+Handler (\begin{DoxyParamCaption}\item[{void \texorpdfstring{$\ast$}{*}}]{arg}{, }\item[{esp\+\_\+event\+\_\+base\+\_\+t}]{event\+\_\+base}{, }\item[{int32\+\_\+t}]{event\+\_\+id}{, }\item[{void \texorpdfstring{$\ast$}{*}}]{event\+\_\+data}{}\end{DoxyParamCaption})\hspace{0.3cm}{\ttfamily [static]}, {\ttfamily [private]}}
+
+
+
+Event handler for Wi\+Fi events related to the Access Point interface. Handles station connection and disconnection events, updates internal state, manages child device list, and updates beacon metadata accordingly. 
+
+\begin{DoxyReturn}{Returns}
+Void. 
+\end{DoxyReturn}
+\Hypertarget{class_access_point_station_ae9cc7b74759d8d06cc4de2c06d0c418a}\index{AccessPointStation@{AccessPointStation}!ConnectToBestAp@{ConnectToBestAp}}
+\index{ConnectToBestAp@{ConnectToBestAp}!AccessPointStation@{AccessPointStation}}
+\doxysubsubsection{\texorpdfstring{ConnectToBestAp()}{ConnectToBestAp()}}
+{\footnotesize\ttfamily \label{class_access_point_station_ae9cc7b74759d8d06cc4de2c06d0c418a} 
+void Access\+Point\+Station::\+\+Connect\+To\+Best\+Ap (\begin{DoxyParamCaption}{}{}\end{DoxyParamCaption})\hspace{0.3cm}{\ttfamily [private]}}
+
+
+
+Connects to the best available parent AP based on the results of the Wi\+Fi scan and the extracted mesh metadata. This function evaluates potential parent nodes, compares their hop counts and child counts, and initiates a connection to the most suitable parent AP to optimize the mesh network topology. 
+
+\begin{DoxyReturn}{Returns}
+Void. 
+\end{DoxyReturn}
+\Hypertarget{class_access_point_station_a3b38f4014cc49d726bb29b3881d86c6e}\index{AccessPointStation@{AccessPointStation}!CreatePacket@{CreatePacket}}
+\index{CreatePacket@{CreatePacket}!AccessPointStation@{AccessPointStation}}
+\doxysubsubsection{\texorpdfstring{CreatePacket()}{CreatePacket()}}
+{\footnotesize\ttfamily \label{class_access_point_station_a3b38f4014cc49d726bb29b3881d86c6e} 
+size\+\_\+t Access\+Point\+Station::\+\+Create\+Packet (\begin{DoxyParamCaption}\item[{const uint8\+\_\+t \texorpdfstring{$\ast$}{*}}]{Data\+To\+Include}{, }\item[{size\+\_\+t}]{Data\+Length}{, }\item[{uint8\+\_\+t}]{Packet\+Type}{, }\item[{uint8\+\_\+t \texorpdfstring{$\ast$}{*}}]{Packet\+Out}{, }\item[{size\+\_\+t}]{Output\+Buffer\+Size}{}\end{DoxyParamCaption})\hspace{0.3cm}{\ttfamily [private]}}
+
+
+
+Creates a mesh packet with the specified data and metadata. Called in other methods. 
+
+
+\begin{DoxyParams}{Parameters}
+{\em Data\+To\+Include} & Pointer to the data to include in the packet. \\
+\hline
+{\em Data\+Length} & Length of the data to include. \\
+\hline
+{\em Packet\+Type} & Type of the packet to create. \\
+\hline
+{\em Packet\+Out} & Pointer to the buffer where the packet will be stored. \\
+\hline
+{\em Output\+Buffer\+Size} & Size of the output buffer. \\
+\hline
+\end{DoxyParams}
+\begin{DoxyReturn}{Returns}
+The size of the created packet, or 0 if creation failed. 
+\end{DoxyReturn}
+\Hypertarget{class_access_point_station_a864e81056032273a802da668fad3b213}\index{AccessPointStation@{AccessPointStation}!DetermineDestinationAddress@{DetermineDestinationAddress}}
+\index{DetermineDestinationAddress@{DetermineDestinationAddress}!AccessPointStation@{AccessPointStation}}
+\doxysubsubsection{\texorpdfstring{DetermineDestinationAddress()}{DetermineDestinationAddress()}}
+{\footnotesize\ttfamily \label{class_access_point_station_a864e81056032273a802da668fad3b213} 
+bool Access\+Point\+Station::\+\+Determine\+Destination\+Address (\begin{DoxyParamCaption}\item[{const sockaddr\+\_\+in \&}]{Source\+Address}{, }\item[{const uint8\+\_\+t \texorpdfstring{$\ast$}{*}}]{Data}{, }\item[{int}]{Data\+Length}{, }\item[{sockaddr\+\_\+in \&}]{Destination\+Address}{}\end{DoxyParamCaption})\hspace{0.3cm}{\ttfamily [private]}}
+
+
+
+Determines the destination address for a packet based on its forwarding mode and sender address. 
+
+
+\begin{DoxyParams}{Parameters}
+{\em Source\+Address} & \\
+\hline
+{\em Data} & \\
+\hline
+{\em Data\+Length} & \\
+\hline
+{\em Destination\+Address} & \\
+\hline
+\end{DoxyParams}
+\begin{DoxyReturn}{Returns}
+bool:\+ True if a valid destination address was determined, false otherwise. The Destination\+Address parameter will be populated with the appropriate address if true is returned. 
+\end{DoxyReturn}
+\Hypertarget{class_access_point_station_a70e4ec220af0fe7d15cbf998d811742a}\index{AccessPointStation@{AccessPointStation}!GetDataFromBuffer@{GetDataFromBuffer}}
+\index{GetDataFromBuffer@{GetDataFromBuffer}!AccessPointStation@{AccessPointStation}}
+\doxysubsubsection{\texorpdfstring{GetDataFromBuffer()}{GetDataFromBuffer()}}
+{\footnotesize\ttfamily \label{class_access_point_station_a70e4ec220af0fe7d15cbf998d811742a} 
+size\+\_\+t Access\+Point\+Station::\+\+Get\+Data\+From\+Buffer (\begin{DoxyParamCaption}\item[{\doxymbox{\hyperlink{struct_udp_packet}{Udp\+Packet}} \texorpdfstring{$\ast$}{*}}]{Data\+To\+Receive}{}\end{DoxyParamCaption})}
+
+
+
+Retrieve received UDP data from the internal buffer. This function checks if there are any packets available, and if so, copies the data to the provided buffer and returns the length of the data. 
+
+
+\begin{DoxyParams}{Parameters}
+{\em Data\+To\+Receive} & Buffer where the received data will be copied if available. \\
+\hline
+\end{DoxyParams}
+\begin{DoxyReturn}{Returns}
+size\+\_\+t:\+ The length of the data that was copied to the output buffer, or 0 if no data was available. 
+\end{DoxyReturn}
+\Hypertarget{class_access_point_station_a690913885aff054d644919fa4db8edbb}\index{AccessPointStation@{AccessPointStation}!GetHopCount@{GetHopCount}}
+\index{GetHopCount@{GetHopCount}!AccessPointStation@{AccessPointStation}}
+\doxysubsubsection{\texorpdfstring{GetHopCount()}{GetHopCount()}}
+{\footnotesize\ttfamily \label{class_access_point_station_a690913885aff054d644919fa4db8edbb} 
+uint8\+\_\+t Access\+Point\+Station::\+\+Get\+Hop\+Count (\begin{DoxyParamCaption}{}{}\end{DoxyParamCaption}) const\hspace{0.3cm}{\ttfamily [inline]}}
+
+
+
+Get the Hop Count of this node in the mesh network. The Hop Count represents the number of hops to the root node (or master). A value of 255 indicates that the node is not currently connected to a parent and is effectively "{}infinite"{} hops away from the root. 
+
+\begin{DoxyReturn}{Returns}
+uint8\+\_\+t:\+ The current Hop Count of this node, or 255 if not connected to a parent. 
+\end{DoxyReturn}
+\Hypertarget{class_access_point_station_a4df9fb50bf007cd892382a7ee1da2268}\index{AccessPointStation@{AccessPointStation}!GetMyIpAddress@{GetMyIpAddress}}
+\index{GetMyIpAddress@{GetMyIpAddress}!AccessPointStation@{AccessPointStation}}
+\doxysubsubsection{\texorpdfstring{GetMyIpAddress()}{GetMyIpAddress()}}
+{\footnotesize\ttfamily \label{class_access_point_station_a4df9fb50bf007cd892382a7ee1da2268} 
+const char \texorpdfstring{$\ast$}{*} Access\+Point\+Station::\+\+Get\+My\+Ip\+Address (\begin{DoxyParamCaption}{}{}\end{DoxyParamCaption}) const\hspace{0.3cm}{\ttfamily [inline]}}
+
+
+
+Get the IP address of this device as a station. This is the IP address assigned to this device by the parent AP. If the device is not currently connected to a parent, this will return an empty string or an invalid IP. 
+
+\begin{DoxyReturn}{Returns}
+const char\texorpdfstring{$\ast$}{*}:\+ The IP address of this device as a station, or an empty string if not connected. 
+\end{DoxyReturn}
+\Hypertarget{class_access_point_station_ad7b6c7115831244f1ebccc9006f9e817}\index{AccessPointStation@{AccessPointStation}!GetNumChildren@{GetNumChildren}}
+\index{GetNumChildren@{GetNumChildren}!AccessPointStation@{AccessPointStation}}
+\doxysubsubsection{\texorpdfstring{GetNumChildren()}{GetNumChildren()}}
+{\footnotesize\ttfamily \label{class_access_point_station_ad7b6c7115831244f1ebccc9006f9e817} 
+size\+\_\+t Access\+Point\+Station::\+\+Get\+Num\+Children (\begin{DoxyParamCaption}{}{}\end{DoxyParamCaption}) const\hspace{0.3cm}{\ttfamily [inline]}}
+
+
+
+Get the number of child devices currently connected to this device\textquotesingle{}s AP. This indicates how many other devices are currently connected to this node as their parent in the mesh network. 
+
+\begin{DoxyReturn}{Returns}
+size\+\_\+t:\+ The number of child devices currently connected, or 0 if no devices are connected. 
+\end{DoxyReturn}
+\Hypertarget{class_access_point_station_a6d0ecc155c011fd6012694dbe91fc222}\index{AccessPointStation@{AccessPointStation}!GetParentIpAddress@{GetParentIpAddress}}
+\index{GetParentIpAddress@{GetParentIpAddress}!AccessPointStation@{AccessPointStation}}
+\doxysubsubsection{\texorpdfstring{GetParentIpAddress()}{GetParentIpAddress()}}
+{\footnotesize\ttfamily \label{class_access_point_station_a6d0ecc155c011fd6012694dbe91fc222} 
+const char \texorpdfstring{$\ast$}{*} Access\+Point\+Station::\+\+Get\+Parent\+Ip\+Address (\begin{DoxyParamCaption}{}{}\end{DoxyParamCaption}) const\hspace{0.3cm}{\ttfamily [inline]}}
+
+
+
+Get the Parent Ip Address object. This is the IP address of the AP that this device is currently connected to as a station. If the device is not currently connected to a parent, this will return an empty string or an invalid IP. 
+
+\begin{DoxyReturn}{Returns}
+const char\texorpdfstring{$\ast$}{*}:\+ The IP address of the parent AP, or an empty string if not connected. 
+\end{DoxyReturn}
+\Hypertarget{class_access_point_station_a1c7fc7822b0fcd0b268a84a85afbb424}\index{AccessPointStation@{AccessPointStation}!InitiateMeshScan@{InitiateMeshScan}}
+\index{InitiateMeshScan@{InitiateMeshScan}!AccessPointStation@{AccessPointStation}}
+\doxysubsubsection{\texorpdfstring{InitiateMeshScan()}{InitiateMeshScan()}}
+{\footnotesize\ttfamily \label{class_access_point_station_a1c7fc7822b0fcd0b268a84a85afbb424} 
+bool Access\+Point\+Station::\+\+Initiate\+Mesh\+Scan (\begin{DoxyParamCaption}{}{}\end{DoxyParamCaption})\hspace{0.3cm}{\ttfamily [private]}}
+
+
+
+Initiates a mesh scan to discover nearby mesh nodes. 
+
+\begin{DoxyReturn}{Returns}
+bool:\+ True if the scan was successfully initiated, false otherwise. The scan is non-\/blocking, and results will be processed in the event handler when the scan completes. 
+\end{DoxyReturn}
+\Hypertarget{class_access_point_station_abad8cab118c024489abcaad9cfb9a55f}\index{AccessPointStation@{AccessPointStation}!IpEventHandler@{IpEventHandler}}
+\index{IpEventHandler@{IpEventHandler}!AccessPointStation@{AccessPointStation}}
+\doxysubsubsection{\texorpdfstring{IpEventHandler()}{IpEventHandler()}}
+{\footnotesize\ttfamily \label{class_access_point_station_abad8cab118c024489abcaad9cfb9a55f} 
+void Access\+Point\+Station::\+\+Ip\+Event\+Handler (\begin{DoxyParamCaption}\item[{void \texorpdfstring{$\ast$}{*}}]{arg}{, }\item[{esp\+\_\+event\+\_\+base\+\_\+t}]{event\+\_\+base}{, }\item[{int32\+\_\+t}]{event\+\_\+id}{, }\item[{void \texorpdfstring{$\ast$}{*}}]{event\+\_\+data}{}\end{DoxyParamCaption})\hspace{0.3cm}{\ttfamily [static]}, {\ttfamily [private]}}
+
+
+
+Event handler for IP events related to the \doxylink{class_station}{Station} interface. Handles IP acquisition and loss, updates internal state, manages mesh hop count, and starts/\+stops UDP accordingly. 
+
+\begin{DoxyReturn}{Returns}
+Void. 
+\end{DoxyReturn}
+\Hypertarget{class_access_point_station_ab91ec5a26e6b2dd3ca2c9aa0bb1990ef}\index{AccessPointStation@{AccessPointStation}!IsConnectedToHost@{IsConnectedToHost}}
+\index{IsConnectedToHost@{IsConnectedToHost}!AccessPointStation@{AccessPointStation}}
+\doxysubsubsection{\texorpdfstring{IsConnectedToHost()}{IsConnectedToHost()}}
+{\footnotesize\ttfamily \label{class_access_point_station_ab91ec5a26e6b2dd3ca2c9aa0bb1990ef} 
+bool Access\+Point\+Station::\+\+Is\+Connected\+To\+Host (\begin{DoxyParamCaption}{}{}\end{DoxyParamCaption}) const\hspace{0.3cm}{\ttfamily [inline]}}
+
+
+
+Check if the device is currently connected to a parent AP (host) and has acquired an IP address. This indicates that the device is successfully part of the mesh network and can communicate with other nodes. 
+
+\begin{DoxyReturn}{Returns}
+bool:\+ True if the device is connected to a parent and has an IP address, false otherwise. 
+\end{DoxyReturn}
+\Hypertarget{class_access_point_station_afd383122d78c5dd1bae61252b87a15fd}\index{AccessPointStation@{AccessPointStation}!MeshTask@{MeshTask}}
+\index{MeshTask@{MeshTask}!AccessPointStation@{AccessPointStation}}
+\doxysubsubsection{\texorpdfstring{MeshTask()}{MeshTask()}}
+{\footnotesize\ttfamily \label{class_access_point_station_afd383122d78c5dd1bae61252b87a15fd} 
+void Access\+Point\+Station::\+\+Mesh\+Task (\begin{DoxyParamCaption}\item[{void \texorpdfstring{$\ast$}{*}}]{pv\+Parameters}{}\end{DoxyParamCaption})\hspace{0.3cm}{\ttfamily [static]}, {\ttfamily [private]}}
+
+
+
+Mesh task for handling mesh-\/specific operations such as scanning for parent nodes, managing hop counts, and updating beacon metadata. This function runs in a Free\+RTOS task and performs periodic checks and updates related to the mesh network. 
+
+
+\begin{DoxyParams}{Parameters}
+{\em pv\+Parameters} & \\
+\hline
+\end{DoxyParams}
+\Hypertarget{class_access_point_station_aba9714d767bfecc6fb7e7a7d62223fab}\index{AccessPointStation@{AccessPointStation}!ParseScanResults@{ParseScanResults}}
+\index{ParseScanResults@{ParseScanResults}!AccessPointStation@{AccessPointStation}}
+\doxysubsubsection{\texorpdfstring{ParseScanResults()}{ParseScanResults()}}
+{\footnotesize\ttfamily \label{class_access_point_station_aba9714d767bfecc6fb7e7a7d62223fab} 
+void Access\+Point\+Station::\+\+Parse\+Scan\+Results (\begin{DoxyParamCaption}{}{}\end{DoxyParamCaption})\hspace{0.3cm}{\ttfamily [private]}}
+
+
+
+Parses the results of a Wi\+Fi scan to identify potential parent nodes for the mesh network. This function processes the list of scanned APs, checks for the presence of the custom mesh IE, and extracts metadata such as hop count and child count. Based on this information, it determines if there is a better parent node to connect to and updates internal state accordingly. 
+
+\begin{DoxyReturn}{Returns}
+Void. 
+\end{DoxyReturn}
+\Hypertarget{class_access_point_station_a21c0aa25b94c957b6801ba763ed50231}\index{AccessPointStation@{AccessPointStation}!PrepareTxPacket@{PrepareTxPacket}}
+\index{PrepareTxPacket@{PrepareTxPacket}!AccessPointStation@{AccessPointStation}}
+\doxysubsubsection{\texorpdfstring{PrepareTxPacket()}{PrepareTxPacket()}}
+{\footnotesize\ttfamily \label{class_access_point_station_a21c0aa25b94c957b6801ba763ed50231} 
+size\+\_\+t Access\+Point\+Station::\+\+Prepare\+Tx\+Packet (\begin{DoxyParamCaption}\item[{const uint8\+\_\+t \texorpdfstring{$\ast$}{*}}]{rx\+Data}{, }\item[{int}]{rx\+Length}{, }\item[{uint8\+\_\+t \texorpdfstring{$\ast$}{*}}]{tx\+Buffer}{, }\item[{int \&}]{tx\+Length}{}\end{DoxyParamCaption})\hspace{0.3cm}{\ttfamily [private]}}
+
+
+
+Prepares a packet for transmission by taking the data to include, creating the appropriate packet structure, and storing it in an internal buffer for the transmit task to send. This function handles the critical section for preparing the packet and ensures that the transmit task can safely access the prepared packet when it is ready to be sent. 
+
+
+\begin{DoxyParams}{Parameters}
+{\em rx\+Data} & \\
+\hline
+{\em rx\+Length} & \\
+\hline
+{\em tx\+Buffer} & \\
+\hline
+{\em tx\+Length} & \\
+\hline
+\end{DoxyParams}
+\begin{DoxyReturn}{Returns}
+size\+\_\+t:\+ The size of the prepared packet, or 0 if preparation failed. 
+\end{DoxyReturn}
+\Hypertarget{class_access_point_station_aec4d3af2d63049323fe8e70aa00a8531}\index{AccessPointStation@{AccessPointStation}!ProcessData@{ProcessData}}
+\index{ProcessData@{ProcessData}!AccessPointStation@{AccessPointStation}}
+\doxysubsubsection{\texorpdfstring{ProcessData()}{ProcessData()}}
+{\footnotesize\ttfamily \label{class_access_point_station_aec4d3af2d63049323fe8e70aa00a8531} 
+void Access\+Point\+Station::\+\+Process\+Data (\begin{DoxyParamCaption}\item[{uint8\+\_\+t \texorpdfstring{$\ast$}{*}}]{data}{, }\item[{int}]{length}{}\end{DoxyParamCaption})\hspace{0.3cm}{\ttfamily [private]}}
+
+
+
+Processes received data from the UDP buffer, extracting complete packets and handling them according to their type. This function is called by the receive task when new data is available, and it manages the internal state of received packets, ensuring that they are properly parsed and processed. 
+
+
+\begin{DoxyParams}{Parameters}
+{\em data} & \\
+\hline
+{\em length} & \\
+\hline
+\end{DoxyParams}
+\begin{DoxyReturn}{Returns}
+Void. 
+\end{DoxyReturn}
+\Hypertarget{class_access_point_station_ac73a700f99ce8df0d9d67e67df80fca3}\index{AccessPointStation@{AccessPointStation}!ReceiveTask@{ReceiveTask}}
+\index{ReceiveTask@{ReceiveTask}!AccessPointStation@{AccessPointStation}}
+\doxysubsubsection{\texorpdfstring{ReceiveTask()}{ReceiveTask()}}
+{\footnotesize\ttfamily \label{class_access_point_station_ac73a700f99ce8df0d9d67e67df80fca3} 
+void Access\+Point\+Station::\+\+Receive\+Task (\begin{DoxyParamCaption}\item[{void \texorpdfstring{$\ast$}{*}}]{pv\+Parameters}{}\end{DoxyParamCaption})\hspace{0.3cm}{\ttfamily [static]}, {\ttfamily [private]}}
+
+
+
+Receive task for handling incoming UDP packets. This function runs in a Free\+RTOS task and processes received data, storing it in an internal buffer for later retrieval. 
+
+
+\begin{DoxyParams}{Parameters}
+{\em pv\+Parameters} & \\
+\hline
+\end{DoxyParams}
+\begin{DoxyReturn}{Returns}
+Void. 
+\end{DoxyReturn}
+\Hypertarget{class_access_point_station_ae838ad3299eb693eea392ff47557fe6b}\index{AccessPointStation@{AccessPointStation}!SendData@{SendData}}
+\index{SendData@{SendData}!AccessPointStation@{AccessPointStation}}
+\doxysubsubsection{\texorpdfstring{SendData()}{SendData()}}
+{\footnotesize\ttfamily \label{class_access_point_station_ae838ad3299eb693eea392ff47557fe6b} 
+size\+\_\+t Access\+Point\+Station::\+\+Send\+Data (\begin{DoxyParamCaption}\item[{const uint8\+\_\+t \texorpdfstring{$\ast$}{*}}]{Tx\+Data}{, }\item[{int}]{Tx\+Length}{, }\item[{const sockaddr\+\_\+in \&}]{Destination\+Address}{}\end{DoxyParamCaption})}
+
+
+
+Transmit a UDP packet to a specified destination IP and port. This function prepares the packet and signals the transmit task to send it. 
+
+
+\begin{DoxyParams}{Parameters}
+{\em Tx\+Data} & Pointer to the data to be transmitted. \\
+\hline
+{\em Tx\+Length} & Length of the data to be transmitted. \\
+\hline
+{\em Destination\+Address} & The sockaddr\+\_\+in structure containing the destination IP and port. \\
+\hline
+\end{DoxyParams}
+\begin{DoxyReturn}{Returns}
+size\+\_\+t:\+ The length of the data that was sent, or 0 if the system did not send the data (e.\+g., due to system errors). 
+\end{DoxyReturn}
+\Hypertarget{class_access_point_station_ab3fe668a269ee7af97e3c03f28572986}\index{AccessPointStation@{AccessPointStation}!SetRuntimeLogging@{SetRuntimeLogging}}
+\index{SetRuntimeLogging@{SetRuntimeLogging}!AccessPointStation@{AccessPointStation}}
+\doxysubsubsection{\texorpdfstring{SetRuntimeLogging()}{SetRuntimeLogging()}}
+{\footnotesize\ttfamily \label{class_access_point_station_ab3fe668a269ee7af97e3c03f28572986} 
+void Access\+Point\+Station::\+\+Set\+Runtime\+Logging (\begin{DoxyParamCaption}\item[{bool}]{Enable\+Runtime\+Logging}{}\end{DoxyParamCaption})\hspace{0.3cm}{\ttfamily [inline]}}
+
+
+
+Enable or disable runtime logging for this class. When enabled, the class will output informational and error logs to the console using ESP\+\_\+\+LOGI and ESP\+\_\+\+LOGE. This can be useful for debugging and monitoring the behavior of the mesh network, especially during development and testing. 
+
+
+\begin{DoxyParams}{Parameters}
+{\em Enable\+Runtime\+Logging} & Set to true to enable logging, or false to disable logging. \\
+\hline
+\end{DoxyParams}
+\begin{DoxyReturn}{Returns}
+void. 
+\end{DoxyReturn}
+\Hypertarget{class_access_point_station_afebb4161ae07fc8b1bce3d3f02004955}\index{AccessPointStation@{AccessPointStation}!SetupWifi@{SetupWifi}}
+\index{SetupWifi@{SetupWifi}!AccessPointStation@{AccessPointStation}}
+\doxysubsubsection{\texorpdfstring{SetupWifi()}{SetupWifi()}}
+{\footnotesize\ttfamily \label{class_access_point_station_afebb4161ae07fc8b1bce3d3f02004955} 
+bool Access\+Point\+Station::\+\+Setup\+Wifi (\begin{DoxyParamCaption}{}{}\end{DoxyParamCaption})}
+
+
+
+Setup the Wi\+Fi system as an Access Point + \doxylink{class_station}{Station} (Mesh Node). This function initializes the Wi\+Fi driver, configures the device as both an AP and a STA, registers event handlers, and starts the necessary Free\+RTOS tasks for handling Wi\+Fi events, UDP communication, and mesh operations. 
+
+\begin{DoxyReturn}{Returns}
+bool:\+ True if setup was successful, false otherwise. Note that this function may return true even if the device is not currently connected to a parent AP, as it may still be in the process of scanning and connecting. 
+\end{DoxyReturn}
+\Hypertarget{class_access_point_station_a7519ef6dcc9874460c9958002a64c3f0}\index{AccessPointStation@{AccessPointStation}!StartUdp@{StartUdp}}
+\index{StartUdp@{StartUdp}!AccessPointStation@{AccessPointStation}}
+\doxysubsubsection{\texorpdfstring{StartUdp()}{StartUdp()}}
+{\footnotesize\ttfamily \label{class_access_point_station_a7519ef6dcc9874460c9958002a64c3f0} 
+bool Access\+Point\+Station::\+\+Start\+Udp (\begin{DoxyParamCaption}\item[{uint16\+\_\+t}]{Port}{, }\item[{uint8\+\_\+t}]{Core}{}\end{DoxyParamCaption})\hspace{0.3cm}{\ttfamily [private]}}
+
+
+
+Helper function to start all UDP-\/based services. 
+
+
+\begin{DoxyParams}{Parameters}
+{\em Port} & \\
+\hline
+{\em Core} & \\
+\hline
+\end{DoxyParams}
+\begin{DoxyReturn}{Returns}
+bool:\+ True if UDP services were successfully started, false otherwise. 
+\end{DoxyReturn}
+\Hypertarget{class_access_point_station_afa5f8336c8f9b9f93af25e68fe94da41}\index{AccessPointStation@{AccessPointStation}!StaWifiEventHandler@{StaWifiEventHandler}}
+\index{StaWifiEventHandler@{StaWifiEventHandler}!AccessPointStation@{AccessPointStation}}
+\doxysubsubsection{\texorpdfstring{StaWifiEventHandler()}{StaWifiEventHandler()}}
+{\footnotesize\ttfamily \label{class_access_point_station_afa5f8336c8f9b9f93af25e68fe94da41} 
+void Access\+Point\+Station::\+\+Sta\+Wifi\+Event\+Handler (\begin{DoxyParamCaption}\item[{void \texorpdfstring{$\ast$}{*}}]{arg}{, }\item[{esp\+\_\+event\+\_\+base\+\_\+t}]{event\+\_\+base}{, }\item[{int32\+\_\+t}]{event\+\_\+id}{, }\item[{void \texorpdfstring{$\ast$}{*}}]{event\+\_\+data}{}\end{DoxyParamCaption})\hspace{0.3cm}{\ttfamily [static]}, {\ttfamily [private]}}
+
+
+
+Event handler for Wi\+Fi events related to the \doxylink{class_station}{Station} interface. Handles connection and disconnection events, updates internal state, manages mesh hop count, and starts/\+stops UDP accordingly. 
+
+\begin{DoxyReturn}{Returns}
+Void. 
+\end{DoxyReturn}
+\Hypertarget{class_access_point_station_a5fce0fa1885c51e596e7987a0ee00e43}\index{AccessPointStation@{AccessPointStation}!StopUdp@{StopUdp}}
+\index{StopUdp@{StopUdp}!AccessPointStation@{AccessPointStation}}
+\doxysubsubsection{\texorpdfstring{StopUdp()}{StopUdp()}}
+{\footnotesize\ttfamily \label{class_access_point_station_a5fce0fa1885c51e596e7987a0ee00e43} 
+bool Access\+Point\+Station::\+\+Stop\+Udp (\begin{DoxyParamCaption}{}{}\end{DoxyParamCaption})\hspace{0.3cm}{\ttfamily [private]}}
+
+
+
+Helper function to stop all UDP-\/based services, including closing sockets and deleting tasks. 
+
+\begin{DoxyReturn}{Returns}
+bool:\+ True if UDP services were successfully stopped, false otherwise. 
+\end{DoxyReturn}
+\Hypertarget{class_access_point_station_a34f4669718b7aab9b3d4e0591bfdb695}\index{AccessPointStation@{AccessPointStation}!TransmitTask@{TransmitTask}}
+\index{TransmitTask@{TransmitTask}!AccessPointStation@{AccessPointStation}}
+\doxysubsubsection{\texorpdfstring{TransmitTask()}{TransmitTask()}}
+{\footnotesize\ttfamily \label{class_access_point_station_a34f4669718b7aab9b3d4e0591bfdb695} 
+void Access\+Point\+Station::\+\+Transmit\+Task (\begin{DoxyParamCaption}\item[{void \texorpdfstring{$\ast$}{*}}]{pv\+Parameters}{}\end{DoxyParamCaption})\hspace{0.3cm}{\ttfamily [static]}, {\ttfamily [private]}}
+
+
+
+Transmit task for sending UDP packets. This function runs in a Free\+RTOS task and checks for prepared packets to send, transmitting them to the appropriate destination based on the current connection status. 
+
+
+\begin{DoxyParams}{Parameters}
+{\em pv\+Parameters} & \\
+\hline
+\end{DoxyParams}
+\begin{DoxyReturn}{Returns}
+Void. 
+\end{DoxyReturn}
+\Hypertarget{class_access_point_station_ac12a0c360082f04637b9ad1745153fe2}\index{AccessPointStation@{AccessPointStation}!UpdateBeaconMetadata@{UpdateBeaconMetadata}}
+\index{UpdateBeaconMetadata@{UpdateBeaconMetadata}!AccessPointStation@{AccessPointStation}}
+\doxysubsubsection{\texorpdfstring{UpdateBeaconMetadata()}{UpdateBeaconMetadata()}}
+{\footnotesize\ttfamily \label{class_access_point_station_ac12a0c360082f04637b9ad1745153fe2} 
+void Access\+Point\+Station::\+\+Update\+Beacon\+Metadata (\begin{DoxyParamCaption}\item[{uint8\+\_\+t}]{Hop}{, }\item[{uint8\+\_\+t}]{Children}{}\end{DoxyParamCaption})\hspace{0.3cm}{\ttfamily [private]}}
+
+
+
+Updates the beacon metadata with the current hop count and child count. This function constructs a vendor-\/specific IE with the mesh information and sets it for both beacon and probe response frames. This allows other devices scanning for Wi\+Fi networks to receive up-\/to-\/date information about this node\textquotesingle{}s position in the mesh network. 
+
+
+\begin{DoxyParams}{Parameters}
+{\em Hop} & \\
+\hline
+{\em Children} & \\
+\hline
+\end{DoxyParams}
+\begin{DoxyReturn}{Returns}
+Void. 
+\end{DoxyReturn}
+\Hypertarget{class_access_point_station_acf73657f2c524a40e9fab8d48a787112}\index{AccessPointStation@{AccessPointStation}!WifiVendorIeCb@{WifiVendorIeCb}}
+\index{WifiVendorIeCb@{WifiVendorIeCb}!AccessPointStation@{AccessPointStation}}
+\doxysubsubsection{\texorpdfstring{WifiVendorIeCb()}{WifiVendorIeCb()}}
+{\footnotesize\ttfamily \label{class_access_point_station_acf73657f2c524a40e9fab8d48a787112} 
+void Access\+Point\+Station::\+\+Wifi\+Vendor\+Ie\+Cb (\begin{DoxyParamCaption}\item[{void \texorpdfstring{$\ast$}{*}}]{ctx}{, }\item[{wifi\+\_\+vendor\+\_\+ie\+\_\+type\+\_\+t}]{type}{, }\item[{const uint8\+\_\+t}]{sa}{\+[6]\+, }\item[{const vendor\+\_\+ie\+\_\+data\+\_\+t \texorpdfstring{$\ast$}{*}}]{vnd\+\_\+ie}{, }\item[{int}]{rssi}{}\end{DoxyParamCaption})\hspace{0.3cm}{\ttfamily [static]}, {\ttfamily [private]}}
+
+
+
+Callback function for handling vendor-\/specific Information Elements (IEs) received during Wi\+Fi scanning. This function processes the IEs to extract mesh-\/related metadata such as hop count and child count, and updates an internal cache for use in AP selection logic. 
+
+
+\begin{DoxyParams}{Parameters}
+{\em ctx} & Context pointer (not used in this implementation). \\
+\hline
+{\em type} & The type of the vendor IE (e.\+g., beacon, probe response). \\
+\hline
+{\em sa} & The source MAC address of the device that sent the IE. \\
+\hline
+{\em vnd\+\_\+ie} & Pointer to the vendor IE data structure containing the OUI and payload. \\
+\hline
+{\em rssi} & The RSSI value of the received IE, which can be used for logging or decision-\/making. \\
+\hline
+\end{DoxyParams}
+\begin{DoxyReturn}{Returns}
+Void. 
+\end{DoxyReturn}
+
+
+The documentation for this class was generated from the following files:\+\begin{DoxyCompactItemize}
+\item 
+components/\+\+Wifi\+Class\+Lib/\+include/\+Wifi\+Class.\+h\item 
+components/\+\+Wifi\+Class\+Lib/\+src/\+Wifi\+Class.\+cpp\end{DoxyCompactItemize}

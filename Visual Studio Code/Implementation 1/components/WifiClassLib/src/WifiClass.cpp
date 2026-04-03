@@ -1,8 +1,11 @@
 #include "WifiClass.h"
 #include "esp_wifi_types_generic.h"
+#include "freertos/idf_additions.h"
+#include "lwip/sockets.h"
 #include "portmacro.h"
 #include <cstddef>
 #include <cstdint>
+#include <cstring>
 #include <string.h>
 
 // Author - Ben Sturdy
@@ -40,10 +43,16 @@ AccessPointStation::AccessPointStation(uint8_t CoreToUse, uint16_t Port, bool En
     MyHopCount = 255; // Default to 'Infinity' until scan/connect
 }
 
+
+
 AccessPointStation::~AccessPointStation()
 {
     ;
 }
+
+
+
+
 
 void AccessPointStation::ApWifiEventHandler(void* arg, esp_event_base_t event_base,
                                            int32_t event_id, void* event_data)
@@ -59,16 +68,27 @@ void AccessPointStation::ApWifiEventHandler(void* arg, esp_event_base_t event_ba
         child.TimeOfConnection = esp_timer_get_time();
         child.aid = Event->aid;
         child.HopCount = 255; // Initialized as unknown
+        child.LastHeartbeatUs = child.TimeOfConnection;
+        child.ChildrenCount = 0;
         memcpy(child.MacId, Event->mac, 6);
         child.IpAddress[0] = '\0'; 
 
         ApStaClassInstance->ChildDevices.push_back(child);
 
-        if (ApStaClassInstance->IsRuntimeLoggingEnabled) {
+        if (ApStaClassInstance->IsRuntimeLoggingEnabled) 
+        {
             ESP_LOGW("MESH_AP", "Child Joined | MAC: " MACSTR " | AID: %d", 
                      MAC2STR(Event->mac), Event->aid);
         }
+
+        ApStaClassInstance->UpdateBeaconMetadata(
+            ApStaClassInstance->MyHopCount,
+            (uint8_t)ApStaClassInstance->ChildDevices.size()
+        );
     } 
+
+
+
     else if (event_id == WIFI_EVENT_AP_STADISCONNECTED) 
     {
         wifi_event_ap_stadisconnected_t* Event = (wifi_event_ap_stadisconnected_t*)event_data;
@@ -82,6 +102,11 @@ void AccessPointStation::ApWifiEventHandler(void* arg, esp_event_base_t event_ba
         list.erase(std::remove_if(list.begin(), list.end(), [&](const WifiDevice& d) {
             return memcmp(d.MacId, Event->mac, 6) == 0;
         }), list.end());
+
+        ApStaClassInstance->UpdateBeaconMetadata(
+            ApStaClassInstance->MyHopCount,
+            (uint8_t)ApStaClassInstance->ChildDevices.size()
+        );
     }
 }
 
@@ -107,6 +132,26 @@ void AccessPointStation::StaWifiEventHandler(void* arg, esp_event_base_t event_b
             }
             ApStaClassInstance->ParseScanResults();
             ApStaClassInstance->IsScanning = false;
+
+            if (ApStaClassInstance->IsConnectedToParent &&
+                ApStaClassInstance->ApIpAcquired &&
+                ApStaClassInstance->IsCandidateValid)
+            {
+
+                const uint8_t curHop = ApStaClassInstance->ParentDevice.HopCount;
+                const uint8_t newHop = ApStaClassInstance->CandidateHop;
+
+                if (newHop < curHop) 
+                {
+                    ApStaClassInstance->RoamRequested = true;
+                    if (ApStaClassInstance->IsRuntimeLoggingEnabled) 
+                    {
+                        ESP_LOGW(STA_TAG, "Roam requested: current hop %u -> candidate hop %u",
+                                curHop, newHop);
+                    }
+                }
+            }
+
             break;
 
 
@@ -141,7 +186,7 @@ void AccessPointStation::StaWifiEventHandler(void* arg, esp_event_base_t event_b
             ApStaClassInstance->ParentDevice.HopCount = 255;
             ApStaClassInstance->IsConnectedToParent = false;
             ApStaClassInstance->IsMasterFound = false;
-            ApStaClassInstance->ParentAP.ssid[0] = '\0';
+            ApStaClassInstance->ParentWifiRecord.ssid[0] = '\0';
             ApStaClassInstance->UpdateBeaconMetadata(255, ApStaClassInstance->ChildDevices.size());
             
             ApStaClassInstance->StopUdp();
@@ -195,7 +240,7 @@ void AccessPointStation::IpEventHandler(void* arg, esp_event_base_t event_base,
             }
 
             // 5. Broadcast our new status (Host + 1)
-            ApStaClassInstance->UpdateBeaconMetadata(ApStaClassInstance->MyHopCount, 0);
+            ApStaClassInstance->UpdateBeaconMetadata(ApStaClassInstance->MyHopCount, (uint8_t)ApStaClassInstance->ChildDevices.size());
 
             // 6. Start UDP
             bool UdpStartedOk = ApStaClassInstance->StartUdp(ApStaClassInstance->UdpPort, ApStaClassInstance->UdpCore);
@@ -254,7 +299,7 @@ void AccessPointStation::IpEventHandler(void* arg, esp_event_base_t event_base,
 
             // MESH LOGIC: Poison the route
             ApStaClassInstance->MyHopCount = 255; 
-            ApStaClassInstance->UpdateBeaconMetadata(255, 0);
+            ApStaClassInstance->UpdateBeaconMetadata(ApStaClassInstance->MyHopCount, (uint8_t)ApStaClassInstance->ChildDevices.size());
 
             ApStaClassInstance->StopUdp();
             
@@ -264,35 +309,35 @@ void AccessPointStation::IpEventHandler(void* arg, esp_event_base_t event_base,
     }
 }
 
+
+
+
+
 void AccessPointStation::WifiVendorIeCb(void *ctx, wifi_vendor_ie_type_t type, const uint8_t sa[6], const vendor_ie_data_t *vnd_ie, int rssi) 
 {
     const vendor_ie_data_t* data = vnd_ie;
 
-    // 1. Initial check - Is it even a valid pointer?
     if (data == nullptr) return;
 
-    // 2. Debug: See every vendor IE that flies past the radio
-    if (ApStaClassInstance->IsRuntimeLoggingEnabled) {
-        ESP_LOGI(STA_TAG, "IE Detected from %02x:%02x:%02x:%02x:%02x:%02x | OUI: %02x%02x%02x", 
-                 sa[0], sa[1], sa[2], sa[3], sa[4], sa[5],
-                 data->vendor_oui[0], data->vendor_oui[1], data->vendor_oui[2]);
-    }
-
     if (data->length < 4) return;
-
-    // 3. Check if the Vendor OUI matches our mesh protocol
     if (data->vendor_oui[0] != MESH_OUI_0 || 
         data->vendor_oui[1] != MESH_OUI_1 || 
         data->vendor_oui[2] != MESH_OUI_2) return;
 
-    // 4. Success Log: We found one of OUR nodes
-    if (ApStaClassInstance->IsRuntimeLoggingEnabled) {
-        ESP_LOGW(STA_TAG, ">>> MESH IE MATCH! Hop: %d, Children: %d", 
-                 data->payload[0], data->payload[1]);
+    if (ApStaClassInstance->IsRuntimeLoggingEnabled) 
+    {
+        ESP_LOGW(STA_TAG, "IE Detected from %02x:%02x:%02x:%02x:%02x:%02x | OUI: %02x%02x%02x | Hops %d | Children %d", 
+                sa[0], sa[1], sa[2], sa[3], sa[4], sa[5],
+                data->vendor_oui[0], data->vendor_oui[1], data->vendor_oui[2],
+                data->payload[0],
+                data->payload[1]);
     }
 
     for (int i = 0; i < 20; i++)
     {
+        // If macid is already in system
+        if (memcmp(ApStaClassInstance->CallbackIeData[i].MacId, sa, 6)) return;
+
         if (!ApStaClassInstance->CallbackIeData[i].IsValid)
         {
             memcpy(ApStaClassInstance->CallbackIeData[i].MacId, sa, 6);
@@ -315,7 +360,7 @@ bool AccessPointStation::InitiateMeshScan()
     // Non-blocking scan start
     if (esp_wifi_scan_start(&scan_config, false) == ESP_OK)
     {
-        IsScanning = true; // Use the bool flag from your header
+        IsScanning = true; 
         return true;
     }
     return false;
@@ -324,10 +369,12 @@ bool AccessPointStation::InitiateMeshScan()
 void AccessPointStation::UpdateBeaconMetadata(uint8_t Hop, uint8_t Children)
 {
     // Define the structure exactly as expected by the hardware
-    typedef struct {
+    typedef struct 
+    {
         vendor_ie_data_t header;
         uint8_t payload[2];
     } __attribute__((packed)) mesh_vendor_ie_t;
+
 
     mesh_vendor_ie_t my_ie;
     my_ie.header.element_id = 0xDD;
@@ -338,21 +385,21 @@ void AccessPointStation::UpdateBeaconMetadata(uint8_t Hop, uint8_t Children)
     my_ie.payload[0] = Hop;
     my_ie.payload[1] = Children;
 
-    // IMPORTANT: If we are in the middle of connecting, the driver will return INVALID_ARG.
-    // We try to set it, and if it fails, we don't spam the logs, we just wait for the next cyclic call.
-
     esp_wifi_set_vendor_ie(false, WIFI_VND_IE_TYPE_BEACON, WIFI_VND_IE_ID_0, nullptr);
     esp_wifi_set_vendor_ie(false, WIFI_VND_IE_TYPE_PROBE_RESP, WIFI_VND_IE_ID_1, nullptr);
 
     esp_err_t res_bcn = esp_wifi_set_vendor_ie(true, WIFI_VND_IE_TYPE_BEACON, WIFI_VND_IE_ID_0, (vendor_ie_data_t*)&my_ie);
     esp_err_t res_prb = esp_wifi_set_vendor_ie(true, WIFI_VND_IE_TYPE_PROBE_RESP, WIFI_VND_IE_ID_1, (vendor_ie_data_t*)&my_ie);
 
-    if (IsRuntimeLoggingEnabled) {
-        if (res_bcn == ESP_OK && res_prb == ESP_OK) {
-            ESP_LOGI(STA_TAG, "Mesh IE Broadcast Updated: Hop %d", Hop);
-        } else {
-            // Log the error code specifically to see if it's 0x102 (Invalid Arg) or something else
-            ESP_LOGD(STA_TAG, "IE Update Deferred (Driver Busy): 0x%x", res_bcn);
+    if (IsRuntimeLoggingEnabled) 
+    {
+        if (res_bcn == ESP_OK && res_prb == ESP_OK) 
+        {
+            ESP_LOGW(STA_TAG, "Mesh IE Broadcast Updated: Hop %d, Children %d", Hop, Children);
+        } 
+        else 
+        {
+            ESP_LOGE(STA_TAG, "IE Update Deferred (Driver Busy): 0x%x", res_bcn);
         }
     }
 }
@@ -362,96 +409,144 @@ void AccessPointStation::ParseScanResults()
     uint16_t ApCount = 0;
     uint8_t CurrentBestHop = 255; 
     uint8_t CurrentBestChildren = 255;
+
     
     Error = esp_wifi_scan_get_ap_num(&ApCount);
     if (ApCount == 0 || Error != ESP_OK) return;
+
 
     std::vector<wifi_ap_record_t> ApList(ApCount);
     Error = esp_wifi_scan_get_ap_records(&ApCount, ApList.data());
     if (Error != ESP_OK) return;
 
-    wifi_ap_record_t* TempBestAp = nullptr;
-    IsMasterFound = false; 
+
+    wifi_ap_record_t* BestAp = nullptr;
+    bool MasterFound = false; 
+
 
     for (int i = 0; i < ApCount; i++) 
     {
-        wifi_ap_record_t TempRecord = ApList[i];
-
-        // Logging the raw scan result if enabled
-        if (IsRuntimeLoggingEnabled) {
-            ESP_LOGI(STA_TAG, "[Scan Index %d] SSID: %s | RSSI: %d | Channel: %d", 
-                    i, (char*)TempRecord.ssid, TempRecord.rssi, TempRecord.primary);
+        if (IsRuntimeLoggingEnabled) 
+        {
+            ESP_LOGW(STA_TAG, "Scan Index [%d] SSID: %s | RSSI: %d | Channel: %d", 
+                    i, (char*)ApList[i].ssid, ApList[i].rssi, ApList[i].primary);
         }
 
-        // if (strcmp((char*)TempRecord.ssid, "SturdyAP") == 0) 
-        // {
-        //     TempBestAp = &ApList[i]; 
-        //     ParentHopCount = 0;         
-        //     IsMasterFound = true;         
-        //     if (IsRuntimeLoggingEnabled) ESP_LOGW(STA_TAG, ">>> Master (SturdyAP) Found!");
-        //     break; 
-        // } 
-        if (strstr((char*)TempRecord.ssid, "node") != nullptr) 
+
+        if (ENABLE_MASTER_CONNECTION == true && strcmp((char*)ApList[i].ssid, "SturdyAP") == 0) 
         {
-            // Search our Vendor IE cache for this specific MAC address
+            BestAp = &ApList[i];   
+            CurrentBestHop = 0;
+            CurrentBestChildren = 0; 
+            MasterFound = true;         
+            if (IsRuntimeLoggingEnabled) ESP_LOGW(STA_TAG, ">>> Master (SturdyAP) Found!");
+            break; 
+        } 
+
+
+        else if (strstr((char*)ApList[i].ssid, "node") != nullptr) 
+        {
             bool foundVendorData = false;
+            
             for (int j = 0; j < 20; j++) 
             {
+                // if wifi record matches IE scan by BSSID
                 if (CallbackIeData[j].IsValid && 
-                    memcmp(TempRecord.bssid, CallbackIeData[j].MacId, 6) == 0) 
+                    memcmp(ApList[i].bssid, CallbackIeData[j].MacId, 6) == 0) 
                 {
-                    uint8_t nodeHop = CallbackIeData[j].HopCount;
-                    uint8_t nodeChildren = CallbackIeData[j].ChildCount;
 
-                    if (nodeHop == 255)
+                    // Hop count unset, device leads nowhere
+                    if (CallbackIeData[j].HopCount == 255)
                     {
-                        if (IsRuntimeLoggingEnabled) {
+                        if (IsRuntimeLoggingEnabled) 
+                        {
                             ESP_LOGW(STA_TAG, "  -- Ignoring node (Hop = 255)");
                         }
-                        break;   // skip this AP entirely
+                        break;
                     }
+
+
+                    // Max connections on device already
+                    if (CallbackIeData[j].ChildCount >= MAX_STA_CONN) 
+                    {
+                        if (IsRuntimeLoggingEnabled) 
+                        {
+                            ESP_LOGW(STA_TAG, "  -- Ignoring node (Full Children: %d/%d)",
+                                    CallbackIeData[j].ChildCount, MAX_STA_CONN);
+                        }
+                        break;
+                    }
+
 
                     foundVendorData = true;
-
-                    if (IsRuntimeLoggingEnabled) {
-                        ESP_LOGI(STA_TAG, "  -- Match Found in IE Cache! Hop: %d, Children: %d", 
-                                nodeHop, nodeChildren);
+                    if (IsRuntimeLoggingEnabled) 
+                    {
+                        ESP_LOGW(STA_TAG, "  -- Match Found in IE Cache! Hop: %d, Children: %d", 
+                                CallbackIeData[j].HopCount, CallbackIeData[j].ChildCount);
                     }
 
-                    if (nodeHop < CurrentBestHop)
+
+                    // Better hops
+                    if (CallbackIeData[j].HopCount < CurrentBestHop)
                     {
-                        TempBestAp = &ApList[i];
-                        CurrentBestHop = nodeHop;
-                        CurrentBestChildren = nodeChildren;
+                        BestAp = &ApList[i];
+                        CurrentBestHop = CallbackIeData[j].HopCount;
+                        CurrentBestChildren = CallbackIeData[j].ChildCount;
+
+                        if (IsRuntimeLoggingEnabled) 
+                        {
+                            ESP_LOGW(STA_TAG, "  -- New Best Match, Better Hop Count");
+                        }
                     }
-                    else if (nodeHop == CurrentBestHop && nodeChildren < CurrentBestChildren)
+
+
+                    // Same hops, less children
+                    else if (CallbackIeData[j].HopCount == CurrentBestHop 
+                        && CallbackIeData[j].ChildCount < CurrentBestChildren)
                     {
-                        TempBestAp = &ApList[i];
-                        CurrentBestChildren = nodeChildren;
+                        BestAp = &ApList[i];
+                        CurrentBestChildren = CallbackIeData[j].ChildCount;
+
+                        if (IsRuntimeLoggingEnabled) 
+                        {
+                            ESP_LOGW(STA_TAG, "  -- New Best Match, Better Children Count");
+                        }
                     }
                     
                     break; 
                 }
             }
 
-            if (!foundVendorData && IsRuntimeLoggingEnabled) {
-                ESP_LOGD(STA_TAG, "  -- Node found but no matching Vendor IE data in cache.");
+            if (!foundVendorData && IsRuntimeLoggingEnabled) 
+            {
+                ESP_LOGE(STA_TAG, "  -- Node found but no good Vendor IE data in cache.");
             }
         }
     }
 
-    if (TempBestAp != nullptr)
+
+    if (BestAp != nullptr)
     {
-        // Copy the winning record into our persistent class member
-        ParentAP = *TempBestAp;
+        IsCandidateValid = true;
+        IsCandidateMaster = MasterFound;
+        CandidateWifiRecord = *BestAp;
+        CandidateHop = CurrentBestHop;
+        CandidateChildren = CurrentBestChildren;
 
-        // Persist the hop info for the chosen parent 
-        ParentHopCount = CurrentBestHop;
-        ParentDevice.HopCount = CurrentBestHop;
+        if (!IsConnectedToParent && !IsConnecting)
+        {
+            IsMasterFound = IsCandidateMaster;
+            ParentWifiRecord = CandidateWifiRecord;
+            ParentDevice.HopCount = CandidateHop;
+            ParentDevice.ChildrenCount = CandidateChildren;
 
-        // Compute hop (guard 255 just in case)
-        if (CurrentBestHop == 255) MyHopCount = 255;
-        else MyHopCount = (uint8_t)(CurrentBestHop + 1);
+            MyHopCount = (CandidateHop == 255) ? 255 : (uint8_t)(CandidateHop + 1);
+        }
+    }
+
+    else
+    {
+        IsCandidateValid = false;
     }
 
     memset(CallbackIeData, 0, sizeof(CallbackIeData));
@@ -462,76 +557,486 @@ void AccessPointStation::ParseScanResults()
 void AccessPointStation::ConnectToBestAp()
 {
     esp_wifi_disconnect();
-
     wifi_config_t sta_config = {};
     
-    // Copy SSID and Password
+
     if (IsMasterFound) 
     {
-        ESP_LOGW(STA_TAG, "ConnectToBestAp: Root Master Found! Connecting to: %s Pass: %s", PARENT_SSID, PARENT_PASS);
-        // Use Master (Root) Credentials
+        ESP_LOGW(STA_TAG, "ConnectToBestAp: Root Master Found! Connecting to: %s | Pass: %s", PARENT_SSID, PARENT_PASS);
         strncpy((char*)sta_config.sta.ssid, PARENT_SSID, sizeof(sta_config.sta.ssid));
         strncpy((char*)sta_config.sta.password, PARENT_PASS, sizeof(sta_config.sta.password));
     }
+
+
     else 
     {
-        ESP_LOGW(STA_TAG, "ConnectToBestAp: Master NOT found. Connecting to Mesh Parent SSID: %s Pass: %s", (char*)ParentAP.ssid, MY_PASS);
-        // Use Mesh Node Credentials
-        memcpy(sta_config.sta.ssid, ParentAP.ssid, sizeof(sta_config.sta.ssid));
+        ESP_LOGW(STA_TAG, "ConnectToBestAp: Master NOT found. Connecting to Mesh Parent SSID: %s | Pass: %s", (char*)ParentWifiRecord.ssid, MY_PASS);
+        memcpy(sta_config.sta.ssid, ParentWifiRecord.ssid, sizeof(sta_config.sta.ssid));
         strncpy((char*)sta_config.sta.password, MY_PASS, sizeof(sta_config.sta.password));
     }
 
-    // Bind to the specific MAC address (BSSID) we found in scan
+
     sta_config.sta.bssid_set = true;
-    memcpy(sta_config.sta.bssid, ParentAP.bssid, 6);
-    
-    // Set the channel to the one BestAp is on to speed up connection
-    sta_config.sta.channel = ParentAP.primary;
+    memcpy(sta_config.sta.bssid, ParentWifiRecord.bssid, 6);
+    sta_config.sta.channel = ParentWifiRecord.primary;
+
 
     ESP_LOGW(STA_TAG, "Connection details: BSSID: " MACSTR " | Channel: %d", 
              MAC2STR(sta_config.sta.bssid), sta_config.sta.channel);
-
     ESP_ERROR_CHECK(esp_wifi_set_config(WIFI_IF_STA, &sta_config));
+
 
     esp_wifi_connect();
 }
 
 void AccessPointStation::MeshTask(void* pvParameters)
-{    
+{
+    uint8_t Counter = 1;
+    
     while (true)
     {
-        if (!ApStaClassInstance->IsConnectedToParent) 
+        // 10 second counter, increments of 100ms
+        vTaskDelay(pdMS_TO_TICKS(100));
+        Counter ++;
+        if (Counter >= 101) Counter = 1;
+
+
+        // 5s
+        if (Counter % 50 == 0) 
+        {                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                        
+            ApStaClassInstance->UpdateBeaconMetadata(
+                ApStaClassInstance->MyHopCount,
+                (uint8_t)ApStaClassInstance->ChildDevices.size()
+            );
+        }
+
+
+        // 2s
+        if (Counter % 20 == 0)
         {
-            // NEW: Only trigger if we aren't already in the middle of a handshake
-            if (ApStaClassInstance->ParentAP.ssid[0] != '\0' && !ApStaClassInstance->IsConnecting)
+            if (!ApStaClassInstance->IsScanning && !ApStaClassInstance->IsConnecting) ApStaClassInstance->InitiateMeshScan();
+
+            
+            if (!ApStaClassInstance->IsConnectedToParent &&
+                !ApStaClassInstance->IsConnecting &&
+                ApStaClassInstance->ParentWifiRecord.ssid[0] != '\0')
             {
-                ApStaClassInstance->IsConnecting = true; // LOCK the state
-                ESP_LOGW(STA_TAG, "Starting stateful connection to %s", ApStaClassInstance->ParentAP.ssid);
-                
+                ApStaClassInstance->IsConnecting = true;
                 ApStaClassInstance->ConnectToBestAp();
             }
-            else if (!ApStaClassInstance->IsScanning && !ApStaClassInstance->IsConnecting)
+
+            if (ApStaClassInstance->IsConnectedToParent &&
+                !ApStaClassInstance->IsConnecting &&
+                ApStaClassInstance->RoamRequested &&
+                ApStaClassInstance->IsCandidateValid)
             {
-                ApStaClassInstance->InitiateMeshScan();
+                ApStaClassInstance->RoamRequested = false;
+                ApStaClassInstance->IsConnecting = true;
+
+                ApStaClassInstance->IsMasterFound = ApStaClassInstance->IsCandidateMaster;
+                ApStaClassInstance->ParentWifiRecord = ApStaClassInstance->CandidateWifiRecord;
+                ApStaClassInstance->ParentDevice.HopCount = ApStaClassInstance->CandidateHop;
+                ApStaClassInstance->MyHopCount =
+                    (ApStaClassInstance->CandidateHop == 255) ? 255 : (uint8_t)(ApStaClassInstance->CandidateHop + 1);
+
+                ESP_LOGW(STA_TAG, "Roaming now to %s (hop %u)",
+                        (char*)ApStaClassInstance->ParentWifiRecord.ssid,
+                        ApStaClassInstance->ParentDevice.HopCount);
+
+                esp_wifi_disconnect();
+                vTaskDelay(pdMS_TO_TICKS(200));
+                ApStaClassInstance->ConnectToBestAp();
             }
         }
-        
-        // Use a 2-second heartbeat for the task
-        vTaskDelay(pdMS_TO_TICKS(2000));
+
+
+        // 0.5s
+        if (Counter % 5 == 0)
+        {
+            if (ApStaClassInstance->IsConnectedToParent && ApStaClassInstance->ApIpAcquired)
+            {
+                uint8_t TxBuffer[64]{};
+                uint8_t HeartbeatValue = 79;
+                size_t Length = ApStaClassInstance->CreatePacket(&HeartbeatValue, 1, 255, TxBuffer, sizeof(TxBuffer));
+            
+                if (Length > 48)
+                {
+                    sockaddr_in Destination{};
+                    Destination.sin_family = AF_INET;
+                    Destination.sin_port   = htons(ApStaClassInstance->UdpPort);
+                    if (ApStaClassInstance->IsMasterFound)
+                    {
+                        inet_pton(AF_INET, "192.168.0.254",
+                                &Destination.sin_addr);
+                    }
+                    else 
+                    {
+                        inet_pton(AF_INET, ApStaClassInstance->ParentDevice.IpAddress,
+                                &Destination.sin_addr);
+                    }
+                    int Sent = sendto(ApStaClassInstance->UdpSocket,
+                            TxBuffer,
+                            Length,
+                            0,
+                            (sockaddr*)&Destination,
+                            sizeof(Destination));
+
+                    if (Sent < 0 && ApStaClassInstance->IsRuntimeLoggingEnabled) ESP_LOGE(STA_TAG, "Heartbeat sendto failed (errno=%d)", errno);
+                }
+            }
+        }
+    }
+
+    vTaskDelete(NULL);
+}
+
+
+
+
+
+size_t AccessPointStation::CreatePacket(const uint8_t* DataToInclude,
+                    size_t DataLength,
+                    uint8_t PacketType,
+                    uint8_t* PacketOut,
+                    size_t OutputBufferSize)
+{
+    if (!DataToInclude) return 0;
+    if (!PacketOut) return 0;
+    if (DataLength > 65535) return 0;
+    if (PacketType == 0) return 0;
+    if (OutputBufferSize < DataLength + 48 + 2) return 0;
+
+    PacketHeader TempHeader{};
+
+    TempHeader.startDelimiter = PACKET_START_DELIMITER;
+    TempHeader.payloadSize = DataLength;
+    TempHeader.slaveUid = CONFIG_ESP_NODE_UID;
+    //TempHeader.messageCounter = 0;
+    TempHeader.senderTimestampUs = (uint64_t)esp_timer_get_time();
+    TempHeader.prevCycleTimeUs = 0;
+    TempHeader.chainedSlaveCount = 0;
+    TempHeader.PacketType = PacketType;
+    TempHeader.flags = 0;
+    TempHeader.headerVersion = 1;
+    TempHeader.networkId = 0;
+    TempHeader.chainDistance = 0;
+    TempHeader.ttl = 10;
+    TempHeader.crc32 = 0;
+
+    uint8_t* p = PacketOut;
+
+    memcpy(p, &TempHeader, sizeof(PacketHeader));
+    memcpy(p + sizeof(PacketHeader), DataToInclude, DataLength);
+    memcpy(p + sizeof(PacketHeader) + DataLength, &PACKET_END_DELIMITER, 2);
+
+    return PACKET_HEADER_SIZE + DataLength + sizeof(PACKET_END_DELIMITER);
+}
+
+
+void AccessPointStation::ProcessData(uint8_t* data, int length)
+{
+    if (data == nullptr || length <= 48) return;
+    if (data[0] != 0xB5 || data[1] != 0x02) return;
+
+    constexpr int headerSize = 48;
+    constexpr int terminatorSize = 2;
+    uint16_t PayloadSize = (static_cast<uint16_t>(data[2]) << 8) | static_cast<uint16_t>(data[3]);
+    int terminatorIndex = headerSize + PayloadSize;
+
+    if (length < terminatorIndex + terminatorSize) return;
+    if (data[terminatorIndex] != 0x03 || data[terminatorIndex + 1] != 0x5B) return;
+
+    uint8_t PacketType = data[37];
+
+
+    
+    switch(PacketType)
+    {
+        case 0xFF:  // Heartbeat
+            LastHeartbeatUs = esp_timer_get_time();
+            break;
+
+        default:
+            break;
+    }
+
+}
+
+size_t AccessPointStation::PrepareTxPacket(const uint8_t* rxData,
+                                         int rxLength,
+                                         uint8_t* txBuffer,
+                                         int& txLength)
+{
+
+    txLength = 0;
+
+    if (!rxData || !txBuffer) return 0;
+    if (rxLength < 48) return 0;
+
+    constexpr int headerSize = 48;
+    constexpr int terminatorSize = 2;
+    const uint8_t PacketType = rxData[37];
+    const uint8_t ForwardMode  = rxData[43];
+
+    uint16_t PayloadSize = (static_cast<uint16_t>(rxData[2]) << 8) | static_cast<uint16_t>(rxData[3]);
+    int ExpectedSize = headerSize + PayloadSize + terminatorSize;
+    int TermIndex = headerSize + PayloadSize;
+    
+    if (rxLength < ExpectedSize) return 0;
+    if (rxData[TermIndex] != 0x03 || rxData[TermIndex + 1] != 0x5B) return 0;
+
+
+
+    // FORWARD PACKET
+    if (ForwardMode != 00) 
+    {
+        memcpy(txBuffer, rxData, ExpectedSize);
+        txLength = ExpectedSize;
+        return txLength;
+    }
+
+
+    
+    // PROCESS PACKET
+    else
+    {
+        if (PayloadSize > MaxPayload) return 0;
+
+        const uint8_t* PayloadPtr = rxData + headerSize;
+
+        // ====================================
+        //      FILL INTERNAL DATA
+        // ====================================
+
+        PayloadSeq++;
+        memcpy(LatestPayload, PayloadPtr, PayloadSize);
+        LatestPayloadSize = PayloadSize;
+        LatestPayloadType = PacketType;
+        LatestPayloadUs   = esp_timer_get_time();
+        PayloadSeq++; 
+
+        return 0;
     }
 }
 
+bool AccessPointStation::DetermineDestinationAddress(const sockaddr_in& SourceAddress, const uint8_t* Data, int DataLength, sockaddr_in& DestinationAddress)
+{
+
+    if (!Data) return 0;
+    if (DataLength < 48 + 2) return 0;
+
+    const uint8_t ForwardMode = Data[43];
+
+    switch (ForwardMode)
+    {
+        case 0: // Return to sender
+            DestinationAddress = SourceAddress;
+            return true;
+            break;
+
+
+
+        case 1: // Downstream
+        {
+            const uint8_t* DestinationUid = Data + 16;
+            int MatchIndex = -1;
+
+            for (size_t i = 0; i < ApStaClassInstance->ChildDevices.size(); i++)
+            {
+                // Compare 8-byte UID
+                if (memcmp(&ApStaClassInstance->ChildDevices[i].UID, DestinationUid, 8) == 0)
+                {
+                    MatchIndex = i;
+                    break;
+                }
+            }
+
+            if (MatchIndex < 0) return false;
+
+            sockaddr_in Destination{};
+            Destination.sin_family = AF_INET;
+            Destination.sin_port   = htons(ApStaClassInstance->UdpPort);
+
+            if (inet_pton(AF_INET,
+              ApStaClassInstance->ChildDevices[MatchIndex].IpAddress,
+              &Destination.sin_addr) != 1)
+            {
+                return false;
+            }
+
+            DestinationAddress = Destination;
+
+            return true;
+            break;
+        }
+        
+
+
+        case 2: // Upstream
+        {
+            sockaddr_in Destination{};
+            Destination.sin_family = AF_INET;
+            Destination.sin_port   = htons(ApStaClassInstance->UdpPort);
+
+            if (IsMasterFound)
+            {
+                if (inet_pton(AF_INET, "192.168.0.254", &Destination.sin_addr) != 1)
+                {
+                    return false;
+                }
+            }
+            else 
+            {
+                if (inet_pton(AF_INET,
+                  ApStaClassInstance->ParentDevice.IpAddress,
+                  &Destination.sin_addr) != 1)
+                {
+                    return false;
+                }
+            }
+
+            DestinationAddress = Destination;
+
+            return true;
+            break;
+        }
+
+
+
+        default:
+            return false;
+            break;
+    }
+}
+
+
+
+
+size_t AccessPointStation::SendData(const uint8_t* Data, int Length, const sockaddr_in& DestinationAddress)
+{
+    if (!Data) return 0;
+    if (Length <= 0) return 0;
+    if (ApStaClassInstance->UdpSocket < 0) return 0;
+
+    int SentBytes = sendto(ApStaClassInstance->UdpSocket,
+                           Data,
+                           Length,
+                           0,
+                           (const sockaddr*)&DestinationAddress,
+                           sizeof(DestinationAddress));
+
+    if (SentBytes < 0)
+    {
+        return 0;
+    }
+
+    return static_cast<size_t>(SentBytes);
+}
+
+void AccessPointStation::ReceiveTask(void* pvParameters)
+{
+    uint8_t ReceiveBuffer[1500];
+    int ReceivedBytes = 0;
+    uint8_t SendBuffer[1500];
+    int SendBytes = 0;
+
+    while(true)
+    {
+        sockaddr_in SourceAddress{}, DestinationAddress{};
+        socklen_t AddressLength = sizeof(SourceAddress);
+
+        ReceivedBytes = recvfrom(ApStaClassInstance->UdpSocket,
+                                ReceiveBuffer,
+                                sizeof(ReceiveBuffer),
+                                0,
+                                (sockaddr*)&SourceAddress,
+                                &AddressLength);
+
+        if (ReceivedBytes > 0)
+        {
+            ApStaClassInstance->ProcessData(ReceiveBuffer, ReceivedBytes);
+
+            SendBytes = 0;
+
+            ApStaClassInstance->PrepareTxPacket(ReceiveBuffer, ReceivedBytes, SendBuffer, SendBytes);
+
+            if (SendBytes <= 0)
+            {
+                continue;
+            }
+
+            if (!ApStaClassInstance->DetermineDestinationAddress(SourceAddress, SendBuffer, SendBytes, DestinationAddress))
+            {
+                continue;
+            }
+
+            ApStaClassInstance->SendData(SendBuffer, SendBytes, DestinationAddress);
+        }
+
+        vTaskDelay(1);
+    }
+
+    vTaskDelete(nullptr);
+}
+
+void AccessPointStation::TransmitTask(void* pvParameters)
+{
+    uint8_t localBuf[1500];
+    int localLen = 0;
+
+    TickType_t LastHeartbeat{};
+
+    while(true)
+    {
+        bool Send = false;
+
+        portENTER_CRITICAL(&ApStaClassInstance->TxCriticalSection);
+
+        if (ApStaClassInstance->PreparedTxLength > 0)
+        {
+            localLen = ApStaClassInstance->PreparedTxLength;
+            memcpy(localBuf, ApStaClassInstance->PreparedTxPacket, localLen);
+            ApStaClassInstance->PreparedTxLength = 0;
+            memset(ApStaClassInstance->PreparedTxPacket, 0, sizeof(ApStaClassInstance->PreparedTxPacket));
+
+            Send = true;
+        }
+
+        portEXIT_CRITICAL(&ApStaClassInstance->TxCriticalSection);
+
+        if (Send)
+        {
+            Send = false;
+            sockaddr_in Destination{};
+            Destination.sin_family = AF_INET;
+            Destination.sin_port   = htons(ApStaClassInstance->UdpPort);
+
+            if (ApStaClassInstance->IsMasterFound) inet_pton(AF_INET, "192.168.0.254", &Destination.sin_addr);
+            else inet_pton(AF_INET, ApStaClassInstance->ParentDevice.IpAddress, &Destination.sin_addr);
+
+            sendto(ApStaClassInstance->UdpSocket,
+                   localBuf,
+                   localLen,
+                   0,
+                   (const sockaddr*)&Destination,
+                   sizeof(Destination));
+        }
+
+        vTaskDelay(pdMS_TO_TICKS(1));
+    }
+
+    vTaskDelete(nullptr);
+}
+
+
+
 bool AccessPointStation::StartUdp(uint16_t Port, uint8_t Core)
 {
-    // Use our singleton instance
     if (ApStaClassInstance->UdpStarted) return true;
     
-    // Multi-interface connection check
     // We only start UDP if we have an IP (either as an AP or a STA)
     if (!ApStaClassInstance->IsConnectedToParent && ApStaClassInstance->ChildDevices.empty()) 
     {
-        // Optimization: In a mesh, you might want to start UDP even if not connected to a parent
-        // so you can talk to your children. I'll stick to your "Must have IP" logic.
         if (!ApStaClassInstance->ApIpAcquired) return false;
     }
     
@@ -565,29 +1070,48 @@ bool AccessPointStation::StartUdp(uint16_t Port, uint8_t Core)
     tv.tv_usec = 10000; // Increased to 10ms for better CPU efficiency in dual-mode
     setsockopt(ApStaClassInstance->UdpSocket, SOL_SOCKET, SO_RCVTIMEO, &tv, sizeof(tv));
 
-    // Task Management
-    // Ensure the handle is null before creating a new one
-    if (ApStaClassInstance->UdpRxTaskHandle != nullptr) {
-        vTaskDelete(ApStaClassInstance->UdpRxTaskHandle);
-        ApStaClassInstance->UdpRxTaskHandle = nullptr;
+    if (ApStaClassInstance->ReceiveTaskHandle != nullptr) 
+    {
+        vTaskDelete(ApStaClassInstance->ReceiveTaskHandle);
+        ApStaClassInstance->ReceiveTaskHandle = nullptr;
     }
 
-    if (xTaskCreatePinnedToCore(&AccessPointStation::UdpRxTask,
+    if (ApStaClassInstance->TransmitTaskHandle != nullptr) 
+    {
+        vTaskDelete(ApStaClassInstance->TransmitTaskHandle);
+        ApStaClassInstance->TransmitTaskHandle = nullptr;
+    }
+
+    if (xTaskCreatePinnedToCore(&AccessPointStation::ReceiveTask,
                                 "ApStaUdpRx",
                                 4096,
                                 nullptr,
                                 5,
-                                &ApStaClassInstance->UdpRxTaskHandle,
+                                &ApStaClassInstance->ReceiveTaskHandle,
                                 Core) != pdPASS)
     {
         close(ApStaClassInstance->UdpSocket);
         ApStaClassInstance->UdpSocket = -1;
-        ApStaClassInstance->UdpRxTaskHandle = nullptr;
+        ApStaClassInstance->ReceiveTaskHandle = nullptr;
+        return false;
+    }
+
+    if (xTaskCreatePinnedToCore(&AccessPointStation::TransmitTask,
+                                "ApStaUdpTx",
+                                4096,
+                                nullptr,
+                                5,
+                                &ApStaClassInstance->TransmitTaskHandle,
+                                Core) != pdPASS)
+    {
+        close(ApStaClassInstance->UdpSocket);
+        ApStaClassInstance->UdpSocket = -1;
+        ApStaClassInstance->TransmitTaskHandle = nullptr;
         return false;
     }
 
     ApStaClassInstance->UdpStarted = true;
-    if (ApStaClassInstance->IsRuntimeLoggingEnabled) ESP_LOGI("UDP", "Mesh UDP Started on Port %d", Port);
+    if (ApStaClassInstance->IsRuntimeLoggingEnabled) ESP_LOGI("UDP", "Transmit and Receive tasks started on Port %d", Port);
     
     return true;
 }
@@ -596,20 +1120,16 @@ bool AccessPointStation::StopUdp()
 {
     if (!ApStaClassInstance->UdpStarted) return true;
 
-    // Mark as stopped immediately
-    // This tells any other logic that the UDP path is no longer valid
     ApStaClassInstance->UdpStarted = false;
 
-    // Kill the RX Task first
-    // We do this before closing the socket to prevent the task from 
-    // trying to read from a closed file descriptor, which causes a crash.
-    if (ApStaClassInstance->UdpRxTaskHandle != nullptr)
+    if (ApStaClassInstance->ReceiveTaskHandle != nullptr)
     {
-        vTaskDelete(ApStaClassInstance->UdpRxTaskHandle);
-        ApStaClassInstance->UdpRxTaskHandle = nullptr;
+        vTaskDelete(ApStaClassInstance->ReceiveTaskHandle);
+        vTaskDelete(ApStaClassInstance->TransmitTaskHandle);
+        ApStaClassInstance->ReceiveTaskHandle = nullptr;
+        ApStaClassInstance->TransmitTaskHandle = nullptr;
     }
 
-    // Close the Socket
     if (ApStaClassInstance->UdpSocket >= 0)
     {
         // shutdown() ensures all pending sends/receives are terminated
@@ -620,23 +1140,13 @@ bool AccessPointStation::StopUdp()
 
     if (ApStaClassInstance->IsRuntimeLoggingEnabled)
     {
-        ESP_LOGW("UDP", "Mesh UDP System Stopped");
+        ESP_LOGW("UDP", "Transmit and Receive tasks Stopped");
     }
 
     return true;
 }
 
-void AccessPointStation::UdpRxTask(void* pvParameters)
-{
-    while (true)
-    {
 
-
-        vTaskDelay(1);
-    }
-
-    vTaskDelete(nullptr);
-}
 
 bool AccessPointStation::SetupWifi()
 {
@@ -735,7 +1245,7 @@ bool AccessPointStation::SetupWifi()
             // Ensure password is set and is at least 8 characters
             strncpy((char*)ApWifiServiceConfig.ap.password, MY_PASS, 63);
 
-            ApWifiServiceConfig.ap.max_connection = 4; 
+            ApWifiServiceConfig.ap.max_connection = MAX_STA_CONN; 
             
             ApWifiServiceConfig.ap.authmode = WIFI_AUTH_WPA2_PSK;
             ApWifiServiceConfig.ap.channel = 6; 

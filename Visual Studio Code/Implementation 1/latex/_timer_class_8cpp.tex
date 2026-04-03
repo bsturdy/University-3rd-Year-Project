@@ -1,0 +1,91 @@
+\doxysection{components/\+\+Timer\+Class\+Lib/\+src/\+\+Timer\+Class.cpp File Reference}
+\hypertarget{_timer_class_8cpp}{}\label{_timer_class_8cpp}\index{components/TimerClassLib/src/TimerClass.cpp@{components/TimerClassLib/src/TimerClass.cpp}}
+{\ttfamily \+\#include "{}Timer\+Class.\+h"{}}\newline
+\doxysubsubsection*{Macros}
+\begin{DoxyCompactItemize}
+\item 
+\+\#define \doxymbox{\hyperlink{_timer_class_8cpp_a300ef1fa5c75eac8639fdcc5af3f940d}{Cyclic\+Timer\+Group}}~TIMER\+\_\+\+GROUP\+\_\+0
+\item 
+\+\#define \doxymbox{\hyperlink{_timer_class_8cpp_a2f8e5adfcb49d9d7b5e8016fa6ebd1ee}{Cyclic\+Timer\+Index}}~TIMER\+\_\+0
+\item 
+\+\#define \doxymbox{\hyperlink{_timer_class_8cpp_afffae66822b0b56cb4f8d5d99fefd5a1}{Watchdog\+Timer\+Group}}~TIMER\+\_\+\+GROUP\+\_\+1
+\item 
+\+\#define \doxymbox{\hyperlink{_timer_class_8cpp_a0c43ab576575250f615bdd29c4809b2a}{Watchdog\+Timer\+Index}}~TIMER\+\_\+0
+\item 
+\+\#define \doxymbox{\hyperlink{_timer_class_8cpp_ada200d06ba9a5c9d5f0a05eca086afcc}{Cyclic\+Period\+In\+Us}}~\doxymbox{\hyperlink{_timer_class_8cpp_a6f727dd1788f00b59c89d7c8909fb31d}{CONFIG\+\_\+\+ESP\+\_\+\+CYCLIC\+\_\+\+TASK\+\_\+\+PERIOD}}
+\item 
+\+\#define \doxymbox{\hyperlink{_timer_class_8cpp_a58a50c2c26d1a3ccc6e0b1190eeafd2f}{Watchdog\+Period\+In\+Us}}~\doxymbox{\hyperlink{config_2sdkconfig_8h_ac256bbd13df2ef7ef1fcbccc30db59c2}{CONFIG\+\_\+\+ESP\+\_\+\+WATCHDOG\+\_\+\+TASK\+\_\+\+PERIOD}}
+\item 
+\+\#define \doxymbox{\hyperlink{_timer_class_8cpp_a8507c36fb931358ebca2bb6896c0bc09}{Prescaler}}~\doxymbox{\hyperlink{config_2sdkconfig_8h_a014211529a8152585280a94710c2015d}{CONFIG\+\_\+\+ESP\+\_\+\+TIMER\+\_\+\+PRESCALER}}
+\item 
+\+\#define \doxymbox{\hyperlink{_timer_class_8cpp_afc3d101f633a076cc1ca84b85b6224b2}{TAG}}~"{}Timer Class"{}
+\item 
+\+\#define \doxymbox{\hyperlink{_timer_class_8cpp_a6f727dd1788f00b59c89d7c8909fb31d}{CONFIG\+\_\+\+ESP\+\_\+\+CYCLIC\+\_\+\+TASK\+\_\+\+PERIOD}}~1000
+\item 
+\+\#define \doxymbox{\hyperlink{_timer_class_8cpp_aeb8b70ee2a6bbeac2b51f53aa48aa526}{TAG}}~"{}Timer\+Class"{}
+\end{DoxyCompactItemize}
+
+
+\label{doc-define-members}
+\Hypertarget{_timer_class_8cpp_doc-define-members}
+\doxysubsection{Macro Definition Documentation}
+\Hypertarget{_timer_class_8cpp_a6f727dd1788f00b59c89d7c8909fb31d}\index{TimerClass.cpp@{TimerClass.cpp}!CONFIG\_ESP\_CYCLIC\_TASK\_PERIOD@{CONFIG\_ESP\_CYCLIC\_TASK\_PERIOD}}
+\index{CONFIG\_ESP\_CYCLIC\_TASK\_PERIOD@{CONFIG\_ESP\_CYCLIC\_TASK\_PERIOD}!TimerClass.cpp@{TimerClass.cpp}}
+\doxysubsubsection{\texorpdfstring{CONFIG\_ESP\_CYCLIC\_TASK\_PERIOD}{CONFIG\_ESP\_CYCLIC\_TASK\_PERIOD}}
+{\footnotesize\ttfamily \label{_timer_class_8cpp_a6f727dd1788f00b59c89d7c8909fb31d} 
+\+\#define CONFIG\+\_\+\+ESP\+\_\+\+CYCLIC\+\_\+\+TASK\+\_\+\+PERIOD~1000}
+
+\Hypertarget{_timer_class_8cpp_ada200d06ba9a5c9d5f0a05eca086afcc}\index{TimerClass.cpp@{TimerClass.cpp}!CyclicPeriodInUs@{CyclicPeriodInUs}}
+\index{CyclicPeriodInUs@{CyclicPeriodInUs}!TimerClass.cpp@{TimerClass.cpp}}
+\doxysubsubsection{\texorpdfstring{CyclicPeriodInUs}{CyclicPeriodInUs}}
+{\footnotesize\ttfamily \label{_timer_class_8cpp_ada200d06ba9a5c9d5f0a05eca086afcc} 
+\+\#define Cyclic\+Period\+In\+Us~\doxymbox{\hyperlink{_timer_class_8cpp_a6f727dd1788f00b59c89d7c8909fb31d}{CONFIG\+\_\+\+ESP\+\_\+\+CYCLIC\+\_\+\+TASK\+\_\+\+PERIOD}}}
+
+\Hypertarget{_timer_class_8cpp_a300ef1fa5c75eac8639fdcc5af3f940d}\index{TimerClass.cpp@{TimerClass.cpp}!CyclicTimerGroup@{CyclicTimerGroup}}
+\index{CyclicTimerGroup@{CyclicTimerGroup}!TimerClass.cpp@{TimerClass.cpp}}
+\doxysubsubsection{\texorpdfstring{CyclicTimerGroup}{CyclicTimerGroup}}
+{\footnotesize\ttfamily \label{_timer_class_8cpp_a300ef1fa5c75eac8639fdcc5af3f940d} 
+\+\#define Cyclic\+Timer\+Group~TIMER\+\_\+\+GROUP\+\_\+0}
+
+\Hypertarget{_timer_class_8cpp_a2f8e5adfcb49d9d7b5e8016fa6ebd1ee}\index{TimerClass.cpp@{TimerClass.cpp}!CyclicTimerIndex@{CyclicTimerIndex}}
+\index{CyclicTimerIndex@{CyclicTimerIndex}!TimerClass.cpp@{TimerClass.cpp}}
+\doxysubsubsection{\texorpdfstring{CyclicTimerIndex}{CyclicTimerIndex}}
+{\footnotesize\ttfamily \label{_timer_class_8cpp_a2f8e5adfcb49d9d7b5e8016fa6ebd1ee} 
+\+\#define Cyclic\+Timer\+Index~TIMER\+\_\+0}
+
+\Hypertarget{_timer_class_8cpp_a8507c36fb931358ebca2bb6896c0bc09}\index{TimerClass.cpp@{TimerClass.cpp}!Prescaler@{Prescaler}}
+\index{Prescaler@{Prescaler}!TimerClass.cpp@{TimerClass.cpp}}
+\doxysubsubsection{\texorpdfstring{Prescaler}{Prescaler}}
+{\footnotesize\ttfamily \label{_timer_class_8cpp_a8507c36fb931358ebca2bb6896c0bc09} 
+\+\#define Prescaler~\doxymbox{\hyperlink{config_2sdkconfig_8h_a014211529a8152585280a94710c2015d}{CONFIG\+\_\+\+ESP\+\_\+\+TIMER\+\_\+\+PRESCALER}}}
+
+\Hypertarget{_timer_class_8cpp_aeb8b70ee2a6bbeac2b51f53aa48aa526}\index{TimerClass.cpp@{TimerClass.cpp}!TAG@{TAG}}
+\index{TAG@{TAG}!TimerClass.cpp@{TimerClass.cpp}}
+\doxysubsubsection{\texorpdfstring{TAG}{TAG}\hspace{0.1cm}{\footnotesize\ttfamily [1/2]}}
+{\footnotesize\ttfamily \label{_timer_class_8cpp_aeb8b70ee2a6bbeac2b51f53aa48aa526} 
+\+\#define TAG~"{}Timer\+Class"{}}
+
+\Hypertarget{_timer_class_8cpp_afc3d101f633a076cc1ca84b85b6224b2}\index{TimerClass.cpp@{TimerClass.cpp}!TAG@{TAG}}
+\index{TAG@{TAG}!TimerClass.cpp@{TimerClass.cpp}}
+\doxysubsubsection{\texorpdfstring{TAG}{TAG}\hspace{0.1cm}{\footnotesize\ttfamily [2/2]}}
+{\footnotesize\ttfamily \label{_timer_class_8cpp_afc3d101f633a076cc1ca84b85b6224b2} 
+\+\#define TAG~"{}Timer Class"{}}
+
+\Hypertarget{_timer_class_8cpp_a58a50c2c26d1a3ccc6e0b1190eeafd2f}\index{TimerClass.cpp@{TimerClass.cpp}!WatchdogPeriodInUs@{WatchdogPeriodInUs}}
+\index{WatchdogPeriodInUs@{WatchdogPeriodInUs}!TimerClass.cpp@{TimerClass.cpp}}
+\doxysubsubsection{\texorpdfstring{WatchdogPeriodInUs}{WatchdogPeriodInUs}}
+{\footnotesize\ttfamily \label{_timer_class_8cpp_a58a50c2c26d1a3ccc6e0b1190eeafd2f} 
+\+\#define Watchdog\+Period\+In\+Us~\doxymbox{\hyperlink{config_2sdkconfig_8h_ac256bbd13df2ef7ef1fcbccc30db59c2}{CONFIG\+\_\+\+ESP\+\_\+\+WATCHDOG\+\_\+\+TASK\+\_\+\+PERIOD}}}
+
+\Hypertarget{_timer_class_8cpp_afffae66822b0b56cb4f8d5d99fefd5a1}\index{TimerClass.cpp@{TimerClass.cpp}!WatchdogTimerGroup@{WatchdogTimerGroup}}
+\index{WatchdogTimerGroup@{WatchdogTimerGroup}!TimerClass.cpp@{TimerClass.cpp}}
+\doxysubsubsection{\texorpdfstring{WatchdogTimerGroup}{WatchdogTimerGroup}}
+{\footnotesize\ttfamily \label{_timer_class_8cpp_afffae66822b0b56cb4f8d5d99fefd5a1} 
+\+\#define Watchdog\+Timer\+Group~TIMER\+\_\+\+GROUP\+\_\+1}
+
+\Hypertarget{_timer_class_8cpp_a0c43ab576575250f615bdd29c4809b2a}\index{TimerClass.cpp@{TimerClass.cpp}!WatchdogTimerIndex@{WatchdogTimerIndex}}
+\index{WatchdogTimerIndex@{WatchdogTimerIndex}!TimerClass.cpp@{TimerClass.cpp}}
+\doxysubsubsection{\texorpdfstring{WatchdogTimerIndex}{WatchdogTimerIndex}}
+{\footnotesize\ttfamily \label{_timer_class_8cpp_a0c43ab576575250f615bdd29c4809b2a} 
+\+\#define Watchdog\+Timer\+Index~TIMER\+\_\+0}
+

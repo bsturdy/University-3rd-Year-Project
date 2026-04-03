@@ -1,0 +1,437 @@
+\doxysection{Wifi\+Class.\+h}
+\hypertarget{_wifi_class_8h_source}{}\label{_wifi_class_8h_source}\index{components/WifiClassLib/include/WifiClass.h@{components/WifiClassLib/include/WifiClass.h}}
+
+\begin{DoxyCode}{0}
+\DoxyCodeLine{00001\ \textcolor{preprocessor}{\#ifndef\ WifiClass\_H}}
+\DoxyCodeLine{00002\ \textcolor{preprocessor}{\#define\ WifiClass\_H}}
+\DoxyCodeLine{00003\ }
+\DoxyCodeLine{00004\ \textcolor{comment}{//\ Author\ -\/\ Ben\ Sturdy}}
+\DoxyCodeLine{00005\ \textcolor{comment}{//\ This\ file\ implements\ a\ class\ 'Wifi\ Class'.\ This\ class\ should\ be\ instantiated}}
+\DoxyCodeLine{00006\ \textcolor{comment}{//\ only\ once\ in\ a\ project.\ This\ class\ controls\ all\ wireless\ functionalities.}}
+\DoxyCodeLine{00007\ \textcolor{comment}{//\ This\ class\ can\ set\ up\ a\ system\ as\ an\ Access\ Point\ or\ a\ Station\ in\ WiFi\ mode.\ }}
+\DoxyCodeLine{00008\ \textcolor{comment}{//\ This\ class\ can\ set\ up\ and\ utilise\ ESP-\/NOW.\ The\ functions\ with\ this\ class\ can\ }}
+\DoxyCodeLine{00009\ \textcolor{comment}{//\ run\ on\ the\ same\ core\ as\ other\ processes.}}
+\DoxyCodeLine{00010\ }
+\DoxyCodeLine{00011\ \textcolor{preprocessor}{\#include\ "{}esp\_wifi\_types\_generic.h"{}}}
+\DoxyCodeLine{00012\ \textcolor{preprocessor}{\#include\ "{}freertos/FreeRTOS.h"{}}}
+\DoxyCodeLine{00013\ \textcolor{preprocessor}{\#include\ "{}freertos/task.h"{}}}
+\DoxyCodeLine{00014\ \textcolor{preprocessor}{\#include\ "{}esp\_log.h"{}}}
+\DoxyCodeLine{00015\ \textcolor{preprocessor}{\#include\ "{}esp\_mac.h"{}}}
+\DoxyCodeLine{00016\ \textcolor{preprocessor}{\#include\ "{}esp\_private/wifi.h"{}}}
+\DoxyCodeLine{00017\ \textcolor{preprocessor}{\#include\ "{}esp\_wifi.h"{}}}
+\DoxyCodeLine{00018\ \textcolor{preprocessor}{\#include\ "{}esp\_wifi\_types.h"{}}}
+\DoxyCodeLine{00019\ \textcolor{preprocessor}{\#include\ "{}esp\_event.h"{}}}
+\DoxyCodeLine{00020\ \textcolor{preprocessor}{\#include\ "{}esp\_log.h"{}}}
+\DoxyCodeLine{00021\ \textcolor{preprocessor}{\#include\ "{}esp\_timer.h"{}}\ }
+\DoxyCodeLine{00022\ \textcolor{preprocessor}{\#include\ "{}esp\_now.h"{}}}
+\DoxyCodeLine{00023\ \textcolor{preprocessor}{\#include\ <cstddef>}}
+\DoxyCodeLine{00024\ \textcolor{preprocessor}{\#include\ <cstdint>}}
+\DoxyCodeLine{00025\ \textcolor{preprocessor}{\#include\ <string.h>}}
+\DoxyCodeLine{00026\ \textcolor{preprocessor}{\#include\ <sys/stat.h>}}
+\DoxyCodeLine{00027\ \textcolor{preprocessor}{\#include\ <vector>}}
+\DoxyCodeLine{00028\ \textcolor{preprocessor}{\#include\ <algorithm>}}
+\DoxyCodeLine{00029\ \textcolor{preprocessor}{\#include\ "{}esp\_netif.h"{}}}
+\DoxyCodeLine{00030\ \textcolor{preprocessor}{\#include\ "{}esp\_netif\_types.h"{}}}
+\DoxyCodeLine{00031\ \textcolor{preprocessor}{\#include\ "{}nvs\_flash.h"{}}}
+\DoxyCodeLine{00032\ \textcolor{preprocessor}{\#include\ "{}lwip/err.h"{}}}
+\DoxyCodeLine{00033\ \textcolor{preprocessor}{\#include\ "{}lwip/sys.h"{}}}
+\DoxyCodeLine{00034\ \textcolor{preprocessor}{\#include\ <sys/socket.h>}}
+\DoxyCodeLine{00035\ \textcolor{preprocessor}{\#include\ <netinet/in.h>}}
+\DoxyCodeLine{00036\ \textcolor{preprocessor}{\#include\ <arpa/inet.h>}}
+\DoxyCodeLine{00037\ \textcolor{preprocessor}{\#include\ <unistd.h>}}
+\DoxyCodeLine{00038\ }
+\DoxyCodeLine{00039\ \textcolor{keyword}{static}\ \textcolor{keyword}{constexpr}\ \textcolor{keywordtype}{size\_t}\ UDP\_SLOTS\ =\ 10;}
+\DoxyCodeLine{00040\ \textcolor{keyword}{static}\ \textcolor{keyword}{constexpr}\ \textcolor{keywordtype}{size\_t}\ UDP\_PACKET\_SIZE\ =\ 256;}
+\DoxyCodeLine{00041\ \textcolor{keyword}{static}\ \textcolor{keyword}{const}\ uint8\_t\ MESH\_OUI\_0\ =\ 0xB5;}
+\DoxyCodeLine{00042\ \textcolor{keyword}{static}\ \textcolor{keyword}{const}\ uint8\_t\ MESH\_OUI\_1\ =\ 0x79;}
+\DoxyCodeLine{00043\ \textcolor{keyword}{static}\ \textcolor{keyword}{const}\ uint8\_t\ MESH\_OUI\_2\ =\ 0x5B;}
+\DoxyCodeLine{00044\ }
+\DoxyCodeLine{00045\ \textcolor{keyword}{constexpr}\ uint16\_t\ PACKET\_START\_DELIMITER\ \ \ =\ 0xB502;}
+\DoxyCodeLine{00046\ \textcolor{keyword}{constexpr}\ \textcolor{keywordtype}{size\_t}\ \ \ PACKET\_HEADER\_SIZE\ \ \ \ \ \ \ =\ 48;}
+\DoxyCodeLine{00047\ \textcolor{keyword}{constexpr}\ uint16\_t\ PACKET\_END\_DELIMITER\ \ \ \ \ =\ 0x035B;}
+\DoxyCodeLine{00048\ }
+\DoxyCodeLine{00049\ \textcolor{keyword}{static}\ \textcolor{keyword}{const}\ \textcolor{keywordtype}{char}*\ PARENT\_SSID\ =\ \textcolor{stringliteral}{"{}SturdyAP"{}};}
+\DoxyCodeLine{00050\ \textcolor{keyword}{static}\ \textcolor{keyword}{const}\ \textcolor{keywordtype}{char}*\ PARENT\_PASS\ =\ \textcolor{stringliteral}{"{}SturdyAP79"{}};}
+\DoxyCodeLine{00051\ }
+\DoxyCodeLine{00052\ \textcolor{keyword}{static}\ \textcolor{keyword}{const}\ \textcolor{keywordtype}{char}*\ MY\_PASS\ =\ \textcolor{stringliteral}{"{}12345678"{}};}
+\DoxyCodeLine{00053\ \textcolor{keyword}{static}\ \textcolor{keyword}{const}\ uint8\_t\ MAX\_STA\_CONN\ =\ 1;}
+\DoxyCodeLine{00054\ \textcolor{keyword}{static}\ \textcolor{keyword}{const}\ \textcolor{keywordtype}{bool}\ ENABLE\_MASTER\_CONNECTION\ =\ \textcolor{keyword}{true};}
+\DoxyCodeLine{00055\ }
+\DoxyCodeLine{00056\ \textcolor{keyword}{struct\ }\doxymbox{\hyperlink{struct_wifi_device}{WifiDevice}}}
+\DoxyCodeLine{00057\ \{}
+\DoxyCodeLine{00058\ \ \ \ \ uint64\_t\ TimeOfConnection;}
+\DoxyCodeLine{00059\ \ \ \ \ uint64\_t\ UID;}
+\DoxyCodeLine{00060\ \ \ \ \ uint8\_t\ MacId[6];}
+\DoxyCodeLine{00061\ \ \ \ \ uint16\_t\ aid;}
+\DoxyCodeLine{00062\ \ \ \ \ \textcolor{keywordtype}{char}\ IpAddress[16];}
+\DoxyCodeLine{00063\ \ \ \ \ uint8\_t\ HopCount;}
+\DoxyCodeLine{00064\ \ \ \ \ uint8\_t\ ChildrenCount;}
+\DoxyCodeLine{00065\ \ \ \ \ uint64\_t\ LastHeartbeatUs;}
+\DoxyCodeLine{00066\ \};}
+\DoxyCodeLine{00067\ }
+\DoxyCodeLine{00068\ }
+\DoxyCodeLine{00069\ \textcolor{preprocessor}{\#pragma\ pack(push,\ 1)}}
+\DoxyCodeLine{00070\ \textcolor{keyword}{struct\ }\doxymbox{\hyperlink{struct_packet_header}{PacketHeader}}}
+\DoxyCodeLine{00071\ \{}
+\DoxyCodeLine{00072\ \ \ \ \ uint16\_t\ startDelimiter;\ \ \ \ \ \ \textcolor{comment}{//\ 0x02B5}}
+\DoxyCodeLine{00073\ \ \ \ \ uint16\_t\ payloadSize;\ \ \ \ \ \ \ \ \ \textcolor{comment}{//\ bytes\ after\ header}}
+\DoxyCodeLine{00074\ \ \ \ \ uint32\_t\ reserved0;}
+\DoxyCodeLine{00075\ }
+\DoxyCodeLine{00076\ \ \ \ \ uint64\_t\ slaveUid;}
+\DoxyCodeLine{00077\ \ \ \ \ uint64\_t\ destinationUid;}
+\DoxyCodeLine{00078\ \ \ \ \ uint64\_t\ senderTimestampUs;}
+\DoxyCodeLine{00079\ }
+\DoxyCodeLine{00080\ \ \ \ \ uint32\_t\ prevCycleTimeUs;}
+\DoxyCodeLine{00081\ }
+\DoxyCodeLine{00082\ \ \ \ \ uint8\_t\ \ chainedSlaveCount;}
+\DoxyCodeLine{00083\ \ \ \ \ uint8\_t\ \ PacketType;}
+\DoxyCodeLine{00084\ \ \ \ \ uint8\_t\ \ flags;}
+\DoxyCodeLine{00085\ \ \ \ \ uint8\_t\ \ headerVersion;}
+\DoxyCodeLine{00086\ \ \ \ \ uint8\_t\ \ networkId;}
+\DoxyCodeLine{00087\ \ \ \ \ uint8\_t\ \ chainDistance;}
+\DoxyCodeLine{00088\ \ \ \ \ uint8\_t\ \ ttl;}
+\DoxyCodeLine{00089\ \ \ \ \ uint8\_t\ \ ForwardingMode;}
+\DoxyCodeLine{00090\ }
+\DoxyCodeLine{00091\ \ \ \ \ uint32\_t\ crc32;}
+\DoxyCodeLine{00092\ \};}
+\DoxyCodeLine{00093\ \textcolor{preprocessor}{\#pragma\ pack(pop)}}
+\DoxyCodeLine{00094\ \textcolor{keyword}{static\_assert}(\textcolor{keyword}{sizeof}(\doxymbox{\hyperlink{struct_packet_header}{PacketHeader}})\ ==\ 48,\ \textcolor{stringliteral}{"{}PacketHeader\ must\ be\ 48\ bytes"{}});}
+\DoxyCodeLine{00095\ }
+\DoxyCodeLine{00096\ }
+\DoxyCodeLine{00097\ \textcolor{keyword}{struct\ }\doxymbox{\hyperlink{struct_udp_packet}{UdpPacket}}}
+\DoxyCodeLine{00098\ \{}
+\DoxyCodeLine{00099\ \ \ \ \ \textcolor{keywordtype}{char}\ SenderIp[16];}
+\DoxyCodeLine{00100\ \ \ \ \ uint64\_t\ SenderUID;}
+\DoxyCodeLine{00101\ \ \ \ \ uint16\_t\ SenderPort;}
+\DoxyCodeLine{00102\ \ \ \ \ uint64\_t\ ArrivalTime;}
+\DoxyCodeLine{00103\ \ \ \ \ \textcolor{keywordtype}{bool}\ IsFromParent;}
+\DoxyCodeLine{00104\ \ \ \ \ \textcolor{keywordtype}{size\_t}\ PacketLength;}
+\DoxyCodeLine{00105\ \ \ \ \ uint8\_t\ Data[UDP\_PACKET\_SIZE];}
+\DoxyCodeLine{00106\ \};}
+\DoxyCodeLine{00107\ }
+\DoxyCodeLine{00108\ \textcolor{keyword}{struct\ }\doxymbox{\hyperlink{struct_mesh_metadata}{MeshMetadata}}}
+\DoxyCodeLine{00109\ \{}
+\DoxyCodeLine{00110\ \ \ \ \ uint8\_t\ MacId[6];}
+\DoxyCodeLine{00111\ \ \ \ \ uint8\_t\ HopCount;}
+\DoxyCodeLine{00112\ \ \ \ \ uint8\_t\ ChildCount;}
+\DoxyCodeLine{00113\ \ \ \ \ \textcolor{keywordtype}{bool}\ IsValid;}
+\DoxyCodeLine{00114\ \};}
+\DoxyCodeLine{00115\ }
+\DoxyCodeLine{00116\ }
+\DoxyCodeLine{00117\ }
+\DoxyCodeLine{00118\ \textcolor{keyword}{class\ }Station\ \textcolor{comment}{//\ Singleton}}
+\DoxyCodeLine{00119\ \{}
+\DoxyCodeLine{00120\ \ \ \ \ \textcolor{keyword}{private}:}
+\DoxyCodeLine{00121\ }
+\DoxyCodeLine{00122\ \ \ \ \ \ \ \ \ \textcolor{comment}{//\ Factory\ creation\ only}}
+\DoxyCodeLine{00123\ \ \ \ \ \ \ \ \ \textcolor{keyword}{friend}\ \textcolor{keyword}{class\ }WifiFactory;}
+\DoxyCodeLine{00124\ \ \ \ \ \ \ \ \ Station(uint8\_t\ CoreToUse,\ uint16\_t\ UdpPort,\ \textcolor{keywordtype}{bool}\ EnableRuntimeLogging);}
+\DoxyCodeLine{00125\ \ \ \ \ \ \ \ \ \string~Station();}
+\DoxyCodeLine{00126\ }
+\DoxyCodeLine{00127\ }
+\DoxyCodeLine{00128\ \ \ \ \ \ \ \ \ \textcolor{comment}{//\ Event\ handlers}}
+\DoxyCodeLine{00129\ \ \ \ \ \ \ \ \ \textcolor{keyword}{static}\ \textcolor{keywordtype}{void}\ WifiEventHandler(\textcolor{keywordtype}{void}*\ arg,\ esp\_event\_base\_t\ event\_base,}
+\DoxyCodeLine{00130\ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ int32\_t\ event\_id,\ \textcolor{keywordtype}{void}*\ event\_data);}
+\DoxyCodeLine{00131\ \ \ \ \ \ \ \ \ }
+\DoxyCodeLine{00132\ \ \ \ \ \ \ \ \ \textcolor{keyword}{static}\ \textcolor{keywordtype}{void}\ IpEventHandler(\textcolor{keywordtype}{void}*\ arg,\ esp\_event\_base\_t\ event\_base,}
+\DoxyCodeLine{00133\ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ int32\_t\ event\_id,\ \textcolor{keywordtype}{void}*\ event\_data);}
+\DoxyCodeLine{00134\ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ }
+\DoxyCodeLine{00135\ \ \ \ \ \ \ \ \ \textcolor{keyword}{static}\ \textcolor{keywordtype}{void}\ UdpRxTask(\textcolor{keywordtype}{void}*\ pvParameters);\ }
+\DoxyCodeLine{00136\ \ \ \ \ \ \ \ \ TaskHandle\_t\ UdpRxTaskHandle\ =\ \textcolor{keyword}{nullptr};}
+\DoxyCodeLine{00137\ }
+\DoxyCodeLine{00138\ }
+\DoxyCodeLine{00139\ \ \ \ \ \ \ \ \ \textcolor{comment}{//\ Wifi\ Configuration}}
+\DoxyCodeLine{00140\ \ \ \ \ \ \ \ \ esp\_err\_t\ Error;}
+\DoxyCodeLine{00141\ \ \ \ \ \ \ \ \ wifi\_init\_config\_t\ WifiDriverConfig\ =\ WIFI\_INIT\_CONFIG\_DEFAULT();}
+\DoxyCodeLine{00142\ \ \ \ \ \ \ \ \ wifi\_country\_t\ WifiCountry\ =\ \{\};}
+\DoxyCodeLine{00143\ \ \ \ \ \ \ \ \ wifi\_config\_t\ WifiServiceConfig\ =\ \{\};}
+\DoxyCodeLine{00144\ \ \ \ \ \ \ \ \ esp\_netif\_t*\ StaNetif\ =\ \textcolor{keyword}{nullptr};}
+\DoxyCodeLine{00145\ \ \ \ \ \ \ \ \ }
+\DoxyCodeLine{00146\ }
+\DoxyCodeLine{00147\ \ \ \ \ \ \ \ \ \textcolor{comment}{//\ Critical\ section\ for\ data\ access}}
+\DoxyCodeLine{00148\ \ \ \ \ \ \ \ \ portMUX\_TYPE\ CriticalSection\ =\ portMUX\_INITIALIZER\_UNLOCKED;}
+\DoxyCodeLine{00149\ }
+\DoxyCodeLine{00150\ }
+\DoxyCodeLine{00151\ \ \ \ \ \ \ \ \ \textcolor{comment}{//\ UDP\ Buffer}}
+\DoxyCodeLine{00152\ \ \ \ \ \ \ \ \ uint8\_t\ RxData[1024]\{\};}
+\DoxyCodeLine{00153\ \ \ \ \ \ \ \ \ uint16\_t\ LastPositionWritten\ =\ 0;}
+\DoxyCodeLine{00154\ }
+\DoxyCodeLine{00155\ \ \ \ \ \ \ \ }
+\DoxyCodeLine{00156\ \ \ \ \ \ \ \ \ \textcolor{comment}{//\ UDP\ helper\ functions}}
+\DoxyCodeLine{00157\ \ \ \ \ \ \ \ \ \textcolor{keywordtype}{bool}\ StartUdp(uint16\_t\ Port,\ uint8\_t\ Core);}
+\DoxyCodeLine{00158\ \ \ \ \ \ \ \ \ \textcolor{keywordtype}{bool}\ StopUdp();}
+\DoxyCodeLine{00159\ }
+\DoxyCodeLine{00160\ }
+\DoxyCodeLine{00161\ \ \ \ \ \ \ \ \ \textcolor{comment}{//\ Internal\ data}}
+\DoxyCodeLine{00162\ \ \ \ \ \ \ \ \ uint8\_t\ \ UdpCore\ =\ 0;}
+\DoxyCodeLine{00163\ \ \ \ \ \ \ \ \ uint16\_t\ UdpPort\ =\ 0;}
+\DoxyCodeLine{00164\ \ \ \ \ \ \ \ \ uint8\_t\ SetupState\ =\ 0;}
+\DoxyCodeLine{00165\ \ \ \ \ \ \ \ \ \textcolor{keywordtype}{bool}\ SystemInitialized\ =\ \textcolor{keyword}{false};}
+\DoxyCodeLine{00166\ \ \ \ \ \ \ \ \ \textcolor{keywordtype}{bool}\ UdpStarted\ =\ \textcolor{keyword}{false};}
+\DoxyCodeLine{00167\ \ \ \ \ \ \ \ \ \textcolor{keywordtype}{bool}\ IsConnected\ =\ \textcolor{keyword}{false};}
+\DoxyCodeLine{00168\ \ \ \ \ \ \ \ \ \textcolor{keywordtype}{bool}\ ApIpAcquired\ =\ \textcolor{keyword}{false};}
+\DoxyCodeLine{00169\ \ \ \ \ \ \ \ \ \textcolor{keywordtype}{bool}\ IsRuntimeLoggingEnabled\ =\ \textcolor{keyword}{false};}
+\DoxyCodeLine{00170\ \ \ \ \ \ \ \ \ \textcolor{keywordtype}{int}\ UdpSocket\ =\ -\/1;}
+\DoxyCodeLine{00171\ \ \ \ \ \ \ \ \ \textcolor{keywordtype}{char}\ MyIpAddress[16];}
+\DoxyCodeLine{00172\ \ \ \ \ \ \ \ \ \doxymbox{\hyperlink{struct_wifi_device}{WifiDevice}}\ ApWifiDevice\{\};\ \ }
+\DoxyCodeLine{00173\ }
+\DoxyCodeLine{00174\ }
+\DoxyCodeLine{00175\ }
+\DoxyCodeLine{00176\ \ \ \ \ \textcolor{keyword}{public}:}
+\DoxyCodeLine{00177\ }
+\DoxyCodeLine{00178\ \ \ \ \ \ \ \ \ \textcolor{keywordtype}{bool}\ SetupWifi();\ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ }
+\DoxyCodeLine{00179\ \ \ \ \ \ \ \ \ \textcolor{keywordtype}{size\_t}\ SendUdpPacket(\textcolor{keyword}{const}\ \textcolor{keywordtype}{char}*\ DataToSend,\ \textcolor{keyword}{const}\ \textcolor{keywordtype}{char}*\ DestinationIP,\ uint16\_t\ DestinationPort);\ \ }
+\DoxyCodeLine{00180\ \ \ \ \ \ \ \ \ \textcolor{keywordtype}{size\_t}\ GetDataFromBuffer(\textcolor{keywordtype}{bool}*\ IsDataAvailable,\ uint8\_t*\ DataToReceive);}
+\DoxyCodeLine{00181\ }
+\DoxyCodeLine{00182\ \ \ \ \ \ \ \ \ \textcolor{keywordtype}{bool}\ IsConnectedToHost()\textcolor{keyword}{\ const\ }\{\ \textcolor{keywordflow}{return}\ IsConnected\ \&\&\ ApIpAcquired;\ \}}
+\DoxyCodeLine{00183\ \ \ \ \ \ \ \ \ \textcolor{keyword}{const}\ \textcolor{keywordtype}{char}*\ GetGatewayIpAddress()\textcolor{keyword}{\ const\ }\{\ \textcolor{keywordflow}{return}\ ApWifiDevice.IpAddress;\ \}}
+\DoxyCodeLine{00184\ \ \ \ \ \ \ \ \ \textcolor{keyword}{const}\ \textcolor{keywordtype}{char}*\ GetMyIpAddress()\textcolor{keyword}{\ const\ }\{\ \textcolor{keywordflow}{return}\ MyIpAddress;\ \}}
+\DoxyCodeLine{00185\ \ \ \ \ \ \ \ \ \textcolor{keywordtype}{void}\ SetRuntimeLogging(\textcolor{keywordtype}{bool}\ EnableRuntimeLogging)\ \{\ IsRuntimeLoggingEnabled\ =\ EnableRuntimeLogging;\ \}}
+\DoxyCodeLine{00186\ \};}
+\DoxyCodeLine{00187\ }
+\DoxyCodeLine{00188\ }
+\DoxyCodeLine{00189\ }
+\DoxyCodeLine{00190\ \textcolor{keyword}{class\ }\doxymbox{\hyperlink{class_access_point_station_afdd8f830a20094a3fd799e3ce1b41728}{AccessPointStation}}\ \textcolor{comment}{//\ Singleton}}
+\DoxyCodeLine{00191\ \{}
+\DoxyCodeLine{00192\ \ \ \ \ \textcolor{keyword}{private}:}
+\DoxyCodeLine{00193\ }
+\DoxyCodeLine{00194\ \ \ \ \ \ \ \ \ \textcolor{comment}{//\ Factory\ creation\ only}}
+\DoxyCodeLine{00195\ \ \ \ \ \ \ \ \ \textcolor{keyword}{friend}\ \textcolor{keyword}{class\ }WifiFactory;}
+\DoxyCodeLine{00196\ }
+\DoxyCodeLine{00197\ }
+\DoxyCodeLine{00198\ }
+\DoxyCodeLine{00206\ \ \ \ \ \ \ \ \ \doxymbox{\hyperlink{class_access_point_station_afdd8f830a20094a3fd799e3ce1b41728}{AccessPointStation}}(uint8\_t\ CoreToUse,\ uint16\_t\ UdpPort,\ \textcolor{keywordtype}{bool}\ EnableRuntimeLogging);}
+\DoxyCodeLine{00207\ }
+\DoxyCodeLine{00208\ }
+\DoxyCodeLine{00209\ }
+\DoxyCodeLine{00214\ \ \ \ \ \ \ \ \ \doxymbox{\hyperlink{class_access_point_station_a32cb51239b3985f573305b62011648bc}{\string~AccessPointStation}}();}
+\DoxyCodeLine{00215\ }
+\DoxyCodeLine{00216\ }
+\DoxyCodeLine{00217\ }
+\DoxyCodeLine{00223\ \ \ \ \ \ \ \ \ \textcolor{keyword}{static}\ \textcolor{keywordtype}{void}\ \doxymbox{\hyperlink{class_access_point_station_a84fe60115a97f7cd358f364287ffd62a}{ApWifiEventHandler}}(\textcolor{keywordtype}{void}*\ arg,\ esp\_event\_base\_t\ event\_base,\ int32\_t\ event\_id,\ \textcolor{keywordtype}{void}*\ event\_data);}
+\DoxyCodeLine{00224\ }
+\DoxyCodeLine{00225\ }
+\DoxyCodeLine{00226\ }
+\DoxyCodeLine{00232\ \ \ \ \ \ \ \ \ \textcolor{keyword}{static}\ \textcolor{keywordtype}{void}\ \doxymbox{\hyperlink{class_access_point_station_afa5f8336c8f9b9f93af25e68fe94da41}{StaWifiEventHandler}}(\textcolor{keywordtype}{void}*\ arg,\ esp\_event\_base\_t\ event\_base,\ int32\_t\ event\_id,\ \textcolor{keywordtype}{void}*\ event\_data);\ \ \ \ \ \ \ }
+\DoxyCodeLine{00233\ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ }
+\DoxyCodeLine{00234\ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ }
+\DoxyCodeLine{00235\ }
+\DoxyCodeLine{00241\ \ \ \ \ \ \ \ \ \textcolor{keyword}{static}\ \textcolor{keywordtype}{void}\ \doxymbox{\hyperlink{class_access_point_station_abad8cab118c024489abcaad9cfb9a55f}{IpEventHandler}}(\textcolor{keywordtype}{void}*\ arg,\ esp\_event\_base\_t\ event\_base,int32\_t\ event\_id,\ \textcolor{keywordtype}{void}*\ event\_data);}
+\DoxyCodeLine{00242\ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ }
+\DoxyCodeLine{00243\ }
+\DoxyCodeLine{00244\ }
+\DoxyCodeLine{00251\ \ \ \ \ \ \ \ \ \textcolor{keyword}{static}\ \textcolor{keywordtype}{void}\ \doxymbox{\hyperlink{class_access_point_station_ac73a700f99ce8df0d9d67e67df80fca3}{ReceiveTask}}(\textcolor{keywordtype}{void}*\ pvParameters);}
+\DoxyCodeLine{00252\ \ \ \ \ \ \ \ \ TaskHandle\_t\ ReceiveTaskHandle\ =\ \textcolor{keyword}{nullptr};}
+\DoxyCodeLine{00253\ }
+\DoxyCodeLine{00254\ }
+\DoxyCodeLine{00255\ }
+\DoxyCodeLine{00262\ \ \ \ \ \ \ \ \ \textcolor{keyword}{static}\ \textcolor{keywordtype}{void}\ \doxymbox{\hyperlink{class_access_point_station_a34f4669718b7aab9b3d4e0591bfdb695}{TransmitTask}}(\textcolor{keywordtype}{void}*\ pvParameters);}
+\DoxyCodeLine{00263\ \ \ \ \ \ \ \ \ TaskHandle\_t\ TransmitTaskHandle\ =\ \textcolor{keyword}{nullptr};}
+\DoxyCodeLine{00264\ }
+\DoxyCodeLine{00265\ }
+\DoxyCodeLine{00266\ }
+\DoxyCodeLine{00273\ \ \ \ \ \ \ \ \ \textcolor{keyword}{static}\ \textcolor{keywordtype}{void}\ \doxymbox{\hyperlink{class_access_point_station_afd383122d78c5dd1bae61252b87a15fd}{MeshTask}}(\textcolor{keywordtype}{void}*\ pvParameters);\ }
+\DoxyCodeLine{00274\ \ \ \ \ \ \ \ \ TaskHandle\_t\ MeshTaskHandle\ =\ \textcolor{keyword}{nullptr};}
+\DoxyCodeLine{00275\ }
+\DoxyCodeLine{00276\ }
+\DoxyCodeLine{00277\ }
+\DoxyCodeLine{00287\ \ \ \ \ \ \ \ \ \textcolor{keyword}{static}\ \textcolor{keywordtype}{void}\ \doxymbox{\hyperlink{class_access_point_station_acf73657f2c524a40e9fab8d48a787112}{WifiVendorIeCb}}(\textcolor{keywordtype}{void}\ *ctx,\ wifi\_vendor\_ie\_type\_t\ type,\ \textcolor{keyword}{const}\ uint8\_t\ sa[6],\ \textcolor{keyword}{const}\ vendor\_ie\_data\_t\ *vnd\_ie,\ \textcolor{keywordtype}{int}\ rssi);}
+\DoxyCodeLine{00288\ }
+\DoxyCodeLine{00289\ }
+\DoxyCodeLine{00290\ }
+\DoxyCodeLine{00295\ \ \ \ \ \ \ \ \ \textcolor{keywordtype}{bool}\ \doxymbox{\hyperlink{class_access_point_station_a1c7fc7822b0fcd0b268a84a85afbb424}{InitiateMeshScan}}();}
+\DoxyCodeLine{00296\ }
+\DoxyCodeLine{00297\ }
+\DoxyCodeLine{00298\ }
+\DoxyCodeLine{00305\ \ \ \ \ \ \ \ \ \textcolor{keywordtype}{void}\ \doxymbox{\hyperlink{class_access_point_station_ac12a0c360082f04637b9ad1745153fe2}{UpdateBeaconMetadata}}(uint8\_t\ Hop,\ uint8\_t\ Children);}
+\DoxyCodeLine{00306\ }
+\DoxyCodeLine{00307\ }
+\DoxyCodeLine{00308\ }
+\DoxyCodeLine{00313\ \ \ \ \ \ \ \ \ \textcolor{keywordtype}{void}\ \doxymbox{\hyperlink{class_access_point_station_aba9714d767bfecc6fb7e7a7d62223fab}{ParseScanResults}}();}
+\DoxyCodeLine{00314\ }
+\DoxyCodeLine{00315\ }
+\DoxyCodeLine{00316\ }
+\DoxyCodeLine{00321\ \ \ \ \ \ \ \ \ \textcolor{keywordtype}{void}\ \doxymbox{\hyperlink{class_access_point_station_ae9cc7b74759d8d06cc4de2c06d0c418a}{ConnectToBestAp}}();}
+\DoxyCodeLine{00322\ }
+\DoxyCodeLine{00323\ }
+\DoxyCodeLine{00324\ }
+\DoxyCodeLine{00334\ \ \ \ \ \ \ \ \ \textcolor{keywordtype}{size\_t}\ \doxymbox{\hyperlink{class_access_point_station_a3b38f4014cc49d726bb29b3881d86c6e}{CreatePacket}}(\textcolor{keyword}{const}\ uint8\_t*\ DataToInclude,}
+\DoxyCodeLine{00335\ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \textcolor{keywordtype}{size\_t}\ DataLength,}
+\DoxyCodeLine{00336\ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ uint8\_t\ PacketType,}
+\DoxyCodeLine{00337\ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ uint8\_t*\ PacketOut,}
+\DoxyCodeLine{00338\ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \textcolor{keywordtype}{size\_t}\ OutputBufferSize);}
+\DoxyCodeLine{00339\ }
+\DoxyCodeLine{00340\ }
+\DoxyCodeLine{00341\ }
+\DoxyCodeLine{00348\ \ \ \ \ \ \ \ \ \textcolor{keywordtype}{void}\ \doxymbox{\hyperlink{class_access_point_station_aec4d3af2d63049323fe8e70aa00a8531}{ProcessData}}(uint8\_t*\ data,\ \textcolor{keywordtype}{int}\ length);}
+\DoxyCodeLine{00349\ }
+\DoxyCodeLine{00350\ }
+\DoxyCodeLine{00351\ }
+\DoxyCodeLine{00360\ \ \ \ \ \ \ \ \ \textcolor{keywordtype}{size\_t}\ \doxymbox{\hyperlink{class_access_point_station_a21c0aa25b94c957b6801ba763ed50231}{PrepareTxPacket}}(\textcolor{keyword}{const}\ uint8\_t*\ rxData,\ \textcolor{keywordtype}{int}\ rxLength,\ uint8\_t*\ txBuffer,\ \textcolor{keywordtype}{int}\&\ txLength);}
+\DoxyCodeLine{00361\ \ \ \ \ \ \ \ \ }
+\DoxyCodeLine{00362\ }
+\DoxyCodeLine{00363\ }
+\DoxyCodeLine{00372\ \ \ \ \ \ \ \ \ \textcolor{keywordtype}{bool}\ \doxymbox{\hyperlink{class_access_point_station_a864e81056032273a802da668fad3b213}{DetermineDestinationAddress}}(\textcolor{keyword}{const}\ sockaddr\_in\&\ SourceAddress,\ \textcolor{keyword}{const}\ uint8\_t*\ Data,\ \textcolor{keywordtype}{int}\ DataLength,\ sockaddr\_in\&\ DestinationAddress);}
+\DoxyCodeLine{00373\ }
+\DoxyCodeLine{00374\ }
+\DoxyCodeLine{00375\ }
+\DoxyCodeLine{00382\ \ \ \ \ \ \ \ \ \textcolor{keywordtype}{bool}\ \doxymbox{\hyperlink{class_access_point_station_a7519ef6dcc9874460c9958002a64c3f0}{StartUdp}}(uint16\_t\ Port,\ uint8\_t\ Core);}
+\DoxyCodeLine{00383\ }
+\DoxyCodeLine{00384\ }
+\DoxyCodeLine{00385\ }
+\DoxyCodeLine{00390\ \ \ \ \ \ \ \ \ \textcolor{keywordtype}{bool}\ \doxymbox{\hyperlink{class_access_point_station_a5fce0fa1885c51e596e7987a0ee00e43}{StopUdp}}();}
+\DoxyCodeLine{00391\ }
+\DoxyCodeLine{00392\ }
+\DoxyCodeLine{00393\ }
+\DoxyCodeLine{00394\ \ \ \ \ \ \ \ \ \textcolor{comment}{//\ Wifi\ Configuration}}
+\DoxyCodeLine{00395\ \ \ \ \ \ \ \ \ esp\_err\_t\ Error;}
+\DoxyCodeLine{00396\ \ \ \ \ \ \ \ \ wifi\_init\_config\_t\ WifiDriverConfig\ =\ WIFI\_INIT\_CONFIG\_DEFAULT();}
+\DoxyCodeLine{00397\ \ \ \ \ \ \ \ \ wifi\_country\_t\ WifiCountry\ =\ \{\};}
+\DoxyCodeLine{00398\ \ \ \ \ \ \ \ \ wifi\_config\_t\ ApWifiServiceConfig\ =\ \{\};}
+\DoxyCodeLine{00399\ \ \ \ \ \ \ \ \ wifi\_config\_t\ StaWifiServiceConfig\ =\ \{\};}
+\DoxyCodeLine{00400\ \ \ \ \ \ \ \ \ esp\_netif\_t*\ ApNetif\ =\ \textcolor{keyword}{nullptr};}
+\DoxyCodeLine{00401\ \ \ \ \ \ \ \ \ esp\_netif\_t*\ StaNetif\ =\ \textcolor{keyword}{nullptr};}
+\DoxyCodeLine{00402\ }
+\DoxyCodeLine{00403\ }
+\DoxyCodeLine{00404\ }
+\DoxyCodeLine{00405\ }
+\DoxyCodeLine{00406\ }
+\DoxyCodeLine{00407\ }
+\DoxyCodeLine{00408\ }
+\DoxyCodeLine{00409\ }
+\DoxyCodeLine{00410\ \ \ \ \ \ \ \ \ \doxymbox{\hyperlink{struct_mesh_metadata}{MeshMetadata}}\ CallbackIeData[20]\{\};}
+\DoxyCodeLine{00411\ \ \ \ \ \ \ \ \ uint8\_t\ MyHopCount\ =\ 255;\ \textcolor{comment}{//\ Default\ to\ 'Infinity'\ until\ connected}}
+\DoxyCodeLine{00412\ }
+\DoxyCodeLine{00413\ \ \ \ \ \ \ \ \ wifi\_ap\_record\_t\ CandidateWifiRecord\{\};}
+\DoxyCodeLine{00414\ \ \ \ \ \ \ \ \ wifi\_ap\_record\_t\ ParentWifiRecord\{\};}
+\DoxyCodeLine{00415\ \ \ \ \ \ \ \ \ \textcolor{keywordtype}{bool}\ IsCandidateValid\ =\ \textcolor{keyword}{false};}
+\DoxyCodeLine{00416\ \ \ \ \ \ \ \ \ \textcolor{keywordtype}{bool}\ IsCandidateMaster\ =\ \textcolor{keyword}{false};}
+\DoxyCodeLine{00417\ \ \ \ \ \ \ \ \ \textcolor{keywordtype}{bool}\ RoamRequested\ =\ \textcolor{keyword}{false};}
+\DoxyCodeLine{00418\ \ \ \ \ \ \ \ \ uint8\_t\ CandidateHop\ =\ 0;}
+\DoxyCodeLine{00419\ \ \ \ \ \ \ \ \ uint8\_t\ CandidateChildren\ =\ 0;}
+\DoxyCodeLine{00420\ \ \ \ \ \ \ \ \ \textcolor{keywordtype}{bool}\ IsMasterFound\ =\ \textcolor{keyword}{false};}
+\DoxyCodeLine{00421\ \ \ \ \ \ \ \ \ \textcolor{keywordtype}{bool}\ IsScanning\ =\ \textcolor{keyword}{false};}
+\DoxyCodeLine{00422\ \ \ \ \ \ \ \ \ \textcolor{keywordtype}{bool}\ IsConnecting\ =\ \textcolor{keyword}{false};}
+\DoxyCodeLine{00423\ \ \ \ \ \ \ \ \ }
+\DoxyCodeLine{00424\ \ \ \ \ \ \ \ \ }
+\DoxyCodeLine{00425\ \ \ \ \ \ \ \ \ }
+\DoxyCodeLine{00426\ }
+\DoxyCodeLine{00427\ \ \ \ \ \ \ \ \ \textcolor{keyword}{static}\ \textcolor{keyword}{constexpr}\ \textcolor{keywordtype}{int}\ MaxPayload\ =\ 1024;\ \ \ \ \ \ \textcolor{comment}{//\ pick\ your\ limit}}
+\DoxyCodeLine{00428\ \ \ \ \ \ \ \ \ uint8\_t\ LatestPayload[MaxPayload]\{\};}
+\DoxyCodeLine{00429\ \ \ \ \ \ \ \ \ uint16\_t\ LatestPayloadSize\ =\ 0;}
+\DoxyCodeLine{00430\ \ \ \ \ \ \ \ \ uint8\_t\ \ LatestPayloadType\ =\ 0;}
+\DoxyCodeLine{00431\ \ \ \ \ \ \ \ \ int64\_t\ \ LatestPayloadUs\ =\ 0;}
+\DoxyCodeLine{00432\ \ \ \ \ \ \ \ \ \textcolor{keyword}{volatile}\ uint32\_t\ PayloadSeq\ =\ 0;\ \ \ \ \ \ \ \ \ \ \ \ \textcolor{comment}{//\ for\ race-\/safe\ getter\ later}}
+\DoxyCodeLine{00433\ \ \ \ \ \ \ \ \ uint8\_t\ PreparedTxPacket[MaxPayload]\{\};}
+\DoxyCodeLine{00434\ \ \ \ \ \ \ \ \ \textcolor{keywordtype}{int}\ PreparedTxLength\ =\ 0;}
+\DoxyCodeLine{00435\ \ \ \ \ \ \ \ \ portMUX\_TYPE\ TxCriticalSection\ =\ portMUX\_INITIALIZER\_UNLOCKED;}
+\DoxyCodeLine{00436\ }
+\DoxyCodeLine{00437\ }
+\DoxyCodeLine{00438\ }
+\DoxyCodeLine{00439\ }
+\DoxyCodeLine{00440\ }
+\DoxyCodeLine{00441\ }
+\DoxyCodeLine{00442\ }
+\DoxyCodeLine{00443\ }
+\DoxyCodeLine{00444\ }
+\DoxyCodeLine{00445\ }
+\DoxyCodeLine{00446\ }
+\DoxyCodeLine{00447\ \ \ \ \ \ \ \ \ \textcolor{comment}{//\ Critical\ section\ for\ data\ access}}
+\DoxyCodeLine{00448\ \ \ \ \ \ \ \ \ portMUX\_TYPE\ CriticalSection\ =\ portMUX\_INITIALIZER\_UNLOCKED;}
+\DoxyCodeLine{00449\ }
+\DoxyCodeLine{00450\ }
+\DoxyCodeLine{00451\ \ \ \ \ \ \ \ \ \textcolor{comment}{//\ UDP\ Buffer}}
+\DoxyCodeLine{00452\ \ \ \ \ \ \ \ \ \doxymbox{\hyperlink{struct_udp_packet}{UdpPacket}}\ PacketBuffer[UDP\_SLOTS];}
+\DoxyCodeLine{00453\ \ \ \ \ \ \ \ \ \textcolor{keyword}{volatile}\ \textcolor{keywordtype}{size\_t}\ Head\ =\ 0;}
+\DoxyCodeLine{00454\ \ \ \ \ \ \ \ \ \textcolor{keyword}{volatile}\ \textcolor{keywordtype}{size\_t}\ Tail\ =\ 0;}
+\DoxyCodeLine{00455\ }
+\DoxyCodeLine{00456\ \ \ \ \ \ \ \ }
+\DoxyCodeLine{00457\ \ \ \ \ \ \ \ \ \textcolor{comment}{//\ UDP\ helper\ functions}}
+\DoxyCodeLine{00458\ \ \ \ \ \ \ \ \ }
+\DoxyCodeLine{00459\ }
+\DoxyCodeLine{00460\ }
+\DoxyCodeLine{00461\ \ \ \ \ \ \ \ \ \textcolor{comment}{//\ Internal\ data}}
+\DoxyCodeLine{00462\ \ \ \ \ \ \ \ \ uint8\_t\ \ UdpCore\ =\ 0;}
+\DoxyCodeLine{00463\ \ \ \ \ \ \ \ \ uint16\_t\ UdpPort\ =\ 0;}
+\DoxyCodeLine{00464\ \ \ \ \ \ \ \ \ uint8\_t\ SetupState\ =\ 0;}
+\DoxyCodeLine{00465\ \ \ \ \ \ \ \ \ \textcolor{keywordtype}{bool}\ SystemInitialized\ =\ \textcolor{keyword}{false};}
+\DoxyCodeLine{00466\ \ \ \ \ \ \ \ \ \textcolor{keywordtype}{bool}\ UdpStarted\ =\ \textcolor{keyword}{false};}
+\DoxyCodeLine{00467\ \ \ \ \ \ \ \ \ \textcolor{keywordtype}{bool}\ IsConnectedToParent\ =\ \textcolor{keyword}{false};}
+\DoxyCodeLine{00468\ \ \ \ \ \ \ \ \ \textcolor{keywordtype}{bool}\ ApIpAcquired\ =\ \textcolor{keyword}{false};}
+\DoxyCodeLine{00469\ \ \ \ \ \ \ \ \ \textcolor{keywordtype}{bool}\ IsRuntimeLoggingEnabled\ =\ \textcolor{keyword}{false};}
+\DoxyCodeLine{00470\ \ \ \ \ \ \ \ \ \textcolor{keywordtype}{int}\ UdpSocket\ =\ -\/1;}
+\DoxyCodeLine{00471\ \ \ \ \ \ \ \ \ \textcolor{keywordtype}{char}\ MyStaIpAddress[16];\ \textcolor{comment}{//\ IP\ given\ by\ parent}}
+\DoxyCodeLine{00472\ \ \ \ \ \ \ \ \ \textcolor{keywordtype}{char}\ MyApIpAddress[16];\ \textcolor{comment}{//\ IP\ of\ this\ AP}}
+\DoxyCodeLine{00473\ \ \ \ \ \ \ \ \ \textcolor{keyword}{volatile}\ int64\_t\ LastHeartbeatUs\ =\ 0;}
+\DoxyCodeLine{00474\ \ \ \ \ \ \ \ \ \doxymbox{\hyperlink{struct_wifi_device}{WifiDevice}}\ ParentDevice\{\};\ \ }
+\DoxyCodeLine{00475\ \ \ \ \ \ \ \ \ std::vector<WifiDevice>\ ChildDevices\{\};}
+\DoxyCodeLine{00476\ }
+\DoxyCodeLine{00477\ }
+\DoxyCodeLine{00478\ }
+\DoxyCodeLine{00479\ \ \ \ \ \textcolor{keyword}{public}:}
+\DoxyCodeLine{00480\ }
+\DoxyCodeLine{00485\ \ \ \ \ \ \ \ \ \textcolor{keywordtype}{bool}\ \doxymbox{\hyperlink{class_access_point_station_afebb4161ae07fc8b1bce3d3f02004955}{SetupWifi}}();\ \ \ \ \ }
+\DoxyCodeLine{00486\ \ \ \ \ \ \ \ \ }
+\DoxyCodeLine{00487\ }
+\DoxyCodeLine{00488\ \ \ \ \ \ \ \ \ }
+\DoxyCodeLine{00496\ \ \ \ \ \ \ \ \ \textcolor{keywordtype}{size\_t}\ \doxymbox{\hyperlink{class_access_point_station_ae838ad3299eb693eea392ff47557fe6b}{SendData}}(\textcolor{keyword}{const}\ uint8\_t*\ TxData,\ \textcolor{keywordtype}{int}\ TxLength,\ \textcolor{keyword}{const}\ sockaddr\_in\&\ DestinationAddress);}
+\DoxyCodeLine{00497\ }
+\DoxyCodeLine{00498\ }
+\DoxyCodeLine{00499\ }
+\DoxyCodeLine{00505\ \ \ \ \ \ \ \ \ \textcolor{keywordtype}{size\_t}\ \doxymbox{\hyperlink{class_access_point_station_a70e4ec220af0fe7d15cbf998d811742a}{GetDataFromBuffer}}(\doxymbox{\hyperlink{struct_udp_packet}{UdpPacket}}*\ DataToReceive);}
+\DoxyCodeLine{00506\ }
+\DoxyCodeLine{00507\ }
+\DoxyCodeLine{00508\ }
+\DoxyCodeLine{00513\ \ \ \ \ \ \ \ \ uint8\_t\ \doxymbox{\hyperlink{class_access_point_station_a690913885aff054d644919fa4db8edbb}{GetHopCount}}()\textcolor{keyword}{\ const\ }\{\ \textcolor{keywordflow}{return}\ MyHopCount;\ \}}
+\DoxyCodeLine{00514\ }
+\DoxyCodeLine{00515\ }
+\DoxyCodeLine{00516\ }
+\DoxyCodeLine{00521\ \ \ \ \ \ \ \ \ \textcolor{keywordtype}{bool}\ \doxymbox{\hyperlink{class_access_point_station_ab91ec5a26e6b2dd3ca2c9aa0bb1990ef}{IsConnectedToHost}}()\textcolor{keyword}{\ const\ }\{\ \textcolor{keywordflow}{return}\ IsConnectedToParent\ \&\&\ ApIpAcquired;\ \}}
+\DoxyCodeLine{00522\ \ \ \ \ \ \ \ \ }
+\DoxyCodeLine{00523\ \ \ \ \ \ \ \ \ }
+\DoxyCodeLine{00524\ \ \ \ \ \ \ \ \ }
+\DoxyCodeLine{00529\ \ \ \ \ \ \ \ \ \textcolor{keyword}{const}\ \textcolor{keywordtype}{char}*\ \doxymbox{\hyperlink{class_access_point_station_a6d0ecc155c011fd6012694dbe91fc222}{GetParentIpAddress}}()\textcolor{keyword}{\ const\ }\{\ \textcolor{keywordflow}{return}\ ParentDevice.IpAddress;\ \}}
+\DoxyCodeLine{00530\ }
+\DoxyCodeLine{00531\ }
+\DoxyCodeLine{00532\ }
+\DoxyCodeLine{00537\ \ \ \ \ \ \ \ \ \textcolor{keyword}{const}\ \textcolor{keywordtype}{char}*\ \doxymbox{\hyperlink{class_access_point_station_a4df9fb50bf007cd892382a7ee1da2268}{GetMyIpAddress}}()\textcolor{keyword}{\ const\ }\{\ \textcolor{keywordflow}{return}\ MyStaIpAddress;\ \}}
+\DoxyCodeLine{00538\ }
+\DoxyCodeLine{00539\ }
+\DoxyCodeLine{00540\ }
+\DoxyCodeLine{00545\ \ \ \ \ \ \ \ \ \textcolor{keywordtype}{size\_t}\ \doxymbox{\hyperlink{class_access_point_station_ad7b6c7115831244f1ebccc9006f9e817}{GetNumChildren}}()\textcolor{keyword}{\ const\ }\{\ \textcolor{keywordflow}{return}\ ChildDevices.size();\ \}}
+\DoxyCodeLine{00546\ }
+\DoxyCodeLine{00547\ }
+\DoxyCodeLine{00548\ }
+\DoxyCodeLine{00554\ \ \ \ \ \ \ \ \ \textcolor{keywordtype}{void}\ \doxymbox{\hyperlink{class_access_point_station_ab3fe668a269ee7af97e3c03f28572986}{SetRuntimeLogging}}(\textcolor{keywordtype}{bool}\ EnableRuntimeLogging)\ \{\ IsRuntimeLoggingEnabled\ =\ EnableRuntimeLogging;\ \}}
+\DoxyCodeLine{00555\ }
+\DoxyCodeLine{00556\ \};}
+\DoxyCodeLine{00557\ }
+\DoxyCodeLine{00558\ }
+\DoxyCodeLine{00559\ }
+\DoxyCodeLine{00560\ \textcolor{keyword}{class\ }WifiFactory}
+\DoxyCodeLine{00561\ \{}
+\DoxyCodeLine{00562\ \ \ \ \ \textcolor{keyword}{private}:}
+\DoxyCodeLine{00563\ \ \ \ \ \ \ \ \ WifiFactory()\ =\ \textcolor{keyword}{delete};}
+\DoxyCodeLine{00564\ }
+\DoxyCodeLine{00565\ \ \ \ \ \ \ \ \ \textcolor{keyword}{enum\ class}\ ActiveMode}
+\DoxyCodeLine{00566\ \ \ \ \ \ \ \ \ \{}
+\DoxyCodeLine{00567\ \ \ \ \ \ \ \ \ \ \ \ \ None,}
+\DoxyCodeLine{00568\ \ \ \ \ \ \ \ \ \ \ \ \ \doxymbox{\hyperlink{class_station}{Station}},}
+\DoxyCodeLine{00569\ \ \ \ \ \ \ \ \ \ \ \ \ AccessPoint,}
+\DoxyCodeLine{00570\ \ \ \ \ \ \ \ \ \ \ \ \ ApSta}
+\DoxyCodeLine{00571\ \ \ \ \ \ \ \ \ \};}
+\DoxyCodeLine{00572\ }
+\DoxyCodeLine{00573\ \ \ \ \ \ \ \ \ \textcolor{keyword}{static}\ ActiveMode\ CurrentMode;}
+\DoxyCodeLine{00574\ }
+\DoxyCodeLine{00575\ }
+\DoxyCodeLine{00576\ \ \ \ \ \textcolor{keyword}{public}:}
+\DoxyCodeLine{00577\ \ \ \ \ \ \ \ \ \textcolor{keyword}{static}\ \doxymbox{\hyperlink{class_station}{Station}}*\ CreateStation(uint8\_t\ CoreToUse,\ uint16\_t\ UdpPort,\ \textcolor{keywordtype}{bool}\ EnableRuntimeLogging);}
+\DoxyCodeLine{00578\ \ \ \ \ \ \ \ \ \textcolor{comment}{//\ static\ AccessPoint*\ CreateAccessPoint(uint8\_t\ CoreToUse,\ uint16\_t\ UdpPort,\ bool\ EnableRuntimeLogging);}}
+\DoxyCodeLine{00579\ \ \ \ \ \ \ \ \ \textcolor{keyword}{static}\ \doxymbox{\hyperlink{class_access_point_station}{AccessPointStation}}*\ CreateAccessPointStation(uint8\_t\ CoreToUse,\ uint16\_t\ UdpPort,\ \textcolor{keywordtype}{bool}\ EnableRuntimeLogging);}
+\DoxyCodeLine{00580\ \};}
+\DoxyCodeLine{00581\ }
+\DoxyCodeLine{00582\ }
+\DoxyCodeLine{00583\ }
+\DoxyCodeLine{00584\ \textcolor{preprocessor}{\#endif}}
+
+\end{DoxyCode}
