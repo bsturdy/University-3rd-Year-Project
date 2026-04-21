@@ -2,6 +2,7 @@
 #define TimerClass_H
 
 #include "driver/timer.h"
+#include "driver/gpio.h"
 #include "freertos/FreeRTOS.h"
 #include "freertos/task.h"
 #include "esp_log.h"
@@ -25,7 +26,7 @@ class TimerClass
         uint64_t GetWatchdogIsrCounter() const { return WatchdogISRCounter; }
         uint64_t GetWatchdogTaskCounter() const { return WatchdogTaskCounter; }
         uint64_t GetTimerFrequency() const { return 80000000.0 / Prescalar; }
-        
+
         TaskHandle_t GetCyclicTaskHandle() const { return CyclicTaskHandle; }
         TaskHandle_t GetWatchdogTaskHandle() const { return WatchdogTaskHandle; }
 
@@ -34,26 +35,38 @@ class TimerClass
         TimerClass();
         ~TimerClass();
 
-        // Helper to setup hardware timers
+        // Helper functions
         bool SetupTimer(float CycleTimeInMs, float WatchdogTime, uint16_t Prescalar);
-        bool IsSetupDone;
+        void SetupScopePins();
 
-        // Static ISRs & Tasks 
+        // Static ISRs & Tasks
         static bool IRAM_ATTR CyclicISR(void* arg);
         static bool IRAM_ATTR WatchdogISR(void* arg);
         static void CyclicTask(void *pvParameters);
         static void WatchdogTask(void *pvParameters);
 
+        // Probe helpers
+        static inline void SetCyclicProbeHigh()    { gpio_set_level(CyclicProbePin, 1); }
+        static inline void SetCyclicProbeLow()     { gpio_set_level(CyclicProbePin, 0); }
+        static inline void SetWatchdogProbeHigh()  { gpio_set_level(WatchdogProbePin, 1); }
+        static inline void SetWatchdogProbeLow()   { gpio_set_level(WatchdogProbePin, 0); }
+
+        // Probe pins - CHANGE THESE IF NEEDED
+        static constexpr gpio_num_t CyclicProbePin   = GPIO_NUM_4;
+        static constexpr gpio_num_t WatchdogProbePin = GPIO_NUM_5;
+
         // Instance Variables
         static const int CyclicTaskStackSize = 4096;
         StackType_t CyclicTaskStack[CyclicTaskStackSize];
         StaticTask_t CyclicTaskTCB;
-        
+
         static const int WatchdogTaskStackSize = 1024;
         StackType_t WatchdogTaskStack[WatchdogTaskStackSize];
         StaticTask_t WatchdogTaskTCB;
 
         volatile bool AreTimersInitated = false;
+        volatile bool ScopePinsInitialised = false;
+
         volatile uint64_t CyclicIsrCounter = 0;
         volatile uint64_t CyclicTaskCounter = 0;
         volatile uint64_t WatchdogISRCounter = 0;
@@ -61,21 +74,18 @@ class TimerClass
 
         TaskHandle_t CyclicTaskHandle = NULL;
         TaskHandle_t WatchdogTaskHandle = NULL;
-        
-        // Notification objects
-        BaseType_t xHigherPriorityTaskWokenFalse = pdFALSE;
-        BaseType_t xHigherPriorityTaskWokenTrue = pdTRUE;
 
         void (*UserTask)(void*) = nullptr;
-        
+
         float CycleTimeMs = 0;
         float WatchdogTimeMs = 0;
         uint16_t Prescalar = 1;
         bool IsWatchdogEnabled = true;
+        bool IsSetupDone = false;
         uint8_t CoreToRunCyclicTask = 1;
 
-        // This static pointer holds the address of the instance specifically for ISR access.
-        static TimerClass* isr_instance; 
+        // ISR access pointer
+        static TimerClass* isr_instance;
 };
 
 #endif

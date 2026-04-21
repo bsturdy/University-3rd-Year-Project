@@ -113,6 +113,25 @@ Public Member Functions</h2></td></tr>
 <tr class="memitem:ab3fe668a269ee7af97e3c03f28572986" id="r_ab3fe668a269ee7af97e3c03f28572986"><td class="memItemLeft">void&#160;</td><td class="memItemRight"><a class="el" href="#ab3fe668a269ee7af97e3c03f28572986">SetRuntimeLogging</a> (bool EnableRuntimeLogging)</td></tr>
 <tr class="memdesc:ab3fe668a269ee7af97e3c03f28572986"><td class="mdescLeft">&#160;</td><td class="mdescRight">Enable or disable runtime logging for this class. When enabled, the class will output informational and error logs to the console using ESP_LOGI and ESP_LOGE. This can be useful for debugging and monitoring the behavior of the mesh network, especially during development and testing.  <br /></td></tr>
 </table><table class="memberdecls">
+<tr class="heading"><td colspan="2"><h2 id="header-pub-attribs" class="groupheader"><a id="pub-attribs" name="pub-attribs"></a>
+Public Attributes</h2></td></tr>
+<tr class="memitem:ad11c8cef7c3dae12ac20300a66760f85" id="r_ad11c8cef7c3dae12ac20300a66760f85"><td class="memItemLeft"><a id="ad11c8cef7c3dae12ac20300a66760f85" name="ad11c8cef7c3dae12ac20300a66760f85"></a>
+esp_err_t&#160;</td><td class="memItemRight"><b>Error</b></td></tr>
+<tr class="memitem:a107b5bd7e9766f236b3505b91e122b08" id="r_a107b5bd7e9766f236b3505b91e122b08"><td class="memItemLeft"><a id="a107b5bd7e9766f236b3505b91e122b08" name="a107b5bd7e9766f236b3505b91e122b08"></a>
+wifi_init_config_t&#160;</td><td class="memItemRight"><b>WifiDriverConfig</b> = WIFI_INIT_CONFIG_DEFAULT()</td></tr>
+<tr class="memitem:a25b9ea185884dc3b0aa1a413eccee71c" id="r_a25b9ea185884dc3b0aa1a413eccee71c"><td class="memItemLeft"><a id="a25b9ea185884dc3b0aa1a413eccee71c" name="a25b9ea185884dc3b0aa1a413eccee71c"></a>
+wifi_country_t&#160;</td><td class="memItemRight"><b>WifiCountry</b> = {}</td></tr>
+<tr class="memitem:a78593e2c6ffc1572add3250ef84d51f6" id="r_a78593e2c6ffc1572add3250ef84d51f6"><td class="memItemLeft"><a id="a78593e2c6ffc1572add3250ef84d51f6" name="a78593e2c6ffc1572add3250ef84d51f6"></a>
+wifi_config_t&#160;</td><td class="memItemRight"><b>ApWifiServiceConfig</b> = {}</td></tr>
+<tr class="memitem:ac7e318da7effe6addff111a785a90ae0" id="r_ac7e318da7effe6addff111a785a90ae0"><td class="memItemLeft"><a id="ac7e318da7effe6addff111a785a90ae0" name="ac7e318da7effe6addff111a785a90ae0"></a>
+wifi_config_t&#160;</td><td class="memItemRight"><b>StaWifiServiceConfig</b> = {}</td></tr>
+<tr class="memitem:afa1055786ed59fd8c297aea4443ecfe5" id="r_afa1055786ed59fd8c297aea4443ecfe5"><td class="memItemLeft"><a id="afa1055786ed59fd8c297aea4443ecfe5" name="afa1055786ed59fd8c297aea4443ecfe5"></a>
+esp_netif_t *&#160;</td><td class="memItemRight"><b>ApNetif</b> = nullptr</td></tr>
+<tr class="memitem:ada72090dedaa5070a1e94aa4be046397" id="r_ada72090dedaa5070a1e94aa4be046397"><td class="memItemLeft"><a id="ada72090dedaa5070a1e94aa4be046397" name="ada72090dedaa5070a1e94aa4be046397"></a>
+esp_netif_t *&#160;</td><td class="memItemRight"><b>StaNetif</b> = nullptr</td></tr>
+<tr class="memitem:a40756f9a81e2a5c36fc80600c966b826" id="r_a40756f9a81e2a5c36fc80600c966b826"><td class="memItemLeft"><a id="a40756f9a81e2a5c36fc80600c966b826" name="a40756f9a81e2a5c36fc80600c966b826"></a>
+uint8_t&#160;</td><td class="memItemRight"><b>SetupState</b> = 0</td></tr>
+</table><table class="memberdecls">
 <tr class="heading"><td colspan="2"><h2 id="header-pri-methods" class="groupheader"><a id="pri-methods" name="pri-methods"></a>
 Private Member Functions</h2></td></tr>
 <tr class="memitem:afdd8f830a20094a3fd799e3ce1b41728" id="r_afdd8f830a20094a3fd799e3ce1b41728"><td class="memItemLeft">&#160;</td><td class="memItemRight"><a class="el" href="#afdd8f830a20094a3fd799e3ce1b41728">AccessPointStation</a> (uint8_t CoreToUse, uint16_t UdpPort, bool EnableRuntimeLogging)</td></tr>
@@ -129,12 +148,16 @@ Private Member Functions</h2></td></tr>
 <tr class="memdesc:ae9cc7b74759d8d06cc4de2c06d0c418a"><td class="mdescLeft">&#160;</td><td class="mdescRight">Connects to the best available parent AP based on the results of the WiFi scan and the extracted mesh metadata. This function evaluates potential parent nodes, compares their hop counts and child counts, and initiates a connection to the most suitable parent AP to optimize the mesh network topology.  <br /></td></tr>
 <tr class="memitem:a3b38f4014cc49d726bb29b3881d86c6e" id="r_a3b38f4014cc49d726bb29b3881d86c6e"><td class="memItemLeft">size_t&#160;</td><td class="memItemRight"><a class="el" href="#a3b38f4014cc49d726bb29b3881d86c6e">CreatePacket</a> (const uint8_t *DataToInclude, size_t DataLength, uint8_t PacketType, uint8_t *PacketOut, size_t OutputBufferSize)</td></tr>
 <tr class="memdesc:a3b38f4014cc49d726bb29b3881d86c6e"><td class="mdescLeft">&#160;</td><td class="mdescRight">Creates a mesh packet with the specified data and metadata. Called in other methods.  <br /></td></tr>
-<tr class="memitem:aec4d3af2d63049323fe8e70aa00a8531" id="r_aec4d3af2d63049323fe8e70aa00a8531"><td class="memItemLeft">void&#160;</td><td class="memItemRight"><a class="el" href="#aec4d3af2d63049323fe8e70aa00a8531">ProcessData</a> (uint8_t *data, int length)</td></tr>
-<tr class="memdesc:aec4d3af2d63049323fe8e70aa00a8531"><td class="mdescLeft">&#160;</td><td class="mdescRight">Processes received data from the UDP buffer, extracting complete packets and handling them according to their type. This function is called by the receive task when new data is available, and it manages the internal state of received packets, ensuring that they are properly parsed and processed.  <br /></td></tr>
-<tr class="memitem:a21c0aa25b94c957b6801ba763ed50231" id="r_a21c0aa25b94c957b6801ba763ed50231"><td class="memItemLeft">size_t&#160;</td><td class="memItemRight"><a class="el" href="#a21c0aa25b94c957b6801ba763ed50231">PrepareTxPacket</a> (const uint8_t *rxData, int rxLength, uint8_t *txBuffer, int &amp;txLength)</td></tr>
-<tr class="memdesc:a21c0aa25b94c957b6801ba763ed50231"><td class="mdescLeft">&#160;</td><td class="mdescRight">Prepares a packet for transmission by taking the data to include, creating the appropriate packet structure, and storing it in an internal buffer for the transmit task to send. This function handles the critical section for preparing the packet and ensures that the transmit task can safely access the prepared packet when it is ready to be sent.  <br /></td></tr>
+<tr class="memitem:a131d8c1cd5794c67d2bad3f0f5b9327d" id="r_a131d8c1cd5794c67d2bad3f0f5b9327d"><td class="memItemLeft">void&#160;</td><td class="memItemRight"><a class="el" href="#a131d8c1cd5794c67d2bad3f0f5b9327d">HandleReceivedData</a> (uint8_t *data, int length)</td></tr>
+<tr class="memdesc:a131d8c1cd5794c67d2bad3f0f5b9327d"><td class="mdescLeft">&#160;</td><td class="mdescRight">Processes received data from the UDP buffer, extracting complete packets and handling them according to their type. This function is called by the receive task when new data is available, and it manages the internal state of received packets, ensuring that they are properly parsed and processed.  <br /></td></tr>
+<tr class="memitem:a690bf917bb0bf36776063e758f55a82f" id="r_a690bf917bb0bf36776063e758f55a82f"><td class="memItemLeft">size_t&#160;</td><td class="memItemRight"><a class="el" href="#a690bf917bb0bf36776063e758f55a82f">GenerateResponsePayload</a> (const uint8_t *ReceivedPacketData, int ReceivedLength, bool IsToParent, uint8_t *ResponsePayloadBuffer, size_t ResponseBufferSize)</td></tr>
+<tr class="memdesc:a690bf917bb0bf36776063e758f55a82f"><td class="mdescLeft">&#160;</td><td class="mdescRight">Generates a response packet based on received data. This function takes the received packet data, processes it according to the packet type and content, and creates an appropriate response packet to be sent back to the sender or forwarded through the mesh network.  <br /></td></tr>
+<tr class="memitem:a694882e5c81d3857af900b3a4b8bf595" id="r_a694882e5c81d3857af900b3a4b8bf595"><td class="memItemLeft">bool&#160;</td><td class="memItemRight"><a class="el" href="#a694882e5c81d3857af900b3a4b8bf595">TryAddForwarding</a> (const uint8_t *DataIn, int LengthIn, uint8_t *DataOut, size_t &amp;LengthOut)</td></tr>
+<tr class="memdesc:a694882e5c81d3857af900b3a4b8bf595"><td class="mdescLeft">&#160;</td><td class="mdescRight">Attempts to add forwarding information to a packet based on the current mesh topology and the packet's forwarding mode. This function checks if the packet requires forwarding, determines the appropriate next hop based on the sender's address and the mesh metadata, and modifies the packet accordingly to include forwarding information if necessary.  <br /></td></tr>
 <tr class="memitem:a864e81056032273a802da668fad3b213" id="r_a864e81056032273a802da668fad3b213"><td class="memItemLeft">bool&#160;</td><td class="memItemRight"><a class="el" href="#a864e81056032273a802da668fad3b213">DetermineDestinationAddress</a> (const sockaddr_in &amp;SourceAddress, const uint8_t *Data, int DataLength, sockaddr_in &amp;DestinationAddress)</td></tr>
 <tr class="memdesc:a864e81056032273a802da668fad3b213"><td class="mdescLeft">&#160;</td><td class="mdescRight">Determines the destination address for a packet based on its forwarding mode and sender address.  <br /></td></tr>
+<tr class="memitem:ad67a854b1e5635c31f284d764074f025" id="r_ad67a854b1e5635c31f284d764074f025"><td class="memItemLeft"><a class="el" href="struct_wifi_device.html">WifiDevice</a> *&#160;</td><td class="memItemRight"><a class="el" href="#ad67a854b1e5635c31f284d764074f025">FindDeviceByIp</a> (const sockaddr_in &amp;SourceAddress, bool *IsParent)</td></tr>
+<tr class="memdesc:ad67a854b1e5635c31f284d764074f025"><td class="mdescLeft">&#160;</td><td class="mdescRight">Finds a device in either the parent or child device list by its IP address. This function is used to determine if an incoming packet is from a known device and to retrieve information about that device for processing the packet and determining forwarding behavior.  <br /></td></tr>
 <tr class="memitem:a7519ef6dcc9874460c9958002a64c3f0" id="r_a7519ef6dcc9874460c9958002a64c3f0"><td class="memItemLeft">bool&#160;</td><td class="memItemRight"><a class="el" href="#a7519ef6dcc9874460c9958002a64c3f0">StartUdp</a> (uint16_t Port, uint8_t Core)</td></tr>
 <tr class="memdesc:a7519ef6dcc9874460c9958002a64c3f0"><td class="mdescLeft">&#160;</td><td class="mdescRight">Helper function to start all UDP-based services.  <br /></td></tr>
 <tr class="memitem:a5fce0fa1885c51e596e7987a0ee00e43" id="r_a5fce0fa1885c51e596e7987a0ee00e43"><td class="memItemLeft">bool&#160;</td><td class="memItemRight"><a class="el" href="#a5fce0fa1885c51e596e7987a0ee00e43">StopUdp</a> ()</td></tr>
@@ -159,107 +182,60 @@ Static Private Member Functions</h2></td></tr>
 </table><table class="memberdecls">
 <tr class="heading"><td colspan="2"><h2 id="header-pri-attribs" class="groupheader"><a id="pri-attribs" name="pri-attribs"></a>
 Private Attributes</h2></td></tr>
-<tr class="memitem:a4cf8a8fc3a479d020440d7a881f7f85f" id="r_a4cf8a8fc3a479d020440d7a881f7f85f"><td class="memItemLeft"><a id="a4cf8a8fc3a479d020440d7a881f7f85f" name="a4cf8a8fc3a479d020440d7a881f7f85f"></a>
-TaskHandle_t&#160;</td><td class="memItemRight"><b>ReceiveTaskHandle</b> = nullptr</td></tr>
-<tr class="memitem:a1884c6689a9707148e1ece303949c7a4" id="r_a1884c6689a9707148e1ece303949c7a4"><td class="memItemLeft"><a id="a1884c6689a9707148e1ece303949c7a4" name="a1884c6689a9707148e1ece303949c7a4"></a>
-TaskHandle_t&#160;</td><td class="memItemRight"><b>TransmitTaskHandle</b> = nullptr</td></tr>
-<tr class="memitem:a2615463db3135bd02d60ee65d3e7782f" id="r_a2615463db3135bd02d60ee65d3e7782f"><td class="memItemLeft"><a id="a2615463db3135bd02d60ee65d3e7782f" name="a2615463db3135bd02d60ee65d3e7782f"></a>
-TaskHandle_t&#160;</td><td class="memItemRight"><b>MeshTaskHandle</b> = nullptr</td></tr>
-<tr class="memitem:ad11c8cef7c3dae12ac20300a66760f85" id="r_ad11c8cef7c3dae12ac20300a66760f85"><td class="memItemLeft"><a id="ad11c8cef7c3dae12ac20300a66760f85" name="ad11c8cef7c3dae12ac20300a66760f85"></a>
-esp_err_t&#160;</td><td class="memItemRight"><b>Error</b></td></tr>
-<tr class="memitem:a107b5bd7e9766f236b3505b91e122b08" id="r_a107b5bd7e9766f236b3505b91e122b08"><td class="memItemLeft"><a id="a107b5bd7e9766f236b3505b91e122b08" name="a107b5bd7e9766f236b3505b91e122b08"></a>
-wifi_init_config_t&#160;</td><td class="memItemRight"><b>WifiDriverConfig</b> = WIFI_INIT_CONFIG_DEFAULT()</td></tr>
-<tr class="memitem:a25b9ea185884dc3b0aa1a413eccee71c" id="r_a25b9ea185884dc3b0aa1a413eccee71c"><td class="memItemLeft"><a id="a25b9ea185884dc3b0aa1a413eccee71c" name="a25b9ea185884dc3b0aa1a413eccee71c"></a>
-wifi_country_t&#160;</td><td class="memItemRight"><b>WifiCountry</b> = {}</td></tr>
-<tr class="memitem:a78593e2c6ffc1572add3250ef84d51f6" id="r_a78593e2c6ffc1572add3250ef84d51f6"><td class="memItemLeft"><a id="a78593e2c6ffc1572add3250ef84d51f6" name="a78593e2c6ffc1572add3250ef84d51f6"></a>
-wifi_config_t&#160;</td><td class="memItemRight"><b>ApWifiServiceConfig</b> = {}</td></tr>
-<tr class="memitem:ac7e318da7effe6addff111a785a90ae0" id="r_ac7e318da7effe6addff111a785a90ae0"><td class="memItemLeft"><a id="ac7e318da7effe6addff111a785a90ae0" name="ac7e318da7effe6addff111a785a90ae0"></a>
-wifi_config_t&#160;</td><td class="memItemRight"><b>StaWifiServiceConfig</b> = {}</td></tr>
-<tr class="memitem:afa1055786ed59fd8c297aea4443ecfe5" id="r_afa1055786ed59fd8c297aea4443ecfe5"><td class="memItemLeft"><a id="afa1055786ed59fd8c297aea4443ecfe5" name="afa1055786ed59fd8c297aea4443ecfe5"></a>
-esp_netif_t *&#160;</td><td class="memItemRight"><b>ApNetif</b> = nullptr</td></tr>
-<tr class="memitem:ada72090dedaa5070a1e94aa4be046397" id="r_ada72090dedaa5070a1e94aa4be046397"><td class="memItemLeft"><a id="ada72090dedaa5070a1e94aa4be046397" name="ada72090dedaa5070a1e94aa4be046397"></a>
-esp_netif_t *&#160;</td><td class="memItemRight"><b>StaNetif</b> = nullptr</td></tr>
-<tr class="memitem:a5cb6b6f3d2126fc8253e25822756d044" id="r_a5cb6b6f3d2126fc8253e25822756d044"><td class="memItemLeft"><a id="a5cb6b6f3d2126fc8253e25822756d044" name="a5cb6b6f3d2126fc8253e25822756d044"></a>
-<a class="el" href="struct_mesh_metadata.html">MeshMetadata</a>&#160;</td><td class="memItemRight"><b>CallbackIeData</b> [20] {}</td></tr>
-<tr class="memitem:a3a129f333cf7c7d8e841983ea03ae133" id="r_a3a129f333cf7c7d8e841983ea03ae133"><td class="memItemLeft"><a id="a3a129f333cf7c7d8e841983ea03ae133" name="a3a129f333cf7c7d8e841983ea03ae133"></a>
-uint8_t&#160;</td><td class="memItemRight"><b>MyHopCount</b> = 255</td></tr>
-<tr class="memitem:a7947a60e7f08c66afeb7e12fb6bae137" id="r_a7947a60e7f08c66afeb7e12fb6bae137"><td class="memItemLeft"><a id="a7947a60e7f08c66afeb7e12fb6bae137" name="a7947a60e7f08c66afeb7e12fb6bae137"></a>
-wifi_ap_record_t&#160;</td><td class="memItemRight"><b>CandidateWifiRecord</b> {}</td></tr>
-<tr class="memitem:a465e7e7acc4b0b13c19539be9932ed3e" id="r_a465e7e7acc4b0b13c19539be9932ed3e"><td class="memItemLeft"><a id="a465e7e7acc4b0b13c19539be9932ed3e" name="a465e7e7acc4b0b13c19539be9932ed3e"></a>
-wifi_ap_record_t&#160;</td><td class="memItemRight"><b>ParentWifiRecord</b> {}</td></tr>
-<tr class="memitem:a43e59297d3334e74d2f3179f490a2a38" id="r_a43e59297d3334e74d2f3179f490a2a38"><td class="memItemLeft"><a id="a43e59297d3334e74d2f3179f490a2a38" name="a43e59297d3334e74d2f3179f490a2a38"></a>
-bool&#160;</td><td class="memItemRight"><b>IsCandidateValid</b> = false</td></tr>
-<tr class="memitem:aaef06a4a14b1517e5fccbdd8a3afbb37" id="r_aaef06a4a14b1517e5fccbdd8a3afbb37"><td class="memItemLeft"><a id="aaef06a4a14b1517e5fccbdd8a3afbb37" name="aaef06a4a14b1517e5fccbdd8a3afbb37"></a>
-bool&#160;</td><td class="memItemRight"><b>IsCandidateMaster</b> = false</td></tr>
-<tr class="memitem:a1bc71a62b05302f9db49bbf66cbd58be" id="r_a1bc71a62b05302f9db49bbf66cbd58be"><td class="memItemLeft"><a id="a1bc71a62b05302f9db49bbf66cbd58be" name="a1bc71a62b05302f9db49bbf66cbd58be"></a>
-bool&#160;</td><td class="memItemRight"><b>RoamRequested</b> = false</td></tr>
-<tr class="memitem:a8a11f44da6a2d23391b0cd049805988d" id="r_a8a11f44da6a2d23391b0cd049805988d"><td class="memItemLeft"><a id="a8a11f44da6a2d23391b0cd049805988d" name="a8a11f44da6a2d23391b0cd049805988d"></a>
-uint8_t&#160;</td><td class="memItemRight"><b>CandidateHop</b> = 0</td></tr>
-<tr class="memitem:a916fdb127712671f60cd221ab51cd423" id="r_a916fdb127712671f60cd221ab51cd423"><td class="memItemLeft"><a id="a916fdb127712671f60cd221ab51cd423" name="a916fdb127712671f60cd221ab51cd423"></a>
-uint8_t&#160;</td><td class="memItemRight"><b>CandidateChildren</b> = 0</td></tr>
-<tr class="memitem:ac5c866911b8499b0eb55cd2d88aa27e9" id="r_ac5c866911b8499b0eb55cd2d88aa27e9"><td class="memItemLeft"><a id="ac5c866911b8499b0eb55cd2d88aa27e9" name="ac5c866911b8499b0eb55cd2d88aa27e9"></a>
-bool&#160;</td><td class="memItemRight"><b>IsMasterFound</b> = false</td></tr>
-<tr class="memitem:afb71bfd3615ec110e5348fb23da7ee02" id="r_afb71bfd3615ec110e5348fb23da7ee02"><td class="memItemLeft"><a id="afb71bfd3615ec110e5348fb23da7ee02" name="afb71bfd3615ec110e5348fb23da7ee02"></a>
-bool&#160;</td><td class="memItemRight"><b>IsScanning</b> = false</td></tr>
-<tr class="memitem:afc780f36a3b0706345417f5126fdc0e6" id="r_afc780f36a3b0706345417f5126fdc0e6"><td class="memItemLeft"><a id="afc780f36a3b0706345417f5126fdc0e6" name="afc780f36a3b0706345417f5126fdc0e6"></a>
-bool&#160;</td><td class="memItemRight"><b>IsConnecting</b> = false</td></tr>
-<tr class="memitem:a69e047833d51f01e6309e7d707ffe106" id="r_a69e047833d51f01e6309e7d707ffe106"><td class="memItemLeft"><a id="a69e047833d51f01e6309e7d707ffe106" name="a69e047833d51f01e6309e7d707ffe106"></a>
-uint8_t&#160;</td><td class="memItemRight"><b>LatestPayload</b> [MaxPayload] {}</td></tr>
-<tr class="memitem:ade19dfee1eaaf39e1047ca2ee423f607" id="r_ade19dfee1eaaf39e1047ca2ee423f607"><td class="memItemLeft"><a id="ade19dfee1eaaf39e1047ca2ee423f607" name="ade19dfee1eaaf39e1047ca2ee423f607"></a>
-uint16_t&#160;</td><td class="memItemRight"><b>LatestPayloadSize</b> = 0</td></tr>
-<tr class="memitem:af8483bb530432e0472fa74775be24623" id="r_af8483bb530432e0472fa74775be24623"><td class="memItemLeft"><a id="af8483bb530432e0472fa74775be24623" name="af8483bb530432e0472fa74775be24623"></a>
-uint8_t&#160;</td><td class="memItemRight"><b>LatestPayloadType</b> = 0</td></tr>
-<tr class="memitem:a182831ac77d4beab0c89d231ae79da4b" id="r_a182831ac77d4beab0c89d231ae79da4b"><td class="memItemLeft"><a id="a182831ac77d4beab0c89d231ae79da4b" name="a182831ac77d4beab0c89d231ae79da4b"></a>
-int64_t&#160;</td><td class="memItemRight"><b>LatestPayloadUs</b> = 0</td></tr>
-<tr class="memitem:a5cde40886d383b80e0632b1641ea95e5" id="r_a5cde40886d383b80e0632b1641ea95e5"><td class="memItemLeft"><a id="a5cde40886d383b80e0632b1641ea95e5" name="a5cde40886d383b80e0632b1641ea95e5"></a>
-volatile uint32_t&#160;</td><td class="memItemRight"><b>PayloadSeq</b> = 0</td></tr>
-<tr class="memitem:a37752bbf1dc64ab560ea31e42436563e" id="r_a37752bbf1dc64ab560ea31e42436563e"><td class="memItemLeft"><a id="a37752bbf1dc64ab560ea31e42436563e" name="a37752bbf1dc64ab560ea31e42436563e"></a>
-uint8_t&#160;</td><td class="memItemRight"><b>PreparedTxPacket</b> [MaxPayload] {}</td></tr>
-<tr class="memitem:a291faa6c0a2162e0478603922ee7a9a7" id="r_a291faa6c0a2162e0478603922ee7a9a7"><td class="memItemLeft"><a id="a291faa6c0a2162e0478603922ee7a9a7" name="a291faa6c0a2162e0478603922ee7a9a7"></a>
-int&#160;</td><td class="memItemRight"><b>PreparedTxLength</b> = 0</td></tr>
-<tr class="memitem:a47065e229996469ad43e820fa5de2a3c" id="r_a47065e229996469ad43e820fa5de2a3c"><td class="memItemLeft"><a id="a47065e229996469ad43e820fa5de2a3c" name="a47065e229996469ad43e820fa5de2a3c"></a>
-portMUX_TYPE&#160;</td><td class="memItemRight"><b>TxCriticalSection</b> = portMUX_INITIALIZER_UNLOCKED</td></tr>
-<tr class="memitem:adebdded18ea6e11df74539adf1ca8b4f" id="r_adebdded18ea6e11df74539adf1ca8b4f"><td class="memItemLeft"><a id="adebdded18ea6e11df74539adf1ca8b4f" name="adebdded18ea6e11df74539adf1ca8b4f"></a>
-portMUX_TYPE&#160;</td><td class="memItemRight"><b>CriticalSection</b> = portMUX_INITIALIZER_UNLOCKED</td></tr>
-<tr class="memitem:ab3906f5bf2ad054be81b3b42ac56c0d8" id="r_ab3906f5bf2ad054be81b3b42ac56c0d8"><td class="memItemLeft"><a id="ab3906f5bf2ad054be81b3b42ac56c0d8" name="ab3906f5bf2ad054be81b3b42ac56c0d8"></a>
-<a class="el" href="struct_udp_packet.html">UdpPacket</a>&#160;</td><td class="memItemRight"><b>PacketBuffer</b> [UDP_SLOTS]</td></tr>
-<tr class="memitem:a6fa2499bed2beffebb73b7f945786181" id="r_a6fa2499bed2beffebb73b7f945786181"><td class="memItemLeft"><a id="a6fa2499bed2beffebb73b7f945786181" name="a6fa2499bed2beffebb73b7f945786181"></a>
-volatile size_t&#160;</td><td class="memItemRight"><b>Head</b> = 0</td></tr>
-<tr class="memitem:a334df8863bfb02558947c634dfdf4794" id="r_a334df8863bfb02558947c634dfdf4794"><td class="memItemLeft"><a id="a334df8863bfb02558947c634dfdf4794" name="a334df8863bfb02558947c634dfdf4794"></a>
-volatile size_t&#160;</td><td class="memItemRight"><b>Tail</b> = 0</td></tr>
 <tr class="memitem:a1349e4847afe3cc2e0366f51eb0c4c8e" id="r_a1349e4847afe3cc2e0366f51eb0c4c8e"><td class="memItemLeft"><a id="a1349e4847afe3cc2e0366f51eb0c4c8e" name="a1349e4847afe3cc2e0366f51eb0c4c8e"></a>
 uint8_t&#160;</td><td class="memItemRight"><b>UdpCore</b> = 0</td></tr>
 <tr class="memitem:a40c24d1d0d219a784be687a53de85ed9" id="r_a40c24d1d0d219a784be687a53de85ed9"><td class="memItemLeft"><a id="a40c24d1d0d219a784be687a53de85ed9" name="a40c24d1d0d219a784be687a53de85ed9"></a>
 uint16_t&#160;</td><td class="memItemRight"><b>UdpPort</b> = 0</td></tr>
-<tr class="memitem:a40756f9a81e2a5c36fc80600c966b826" id="r_a40756f9a81e2a5c36fc80600c966b826"><td class="memItemLeft"><a id="a40756f9a81e2a5c36fc80600c966b826" name="a40756f9a81e2a5c36fc80600c966b826"></a>
-uint8_t&#160;</td><td class="memItemRight"><b>SetupState</b> = 0</td></tr>
+<tr class="memitem:a3a129f333cf7c7d8e841983ea03ae133" id="r_a3a129f333cf7c7d8e841983ea03ae133"><td class="memItemLeft"><a id="a3a129f333cf7c7d8e841983ea03ae133" name="a3a129f333cf7c7d8e841983ea03ae133"></a>
+uint8_t&#160;</td><td class="memItemRight"><b>MyHopCount</b> = 255</td></tr>
 <tr class="memitem:a03ee84080acf59e589b1c605aca6259e" id="r_a03ee84080acf59e589b1c605aca6259e"><td class="memItemLeft"><a id="a03ee84080acf59e589b1c605aca6259e" name="a03ee84080acf59e589b1c605aca6259e"></a>
 bool&#160;</td><td class="memItemRight"><b>SystemInitialized</b> = false</td></tr>
 <tr class="memitem:ae27f654167dfff750fe0c1358bc45941" id="r_ae27f654167dfff750fe0c1358bc45941"><td class="memItemLeft"><a id="ae27f654167dfff750fe0c1358bc45941" name="ae27f654167dfff750fe0c1358bc45941"></a>
 bool&#160;</td><td class="memItemRight"><b>UdpStarted</b> = false</td></tr>
 <tr class="memitem:a3d1eda3a8378427a322c21e809619711" id="r_a3d1eda3a8378427a322c21e809619711"><td class="memItemLeft"><a id="a3d1eda3a8378427a322c21e809619711" name="a3d1eda3a8378427a322c21e809619711"></a>
 bool&#160;</td><td class="memItemRight"><b>IsConnectedToParent</b> = false</td></tr>
+<tr class="memitem:a1bc71a62b05302f9db49bbf66cbd58be" id="r_a1bc71a62b05302f9db49bbf66cbd58be"><td class="memItemLeft"><a id="a1bc71a62b05302f9db49bbf66cbd58be" name="a1bc71a62b05302f9db49bbf66cbd58be"></a>
+bool&#160;</td><td class="memItemRight"><b>RoamRequested</b> = false</td></tr>
 <tr class="memitem:a1ed7866316c917d339ac51c37a789b1b" id="r_a1ed7866316c917d339ac51c37a789b1b"><td class="memItemLeft"><a id="a1ed7866316c917d339ac51c37a789b1b" name="a1ed7866316c917d339ac51c37a789b1b"></a>
 bool&#160;</td><td class="memItemRight"><b>ApIpAcquired</b> = false</td></tr>
 <tr class="memitem:a4e2f68bc36ffd5d6bf91dfbf8214dd1e" id="r_a4e2f68bc36ffd5d6bf91dfbf8214dd1e"><td class="memItemLeft"><a id="a4e2f68bc36ffd5d6bf91dfbf8214dd1e" name="a4e2f68bc36ffd5d6bf91dfbf8214dd1e"></a>
 bool&#160;</td><td class="memItemRight"><b>IsRuntimeLoggingEnabled</b> = false</td></tr>
+<tr class="memitem:ac5c866911b8499b0eb55cd2d88aa27e9" id="r_ac5c866911b8499b0eb55cd2d88aa27e9"><td class="memItemLeft"><a id="ac5c866911b8499b0eb55cd2d88aa27e9" name="ac5c866911b8499b0eb55cd2d88aa27e9"></a>
+bool&#160;</td><td class="memItemRight"><b>IsMasterFound</b> = false</td></tr>
+<tr class="memitem:afb71bfd3615ec110e5348fb23da7ee02" id="r_afb71bfd3615ec110e5348fb23da7ee02"><td class="memItemLeft"><a id="afb71bfd3615ec110e5348fb23da7ee02" name="afb71bfd3615ec110e5348fb23da7ee02"></a>
+bool&#160;</td><td class="memItemRight"><b>IsScanning</b> = false</td></tr>
+<tr class="memitem:afc780f36a3b0706345417f5126fdc0e6" id="r_afc780f36a3b0706345417f5126fdc0e6"><td class="memItemLeft"><a id="afc780f36a3b0706345417f5126fdc0e6" name="afc780f36a3b0706345417f5126fdc0e6"></a>
+bool&#160;</td><td class="memItemRight"><b>IsConnecting</b> = false</td></tr>
 <tr class="memitem:a17b03130a3a59a83606374d6df312d16" id="r_a17b03130a3a59a83606374d6df312d16"><td class="memItemLeft"><a id="a17b03130a3a59a83606374d6df312d16" name="a17b03130a3a59a83606374d6df312d16"></a>
 int&#160;</td><td class="memItemRight"><b>UdpSocket</b> = -1</td></tr>
 <tr class="memitem:a4288ce286b9a5e5088903c0c36db1f98" id="r_a4288ce286b9a5e5088903c0c36db1f98"><td class="memItemLeft"><a id="a4288ce286b9a5e5088903c0c36db1f98" name="a4288ce286b9a5e5088903c0c36db1f98"></a>
 char&#160;</td><td class="memItemRight"><b>MyStaIpAddress</b> [16]</td></tr>
 <tr class="memitem:a711af08c5ffa64d0d6d98f65eb402f5f" id="r_a711af08c5ffa64d0d6d98f65eb402f5f"><td class="memItemLeft"><a id="a711af08c5ffa64d0d6d98f65eb402f5f" name="a711af08c5ffa64d0d6d98f65eb402f5f"></a>
 char&#160;</td><td class="memItemRight"><b>MyApIpAddress</b> [16]</td></tr>
-<tr class="memitem:a96b8e98c6e3aa5d93a5c1bbac7e893e4" id="r_a96b8e98c6e3aa5d93a5c1bbac7e893e4"><td class="memItemLeft"><a id="a96b8e98c6e3aa5d93a5c1bbac7e893e4" name="a96b8e98c6e3aa5d93a5c1bbac7e893e4"></a>
-volatile int64_t&#160;</td><td class="memItemRight"><b>LastHeartbeatUs</b> = 0</td></tr>
 <tr class="memitem:ae72572295a64826eaacbb27cac9066b2" id="r_ae72572295a64826eaacbb27cac9066b2"><td class="memItemLeft"><a id="ae72572295a64826eaacbb27cac9066b2" name="ae72572295a64826eaacbb27cac9066b2"></a>
 <a class="el" href="struct_wifi_device.html">WifiDevice</a>&#160;</td><td class="memItemRight"><b>ParentDevice</b> {}</td></tr>
 <tr class="memitem:a39759f2cf11d5103478901f62ef36013" id="r_a39759f2cf11d5103478901f62ef36013"><td class="memItemLeft"><a id="a39759f2cf11d5103478901f62ef36013" name="a39759f2cf11d5103478901f62ef36013"></a>
 std::vector&lt; <a class="el" href="struct_wifi_device.html">WifiDevice</a> &gt;&#160;</td><td class="memItemRight"><b>ChildDevices</b> {}</td></tr>
-</table><table class="memberdecls">
-<tr class="heading"><td colspan="2"><h2 id="header-pri-static-attribs" class="groupheader"><a id="pri-static-attribs" name="pri-static-attribs"></a>
-Static Private Attributes</h2></td></tr>
-<tr class="memitem:a868e329eee1c61417ea15fb23ce9cfc1" id="r_a868e329eee1c61417ea15fb23ce9cfc1"><td class="memItemLeft"><a id="a868e329eee1c61417ea15fb23ce9cfc1" name="a868e329eee1c61417ea15fb23ce9cfc1"></a>
-static constexpr int&#160;</td><td class="memItemRight"><b>MaxPayload</b> = 1024</td></tr>
+<tr class="memitem:a96b8e98c6e3aa5d93a5c1bbac7e893e4" id="r_a96b8e98c6e3aa5d93a5c1bbac7e893e4"><td class="memItemLeft"><a id="a96b8e98c6e3aa5d93a5c1bbac7e893e4" name="a96b8e98c6e3aa5d93a5c1bbac7e893e4"></a>
+volatile int64_t&#160;</td><td class="memItemRight"><b>LastHeartbeatUs</b> = 0</td></tr>
+<tr class="memitem:a4cf8a8fc3a479d020440d7a881f7f85f" id="r_a4cf8a8fc3a479d020440d7a881f7f85f"><td class="memItemLeft"><a id="a4cf8a8fc3a479d020440d7a881f7f85f" name="a4cf8a8fc3a479d020440d7a881f7f85f"></a>
+TaskHandle_t&#160;</td><td class="memItemRight"><b>ReceiveTaskHandle</b> = nullptr</td></tr>
+<tr class="memitem:a1884c6689a9707148e1ece303949c7a4" id="r_a1884c6689a9707148e1ece303949c7a4"><td class="memItemLeft"><a id="a1884c6689a9707148e1ece303949c7a4" name="a1884c6689a9707148e1ece303949c7a4"></a>
+TaskHandle_t&#160;</td><td class="memItemRight"><b>TransmitTaskHandle</b> = nullptr</td></tr>
+<tr class="memitem:a2615463db3135bd02d60ee65d3e7782f" id="r_a2615463db3135bd02d60ee65d3e7782f"><td class="memItemLeft"><a id="a2615463db3135bd02d60ee65d3e7782f" name="a2615463db3135bd02d60ee65d3e7782f"></a>
+TaskHandle_t&#160;</td><td class="memItemRight"><b>MeshTaskHandle</b> = nullptr</td></tr>
+<tr class="memitem:a5cb6b6f3d2126fc8253e25822756d044" id="r_a5cb6b6f3d2126fc8253e25822756d044"><td class="memItemLeft"><a id="a5cb6b6f3d2126fc8253e25822756d044" name="a5cb6b6f3d2126fc8253e25822756d044"></a>
+<a class="el" href="struct_mesh_metadata.html">MeshMetadata</a>&#160;</td><td class="memItemRight"><b>CallbackIeData</b> [20] {}</td></tr>
+<tr class="memitem:a7947a60e7f08c66afeb7e12fb6bae137" id="r_a7947a60e7f08c66afeb7e12fb6bae137"><td class="memItemLeft"><a id="a7947a60e7f08c66afeb7e12fb6bae137" name="a7947a60e7f08c66afeb7e12fb6bae137"></a>
+wifi_ap_record_t&#160;</td><td class="memItemRight"><b>CandidateWifiRecord</b> {}</td></tr>
+<tr class="memitem:a43e59297d3334e74d2f3179f490a2a38" id="r_a43e59297d3334e74d2f3179f490a2a38"><td class="memItemLeft"><a id="a43e59297d3334e74d2f3179f490a2a38" name="a43e59297d3334e74d2f3179f490a2a38"></a>
+bool&#160;</td><td class="memItemRight"><b>IsCandidateValid</b> = false</td></tr>
+<tr class="memitem:aaef06a4a14b1517e5fccbdd8a3afbb37" id="r_aaef06a4a14b1517e5fccbdd8a3afbb37"><td class="memItemLeft"><a id="aaef06a4a14b1517e5fccbdd8a3afbb37" name="aaef06a4a14b1517e5fccbdd8a3afbb37"></a>
+bool&#160;</td><td class="memItemRight"><b>IsCandidateMaster</b> = false</td></tr>
+<tr class="memitem:a8a11f44da6a2d23391b0cd049805988d" id="r_a8a11f44da6a2d23391b0cd049805988d"><td class="memItemLeft"><a id="a8a11f44da6a2d23391b0cd049805988d" name="a8a11f44da6a2d23391b0cd049805988d"></a>
+uint8_t&#160;</td><td class="memItemRight"><b>CandidateHop</b> = 0</td></tr>
+<tr class="memitem:a916fdb127712671f60cd221ab51cd423" id="r_a916fdb127712671f60cd221ab51cd423"><td class="memItemLeft"><a id="a916fdb127712671f60cd221ab51cd423" name="a916fdb127712671f60cd221ab51cd423"></a>
+uint8_t&#160;</td><td class="memItemRight"><b>CandidateChildren</b> = 0</td></tr>
 </table><table class="memberdecls">
 <tr class="heading"><td colspan="2"><h2 id="header-friends" class="groupheader"><a id="friends" name="friends"></a>
 Friends</h2></td></tr>
@@ -519,6 +495,102 @@ class&#160;</td><td class="memItemRight"><b>WifiFactory</b></td></tr>
 
 </div>
 </div>
+<a id="ad67a854b1e5635c31f284d764074f025" name="ad67a854b1e5635c31f284d764074f025"></a>
+<h2 class="memtitle"><span class="permalink"><a href="#ad67a854b1e5635c31f284d764074f025">&#9670;&#160;</a></span>FindDeviceByIp()</h2>
+
+<div class="memitem">
+<div class="memproto">
+<table class="mlabels">
+  <tr>
+  <td class="mlabels-left">
+      <table class="memname">
+        <tr>
+          <td class="memname"><a class="el" href="struct_wifi_device.html">WifiDevice</a> * AccessPointStation::FindDeviceByIp </td>
+          <td>(</td>
+          <td class="paramtype">const sockaddr_in &amp;</td>          <td class="paramname"><span class="paramname"><em>SourceAddress</em></span>, </td>
+        </tr>
+        <tr>
+          <td class="paramkey"></td>
+          <td></td>
+          <td class="paramtype">bool *</td>          <td class="paramname"><span class="paramname"><em>IsParent</em></span>&#160;)</td>
+        </tr>
+      </table>
+  </td>
+  <td class="mlabels-right">
+<span class="mlabels"><span class="mlabel private">private</span></span>  </td>
+  </tr>
+</table>
+</div><div class="memdoc">
+
+<p>Finds a device in either the parent or child device list by its IP address. This function is used to determine if an incoming packet is from a known device and to retrieve information about that device for processing the packet and determining forwarding behavior. </p>
+<dl class="params"><dt>Parameters</dt><dd>
+  <table class="params">
+    <tr><td class="paramname">SourceAddress</td><td></td></tr>
+    <tr><td class="paramname">IsParent</td><td></td></tr>
+  </table>
+  </dd>
+</dl>
+<dl class="section return"><dt>Returns</dt><dd>WifiDevice* </dd></dl>
+
+</div>
+</div>
+<a id="a690bf917bb0bf36776063e758f55a82f" name="a690bf917bb0bf36776063e758f55a82f"></a>
+<h2 class="memtitle"><span class="permalink"><a href="#a690bf917bb0bf36776063e758f55a82f">&#9670;&#160;</a></span>GenerateResponsePayload()</h2>
+
+<div class="memitem">
+<div class="memproto">
+<table class="mlabels">
+  <tr>
+  <td class="mlabels-left">
+      <table class="memname">
+        <tr>
+          <td class="memname">size_t AccessPointStation::GenerateResponsePayload </td>
+          <td>(</td>
+          <td class="paramtype">const uint8_t *</td>          <td class="paramname"><span class="paramname"><em>ReceivedPacketData</em></span>, </td>
+        </tr>
+        <tr>
+          <td class="paramkey"></td>
+          <td></td>
+          <td class="paramtype">int</td>          <td class="paramname"><span class="paramname"><em>ReceivedLength</em></span>, </td>
+        </tr>
+        <tr>
+          <td class="paramkey"></td>
+          <td></td>
+          <td class="paramtype">bool</td>          <td class="paramname"><span class="paramname"><em>IsToParent</em></span>, </td>
+        </tr>
+        <tr>
+          <td class="paramkey"></td>
+          <td></td>
+          <td class="paramtype">uint8_t *</td>          <td class="paramname"><span class="paramname"><em>ResponsePayloadBuffer</em></span>, </td>
+        </tr>
+        <tr>
+          <td class="paramkey"></td>
+          <td></td>
+          <td class="paramtype">size_t</td>          <td class="paramname"><span class="paramname"><em>ResponseBufferSize</em></span>&#160;)</td>
+        </tr>
+      </table>
+  </td>
+  <td class="mlabels-right">
+<span class="mlabels"><span class="mlabel private">private</span></span>  </td>
+  </tr>
+</table>
+</div><div class="memdoc">
+
+<p>Generates a response packet based on received data. This function takes the received packet data, processes it according to the packet type and content, and creates an appropriate response packet to be sent back to the sender or forwarded through the mesh network. </p>
+<dl class="params"><dt>Parameters</dt><dd>
+  <table class="params">
+    <tr><td class="paramname">ReceivedData</td><td></td></tr>
+    <tr><td class="paramname">ReceivedLength</td><td></td></tr>
+    <tr><td class="paramname">IsToParent</td><td>Indicates whether the response is intended for the parent node (true) or for a child node (false). This can affect the content and routing of the response packet. </td></tr>
+    <tr><td class="paramname">ResponseBuffer</td><td></td></tr>
+    <tr><td class="paramname">ResponseBufferSize</td><td></td></tr>
+  </table>
+  </dd>
+</dl>
+<dl class="section return"><dt>Returns</dt><dd>size_t: The size of the generated response packet, or 0 if generation failed. </dd></dl>
+
+</div>
+</div>
 <a id="a70e4ec220af0fe7d15cbf998d811742a" name="a70e4ec220af0fe7d15cbf998d811742a"></a>
 <h2 class="memtitle"><span class="permalink"><a href="#a70e4ec220af0fe7d15cbf998d811742a">&#9670;&#160;</a></span>GetDataFromBuffer()</h2>
 
@@ -654,6 +726,45 @@ class&#160;</td><td class="memItemRight"><b>WifiFactory</b></td></tr>
 
 <p>Get the Parent Ip Address object. This is the IP address of the AP that this device is currently connected to as a station. If the device is not currently connected to a parent, this will return an empty string or an invalid IP. </p>
 <dl class="section return"><dt>Returns</dt><dd>const char*: The IP address of the parent AP, or an empty string if not connected. </dd></dl>
+
+</div>
+</div>
+<a id="a131d8c1cd5794c67d2bad3f0f5b9327d" name="a131d8c1cd5794c67d2bad3f0f5b9327d"></a>
+<h2 class="memtitle"><span class="permalink"><a href="#a131d8c1cd5794c67d2bad3f0f5b9327d">&#9670;&#160;</a></span>HandleReceivedData()</h2>
+
+<div class="memitem">
+<div class="memproto">
+<table class="mlabels">
+  <tr>
+  <td class="mlabels-left">
+      <table class="memname">
+        <tr>
+          <td class="memname">void AccessPointStation::HandleReceivedData </td>
+          <td>(</td>
+          <td class="paramtype">uint8_t *</td>          <td class="paramname"><span class="paramname"><em>data</em></span>, </td>
+        </tr>
+        <tr>
+          <td class="paramkey"></td>
+          <td></td>
+          <td class="paramtype">int</td>          <td class="paramname"><span class="paramname"><em>length</em></span>&#160;)</td>
+        </tr>
+      </table>
+  </td>
+  <td class="mlabels-right">
+<span class="mlabels"><span class="mlabel private">private</span></span>  </td>
+  </tr>
+</table>
+</div><div class="memdoc">
+
+<p>Processes received data from the UDP buffer, extracting complete packets and handling them according to their type. This function is called by the receive task when new data is available, and it manages the internal state of received packets, ensuring that they are properly parsed and processed. </p>
+<dl class="params"><dt>Parameters</dt><dd>
+  <table class="params">
+    <tr><td class="paramname">data</td><td></td></tr>
+    <tr><td class="paramname">length</td><td></td></tr>
+  </table>
+  </dd>
+</dl>
+<dl class="section return"><dt>Returns</dt><dd>Void. </dd></dl>
 
 </div>
 </div>
@@ -812,96 +923,6 @@ class&#160;</td><td class="memItemRight"><b>WifiFactory</b></td></tr>
 </div><div class="memdoc">
 
 <p>Parses the results of a WiFi scan to identify potential parent nodes for the mesh network. This function processes the list of scanned APs, checks for the presence of the custom mesh IE, and extracts metadata such as hop count and child count. Based on this information, it determines if there is a better parent node to connect to and updates internal state accordingly. </p>
-<dl class="section return"><dt>Returns</dt><dd>Void. </dd></dl>
-
-</div>
-</div>
-<a id="a21c0aa25b94c957b6801ba763ed50231" name="a21c0aa25b94c957b6801ba763ed50231"></a>
-<h2 class="memtitle"><span class="permalink"><a href="#a21c0aa25b94c957b6801ba763ed50231">&#9670;&#160;</a></span>PrepareTxPacket()</h2>
-
-<div class="memitem">
-<div class="memproto">
-<table class="mlabels">
-  <tr>
-  <td class="mlabels-left">
-      <table class="memname">
-        <tr>
-          <td class="memname">size_t AccessPointStation::PrepareTxPacket </td>
-          <td>(</td>
-          <td class="paramtype">const uint8_t *</td>          <td class="paramname"><span class="paramname"><em>rxData</em></span>, </td>
-        </tr>
-        <tr>
-          <td class="paramkey"></td>
-          <td></td>
-          <td class="paramtype">int</td>          <td class="paramname"><span class="paramname"><em>rxLength</em></span>, </td>
-        </tr>
-        <tr>
-          <td class="paramkey"></td>
-          <td></td>
-          <td class="paramtype">uint8_t *</td>          <td class="paramname"><span class="paramname"><em>txBuffer</em></span>, </td>
-        </tr>
-        <tr>
-          <td class="paramkey"></td>
-          <td></td>
-          <td class="paramtype">int &amp;</td>          <td class="paramname"><span class="paramname"><em>txLength</em></span>&#160;)</td>
-        </tr>
-      </table>
-  </td>
-  <td class="mlabels-right">
-<span class="mlabels"><span class="mlabel private">private</span></span>  </td>
-  </tr>
-</table>
-</div><div class="memdoc">
-
-<p>Prepares a packet for transmission by taking the data to include, creating the appropriate packet structure, and storing it in an internal buffer for the transmit task to send. This function handles the critical section for preparing the packet and ensures that the transmit task can safely access the prepared packet when it is ready to be sent. </p>
-<dl class="params"><dt>Parameters</dt><dd>
-  <table class="params">
-    <tr><td class="paramname">rxData</td><td></td></tr>
-    <tr><td class="paramname">rxLength</td><td></td></tr>
-    <tr><td class="paramname">txBuffer</td><td></td></tr>
-    <tr><td class="paramname">txLength</td><td></td></tr>
-  </table>
-  </dd>
-</dl>
-<dl class="section return"><dt>Returns</dt><dd>size_t: The size of the prepared packet, or 0 if preparation failed. </dd></dl>
-
-</div>
-</div>
-<a id="aec4d3af2d63049323fe8e70aa00a8531" name="aec4d3af2d63049323fe8e70aa00a8531"></a>
-<h2 class="memtitle"><span class="permalink"><a href="#aec4d3af2d63049323fe8e70aa00a8531">&#9670;&#160;</a></span>ProcessData()</h2>
-
-<div class="memitem">
-<div class="memproto">
-<table class="mlabels">
-  <tr>
-  <td class="mlabels-left">
-      <table class="memname">
-        <tr>
-          <td class="memname">void AccessPointStation::ProcessData </td>
-          <td>(</td>
-          <td class="paramtype">uint8_t *</td>          <td class="paramname"><span class="paramname"><em>data</em></span>, </td>
-        </tr>
-        <tr>
-          <td class="paramkey"></td>
-          <td></td>
-          <td class="paramtype">int</td>          <td class="paramname"><span class="paramname"><em>length</em></span>&#160;)</td>
-        </tr>
-      </table>
-  </td>
-  <td class="mlabels-right">
-<span class="mlabels"><span class="mlabel private">private</span></span>  </td>
-  </tr>
-</table>
-</div><div class="memdoc">
-
-<p>Processes received data from the UDP buffer, extracting complete packets and handling them according to their type. This function is called by the receive task when new data is available, and it manages the internal state of received packets, ensuring that they are properly parsed and processed. </p>
-<dl class="params"><dt>Parameters</dt><dd>
-  <table class="params">
-    <tr><td class="paramname">data</td><td></td></tr>
-    <tr><td class="paramname">length</td><td></td></tr>
-  </table>
-  </dd>
-</dl>
 <dl class="section return"><dt>Returns</dt><dd>Void. </dd></dl>
 
 </div>
@@ -1171,6 +1192,57 @@ class&#160;</td><td class="memItemRight"><b>WifiFactory</b></td></tr>
   </dd>
 </dl>
 <dl class="section return"><dt>Returns</dt><dd>Void. </dd></dl>
+
+</div>
+</div>
+<a id="a694882e5c81d3857af900b3a4b8bf595" name="a694882e5c81d3857af900b3a4b8bf595"></a>
+<h2 class="memtitle"><span class="permalink"><a href="#a694882e5c81d3857af900b3a4b8bf595">&#9670;&#160;</a></span>TryAddForwarding()</h2>
+
+<div class="memitem">
+<div class="memproto">
+<table class="mlabels">
+  <tr>
+  <td class="mlabels-left">
+      <table class="memname">
+        <tr>
+          <td class="memname">bool AccessPointStation::TryAddForwarding </td>
+          <td>(</td>
+          <td class="paramtype">const uint8_t *</td>          <td class="paramname"><span class="paramname"><em>DataIn</em></span>, </td>
+        </tr>
+        <tr>
+          <td class="paramkey"></td>
+          <td></td>
+          <td class="paramtype">int</td>          <td class="paramname"><span class="paramname"><em>LengthIn</em></span>, </td>
+        </tr>
+        <tr>
+          <td class="paramkey"></td>
+          <td></td>
+          <td class="paramtype">uint8_t *</td>          <td class="paramname"><span class="paramname"><em>DataOut</em></span>, </td>
+        </tr>
+        <tr>
+          <td class="paramkey"></td>
+          <td></td>
+          <td class="paramtype">size_t &amp;</td>          <td class="paramname"><span class="paramname"><em>LengthOut</em></span>&#160;)</td>
+        </tr>
+      </table>
+  </td>
+  <td class="mlabels-right">
+<span class="mlabels"><span class="mlabel private">private</span></span>  </td>
+  </tr>
+</table>
+</div><div class="memdoc">
+
+<p>Attempts to add forwarding information to a packet based on the current mesh topology and the packet's forwarding mode. This function checks if the packet requires forwarding, determines the appropriate next hop based on the sender's address and the mesh metadata, and modifies the packet accordingly to include forwarding information if necessary. </p>
+<dl class="params"><dt>Parameters</dt><dd>
+  <table class="params">
+    <tr><td class="paramname">DataIn</td><td></td></tr>
+    <tr><td class="paramname">LengthIn</td><td></td></tr>
+    <tr><td class="paramname">DataOut</td><td></td></tr>
+    <tr><td class="paramname">LengthOut</td><td></td></tr>
+  </table>
+  </dd>
+</dl>
+<dl class="section return"><dt>Returns</dt><dd>bool: True if forwarding information was added to the packet, false otherwise. The DataOut and LengthOut parameters will be populated with the modified packet if true is returned, or with the original packet if false is returned. </dd></dl>
 
 </div>
 </div>

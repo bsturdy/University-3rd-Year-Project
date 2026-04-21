@@ -11,6 +11,7 @@
 #include <cstdint>
 #include <cstdlib>
 #include <cstring>
+#include "esp_rom_sys.h"
 
 #define TAG "Main"
 #define CYCLIC_TAG "CyclicTask"
@@ -37,6 +38,8 @@ uint8_t TestFails = 0;
 void CyclicTask1(void* pvParameters)
 {
     CyclicCalls++;
+
+    esp_rom_delay_us(900);
 
     if (!WifiApSta->IsConnectedToHost()) CyclicState = 99;
 

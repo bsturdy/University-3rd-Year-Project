@@ -182,6 +182,8 @@ FOR i := 0 TO 9 BY 1 DO
 				
 				IF TempEsp.GetPacketToSend(PacketToSendAdr, PacketToSendLength) THEN
 					
+					TempEsp.CyclicUpdate();
+					
 					State := 6;
 
 				ELSE

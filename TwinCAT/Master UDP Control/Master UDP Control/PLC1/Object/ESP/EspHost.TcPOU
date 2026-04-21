@@ -25,7 +25,7 @@ END_VAR
     </Implementation>
     <Folder Name="ITF_EspHost" Id="{3e1ad894-296e-4a6b-bccd-5c988016ec11}" />
     <Folder Name="ITF_Node" Id="{1137c9b1-75b7-4fc7-8824-f307a94e0aea}" />
-    <Method Name="CyclicUpdate" Id="{54910a29-7116-406b-ac34-c30fe7d4116f}">
+    <Method Name="CyclicUpdate" Id="{54910a29-7116-406b-ac34-c30fe7d4116f}" FolderPath="ITF_EspHost\">
       <Declaration><![CDATA[METHOD CyclicUpdate : BOOL
 VAR_INPUT
 END_VAR
@@ -82,7 +82,7 @@ END_VAR
 RETURN;]]></ST>
       </Implementation>
     </Method>
-    <Method Name="GetPacketToSend" Id="{b42e5fbc-c601-4a14-b846-b8badd4c1736}">
+    <Method Name="GetPacketToSend" Id="{b42e5fbc-c601-4a14-b846-b8badd4c1736}" FolderPath="ITF_EspHost\">
       <Declaration><![CDATA[{warning 'Add method implementation '}
 METHOD GetPacketToSend : BOOL
 VAR_INPUT

@@ -20,8 +20,10 @@
 #include "esp_log.h"
 #include "esp_timer.h" 
 #include "esp_now.h"
+#include <cmath>
 #include <cstddef>
 #include <cstdint>
+#include <cstdio>
 #include <string.h>
 #include <sys/stat.h>
 #include <vector>
@@ -49,12 +51,16 @@ constexpr uint16_t PACKET_END_DELIMITER     = 0x035B;
 static const char* PARENT_SSID = "SturdyAP";
 static const char* PARENT_PASS = "SturdyAP79";
 
+static const uint64_t MY_UID = 2;
 static const char* MY_PASS = "12345678";
 static const uint8_t MAX_STA_CONN = 1;
-static const bool ENABLE_MASTER_CONNECTION = true;
+static const bool ENABLE_MASTER_CONNECTION = false;
+static const uint64_t HEARTBEAT_PULSE_US = 1000000;
+static const uint64_t HEARTBEAT_TIMEOUT_US = HEARTBEAT_PULSE_US * 4;
 
 struct WifiDevice
 {
+    wifi_ap_record_t WifiRecord;
     uint64_t TimeOfConnection;
     uint64_t UID;
     uint8_t MacId[6];
@@ -195,6 +201,30 @@ class AccessPointStation // Singleton
         friend class WifiFactory;
 
 
+        uint8_t UdpCore = 0;
+        uint16_t UdpPort = 0;
+        uint8_t MyHopCount = 255; // Default to 'Infinity' until connected
+
+        bool SystemInitialized = false;
+        bool UdpStarted = false;
+        bool IsConnectedToParent = false;
+        bool RoamRequested = false;
+        bool ApIpAcquired = false;
+        bool IsRuntimeLoggingEnabled = false;
+
+        bool IsMasterFound = false;
+        bool IsScanning = false;
+        bool IsConnecting = false;
+
+        int UdpSocket = -1;
+        char MyStaIpAddress[16];    // IP given by parent
+        char MyApIpAddress[16];     // IP of this AP
+        WifiDevice ParentDevice{};  
+        std::vector<WifiDevice> ChildDevices{};
+
+        volatile int64_t LastHeartbeatUs = 0;
+
+
 
         /**
          * @brief Constructor for AccessPointStation class. Never used manually, always created through the factory.
@@ -276,7 +306,7 @@ class AccessPointStation // Singleton
 
 
         /**
-         * @brief   Callback function for handling vendor-specific Information Elements (IEs) received during WiFi scanning. This function processes the IEs to extract mesh-related metadata such as hop count and child count, and updates an internal cache for use in AP selection logic.
+         * @brief Callback function for handling vendor-specific Information Elements (IEs) received during WiFi scanning. This function processes the IEs to extract mesh-related metadata such as hop count and child count, and updates an internal cache for use in AP selection logic.
          * @param ctx Context pointer (not used in this implementation).
          * @param type The type of the vendor IE (e.g., beacon, probe response).
          * @param sa The source MAC address of the device that sent the IE.
@@ -285,6 +315,7 @@ class AccessPointStation // Singleton
          * @return Void.
          */
         static void WifiVendorIeCb(void *ctx, wifi_vendor_ie_type_t type, const uint8_t sa[6], const vendor_ie_data_t *vnd_ie, int rssi);
+        MeshMetadata CallbackIeData[20]{};
 
 
 
@@ -311,6 +342,11 @@ class AccessPointStation // Singleton
          * @return Void.
          */
         void ParseScanResults();
+        wifi_ap_record_t CandidateWifiRecord{};
+        bool IsCandidateValid = false;
+        bool IsCandidateMaster = false;
+        uint8_t CandidateHop = 0;
+        uint8_t CandidateChildren = 0;
 
 
 
@@ -343,22 +379,38 @@ class AccessPointStation // Singleton
          * @brief Processes received data from the UDP buffer, extracting complete packets and handling them according to their type. This function is called by the receive task when new data is available, and it manages the internal state of received packets, ensuring that they are properly parsed and processed.
          * @param data 
          * @param length 
+         * @param SourceDevice Pointer to a WifiDevice structure representing the source of the received data, which can be used for processing logic and determining how to respond to the packet.
+         * @param IsFromParent Indicates whether the received data is from the parent node (true) or from a child node (false). This can affect how the data is processed and what actions are taken in response.
          * @return Void.
          */
-        void ProcessData(uint8_t* data, int length);
+        void HandleReceivedData(uint8_t* data, int length, WifiDevice* SourceDevice, bool IsFromParent);
 
 
 
         /**
-         * @brief Prepares a packet for transmission by taking the data to include, creating the appropriate packet structure, and storing it in an internal buffer for the transmit task to send. This function handles the critical section for preparing the packet and ensures that the transmit task can safely access the prepared packet when it is ready to be sent.
-         * @param rxData 
-         * @param rxLength 
-         * @param txBuffer 
-         * @param txLength 
-         * @return size_t: The size of the prepared packet, or 0 if preparation failed.
+         * @brief Generates a response packet based on received data. This function takes the received packet data, processes it according to the packet type and content, and creates an appropriate response packet to be sent back to the sender or forwarded through the mesh network.
+         * @param ReceivedData 
+         * @param ReceivedLength 
+         * @param ShouldReply Indicates whether a response should be generated (true) or not (false). This can affect the content and routing of the response packet.
+         * @param ResponseBuffer 
+         * @param ResponseBufferSize 
+         * @return size_t: The size of the generated response packet, or 0 if generation failed.
          */
-        size_t PrepareTxPacket(const uint8_t* rxData, int rxLength, uint8_t* txBuffer, int& txLength);
+        size_t GenerateResponsePayload(const uint8_t* ReceivedPacketData, int ReceivedLength, bool ShouldReply, uint8_t* ResponsePayloadBuffer, size_t ResponseBufferSize);
         
+
+
+        /**
+         * @brief Attempts to add forwarding information to a packet based on the current mesh topology and the packet's forwarding mode. This function checks if the packet requires forwarding, determines the appropriate next hop based on the sender's address and the mesh metadata, and modifies the packet accordingly to include forwarding information if necessary.
+         * 
+         * @param DataIn 
+         * @param LengthIn 
+         * @param DataOut 
+         * @param LengthOut 
+         * @return bool: True if forwarding information was added to the packet, false otherwise. The DataOut and LengthOut parameters will be populated with the modified packet if true is returned, or with the original packet if false is returned.
+         */
+        bool TryAddForwarding(const uint8_t* DataIn, int LengthIn, uint8_t* DataOut, size_t& LengthOut);
+
 
 
         /**
@@ -370,6 +422,22 @@ class AccessPointStation // Singleton
          * @return bool: True if a valid destination address was determined, false otherwise. The DestinationAddress parameter will be populated with the appropriate address if true is returned.
          */
         bool DetermineDestinationAddress(const sockaddr_in& SourceAddress, const uint8_t* Data, int DataLength, sockaddr_in& DestinationAddress);
+
+
+
+        /**
+         * @brief Finds a device in either the parent or child device list by its IP address. This function is used to determine if an incoming packet is from a known device and to retrieve information about that device for processing the packet and determining forwarding behavior.
+         * 
+         * @param SourceAddress 
+         * @param IsParent 
+         * @return WifiDevice* 
+         */
+        WifiDevice* FindDeviceByIp(const sockaddr_in& SourceAddress, bool* IsParent);
+
+
+
+        void CheckParentHeartbeatTimeout();
+        void CheckChildHeartbeatTimeouts();
 
 
 
@@ -391,91 +459,6 @@ class AccessPointStation // Singleton
 
 
 
-        // Wifi Configuration
-        esp_err_t Error;
-        wifi_init_config_t WifiDriverConfig = WIFI_INIT_CONFIG_DEFAULT();
-        wifi_country_t WifiCountry = {};
-        wifi_config_t ApWifiServiceConfig = {};
-        wifi_config_t StaWifiServiceConfig = {};
-        esp_netif_t* ApNetif = nullptr;
-        esp_netif_t* StaNetif = nullptr;
-
-
-
-
-
-
-
-
-        MeshMetadata CallbackIeData[20]{};
-        uint8_t MyHopCount = 255; // Default to 'Infinity' until connected
-
-        wifi_ap_record_t CandidateWifiRecord{};
-        wifi_ap_record_t ParentWifiRecord{};
-        bool IsCandidateValid = false;
-        bool IsCandidateMaster = false;
-        bool RoamRequested = false;
-        uint8_t CandidateHop = 0;
-        uint8_t CandidateChildren = 0;
-        bool IsMasterFound = false;
-        bool IsScanning = false;
-        bool IsConnecting = false;
-        
-        
-        
-
-        static constexpr int MaxPayload = 1024;      // pick your limit
-        uint8_t LatestPayload[MaxPayload]{};
-        uint16_t LatestPayloadSize = 0;
-        uint8_t  LatestPayloadType = 0;
-        int64_t  LatestPayloadUs = 0;
-        volatile uint32_t PayloadSeq = 0;            // for race-safe getter later
-        uint8_t PreparedTxPacket[MaxPayload]{};
-        int PreparedTxLength = 0;
-        portMUX_TYPE TxCriticalSection = portMUX_INITIALIZER_UNLOCKED;
-
-
-
-
-
-
-
-
-
-
-
-        // Critical section for data access
-        portMUX_TYPE CriticalSection = portMUX_INITIALIZER_UNLOCKED;
-
-
-        // UDP Buffer
-        UdpPacket PacketBuffer[UDP_SLOTS];
-        volatile size_t Head = 0;
-        volatile size_t Tail = 0;
-
-       
-        // UDP helper functions
-        
-
-
-        // Internal data
-        uint8_t  UdpCore = 0;
-        uint16_t UdpPort = 0;
-        uint8_t SetupState = 0;
-        bool SystemInitialized = false;
-        bool UdpStarted = false;
-        bool IsConnectedToParent = false;
-        bool ApIpAcquired = false;
-        bool IsRuntimeLoggingEnabled = false;
-        int UdpSocket = -1;
-        char MyStaIpAddress[16]; // IP given by parent
-        char MyApIpAddress[16]; // IP of this AP
-        volatile int64_t LastHeartbeatUs = 0;
-        WifiDevice ParentDevice{};  
-        std::vector<WifiDevice> ChildDevices{};
-
-
-
     public:
 
         /**
@@ -483,6 +466,14 @@ class AccessPointStation // Singleton
          * @return bool: True if setup was successful, false otherwise. Note that this function may return true even if the device is not currently connected to a parent AP, as it may still be in the process of scanning and connecting.
          */
         bool SetupWifi();     
+        esp_err_t Error;
+        wifi_init_config_t WifiDriverConfig = WIFI_INIT_CONFIG_DEFAULT();
+        wifi_country_t WifiCountry = {};
+        wifi_config_t ApWifiServiceConfig = {};
+        wifi_config_t StaWifiServiceConfig = {};
+        esp_netif_t* ApNetif = nullptr;
+        esp_netif_t* StaNetif = nullptr;
+        uint8_t SetupState = 0;
         
 
         

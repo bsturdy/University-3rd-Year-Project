@@ -3,6 +3,12 @@
   <Itf Name="ITF_EspHost" Id="{abc0fd08-8675-407a-972a-8d22e58329f4}">
     <Declaration><![CDATA[INTERFACE ITF_EspHost
 ]]></Declaration>
+    <Method Name="CyclicUpdate" Id="{d54f9482-e9a0-4911-8758-6dc451e9417d}">
+      <Declaration><![CDATA[METHOD CyclicUpdate : BOOL
+VAR_INPUT
+END_VAR
+]]></Declaration>
+    </Method>
     <Method Name="GetDataBuffer" Id="{8da7ba6e-02ea-4334-8c55-9511c73189e8}">
       <Declaration><![CDATA[METHOD GetDataBuffer : BOOL
 VAR_INPUT
