@@ -11,6 +11,7 @@
 #include "esp_wifi_types_generic.h"
 #include "freertos/FreeRTOS.h"
 #include "freertos/task.h"
+#include "freertos/semphr.h"
 #include "esp_log.h"
 #include "esp_mac.h"
 #include "esp_private/wifi.h"
@@ -55,8 +56,10 @@ static const uint64_t MY_UID = 2;
 static const char* MY_PASS = "12345678";
 static const uint8_t MAX_STA_CONN = 1;
 static const bool ENABLE_MASTER_CONNECTION = false;
-static const uint64_t HEARTBEAT_PULSE_US = 1000000;
-static const uint64_t HEARTBEAT_TIMEOUT_US = HEARTBEAT_PULSE_US * 4;
+static const uint64_t HEARTBEAT_PULSE_US = 250000;
+static const uint64_t HEARTBEAT_TIMEOUT_US = HEARTBEAT_PULSE_US * 3;
+static const uint64_t CHILD_FIRST_HEARTBEAT_GRACE_US = 10000000;
+static const uint64_t SYSTEM_INFO_PULSE_US = 1000000;
 
 struct WifiDevice
 {
@@ -223,6 +226,7 @@ class AccessPointStation // Singleton
         std::vector<WifiDevice> ChildDevices{};
 
         volatile int64_t LastHeartbeatUs = 0;
+        volatile int64_t LastHeartbeatSentUs = 0;
 
 
 
@@ -438,6 +442,7 @@ class AccessPointStation // Singleton
 
         void CheckParentHeartbeatTimeout();
         void CheckChildHeartbeatTimeouts();
+        void DisconnectAllChildren(const char* Reason);
 
 
 
@@ -474,6 +479,7 @@ class AccessPointStation // Singleton
         esp_netif_t* ApNetif = nullptr;
         esp_netif_t* StaNetif = nullptr;
         uint8_t SetupState = 0;
+        SemaphoreHandle_t StateMutex = nullptr;
         
 
         
@@ -533,7 +539,13 @@ class AccessPointStation // Singleton
          * @brief Get the number of child devices currently connected to this device's AP. This indicates how many other devices are currently connected to this node as their parent in the mesh network.
          * @return size_t: The number of child devices currently connected, or 0 if no devices are connected.
          */
-        size_t GetNumChildren() const { return ChildDevices.size(); }
+        size_t GetNumChildren() const
+        {
+            if (StateMutex != nullptr) xSemaphoreTake(StateMutex, portMAX_DELAY);
+            const size_t Count = ChildDevices.size();
+            if (StateMutex != nullptr) xSemaphoreGive(StateMutex);
+            return Count;
+        }
 
 
 

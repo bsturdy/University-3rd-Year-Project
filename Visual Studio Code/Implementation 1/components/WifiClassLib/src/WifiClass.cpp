@@ -3,7 +3,9 @@
 #include "freertos/idf_additions.h"
 #include "freertos/projdefs.h"
 #include "lwip/sockets.h"
+#include "lwip/ip4_addr.h"
 #include "portmacro.h"
+#include <errno.h>
 #include <cstddef>
 #include <cstdint>
 #include <cstring>
@@ -30,6 +32,29 @@
 
 static AccessPointStation* ApStaClassInstance;
 
+static bool IsValidMeshPacket(const uint8_t* Data, int Length)
+{
+    if (Data == nullptr) return false;
+    if (Length < static_cast<int>(PACKET_HEADER_SIZE + sizeof(PACKET_END_DELIMITER))) return false;
+
+    uint16_t StartDelimiter = 0;
+    memcpy(&StartDelimiter, Data, sizeof(StartDelimiter));
+    if (StartDelimiter != PACKET_START_DELIMITER) return false;
+
+    uint16_t PayloadSizeNetwork = 0;
+    memcpy(&PayloadSizeNetwork, Data + 2, sizeof(PayloadSizeNetwork));
+    const uint16_t PayloadSize = ntohs(PayloadSizeNetwork);
+
+    const size_t ExpectedLength = PACKET_HEADER_SIZE + static_cast<size_t>(PayloadSize) + sizeof(PACKET_END_DELIMITER);
+    if (ExpectedLength != static_cast<size_t>(Length)) return false;
+
+    uint16_t EndDelimiter = 0;
+    memcpy(&EndDelimiter, Data + PACKET_HEADER_SIZE + PayloadSize, sizeof(EndDelimiter));
+    if (EndDelimiter != PACKET_END_DELIMITER) return false;
+
+    return true;
+}
+
 AccessPointStation::AccessPointStation(uint8_t CoreToUse, uint16_t Port, bool EnableRuntimeLogging)
 {
     ApStaClassInstance = this;
@@ -42,13 +67,19 @@ AccessPointStation::AccessPointStation(uint8_t CoreToUse, uint16_t Port, bool En
     IsConnectedToParent = false;
     ApIpAcquired = false;
     MyHopCount = 255; // Default to 'Infinity' until scan/connect
+    memset(MyApIpAddress, 0, sizeof(MyApIpAddress));
+    StateMutex = xSemaphoreCreateMutex();
 }
 
 
 
 AccessPointStation::~AccessPointStation()
 {
-    ;
+    if (StateMutex != nullptr)
+    {
+        vSemaphoreDelete(StateMutex);
+        StateMutex = nullptr;
+    }
 }
 
 
@@ -74,7 +105,11 @@ void AccessPointStation::ApWifiEventHandler(void* arg, esp_event_base_t event_ba
         memcpy(child.MacId, Event->mac, 6);
         child.IpAddress[0] = '\0'; 
 
+        if (ApStaClassInstance->StateMutex != nullptr) xSemaphoreTake(ApStaClassInstance->StateMutex, portMAX_DELAY);
         ApStaClassInstance->ChildDevices.push_back(child);
+        const uint8_t ChildCount = static_cast<uint8_t>(ApStaClassInstance->ChildDevices.size());
+        const uint8_t MyHop = ApStaClassInstance->MyHopCount;
+        if (ApStaClassInstance->StateMutex != nullptr) xSemaphoreGive(ApStaClassInstance->StateMutex);
 
         if (ApStaClassInstance->IsRuntimeLoggingEnabled) 
         {
@@ -82,10 +117,7 @@ void AccessPointStation::ApWifiEventHandler(void* arg, esp_event_base_t event_ba
                      MAC2STR(Event->mac), Event->aid);
         }
 
-        ApStaClassInstance->UpdateBeaconMetadata(
-            ApStaClassInstance->MyHopCount,
-            (uint8_t)ApStaClassInstance->ChildDevices.size()
-        );
+        ApStaClassInstance->UpdateBeaconMetadata(MyHop, ChildCount);
     } 
 
 
@@ -98,16 +130,19 @@ void AccessPointStation::ApWifiEventHandler(void* arg, esp_event_base_t event_ba
             ESP_LOGE("MESH_AP", "Child Left | MAC: " MACSTR, MAC2STR(Event->mac));
         }
 
+        uint8_t ChildCount = 0;
+        uint8_t MyHop = 255;
+        if (ApStaClassInstance->StateMutex != nullptr) xSemaphoreTake(ApStaClassInstance->StateMutex, portMAX_DELAY);
         // Precise removal using Erase-Remove Idiom
         auto& list = ApStaClassInstance->ChildDevices;
         list.erase(std::remove_if(list.begin(), list.end(), [&](const WifiDevice& d) {
             return memcmp(d.MacId, Event->mac, 6) == 0;
         }), list.end());
+        ChildCount = static_cast<uint8_t>(ApStaClassInstance->ChildDevices.size());
+        MyHop = ApStaClassInstance->MyHopCount;
+        if (ApStaClassInstance->StateMutex != nullptr) xSemaphoreGive(ApStaClassInstance->StateMutex);
 
-        ApStaClassInstance->UpdateBeaconMetadata(
-            ApStaClassInstance->MyHopCount,
-            (uint8_t)ApStaClassInstance->ChildDevices.size()
-        );
+        ApStaClassInstance->UpdateBeaconMetadata(MyHop, ChildCount);
     }
 }
 
@@ -121,12 +156,16 @@ void AccessPointStation::StaWifiEventHandler(void* arg, esp_event_base_t event_b
         case WIFI_EVENT_STA_START:
             ApStaClassInstance->IsConnectedToParent = false;
             ApStaClassInstance->ApIpAcquired = false;
+            ApStaClassInstance->LastHeartbeatUs = 0;
+            ApStaClassInstance->LastHeartbeatSentUs = 0;
+            ApStaClassInstance->ParentDevice.LastHeartbeatUs = 0;
             ApStaClassInstance->StopUdp();
             break;
 
 
 
         case WIFI_EVENT_SCAN_DONE:
+        {
             // This is the trigger for our connection logic
             if (ApStaClassInstance->IsRuntimeLoggingEnabled) {
                 ESP_LOGI(STA_TAG, "WiFi Scan Complete. Parsing results...");
@@ -134,26 +173,36 @@ void AccessPointStation::StaWifiEventHandler(void* arg, esp_event_base_t event_b
             ApStaClassInstance->ParseScanResults();
             ApStaClassInstance->IsScanning = false;
 
-            if (ApStaClassInstance->IsConnectedToParent &&
-                ApStaClassInstance->ApIpAcquired &&
-                ApStaClassInstance->IsCandidateValid)
+            bool IsConnectedLocal = false;
+            bool HasIpLocal = false;
+            bool HasCandidateLocal = false;
+            uint8_t CurHopLocal = 255;
+            uint8_t NewHopLocal = 255;
+            if (ApStaClassInstance->StateMutex != nullptr) xSemaphoreTake(ApStaClassInstance->StateMutex, portMAX_DELAY);
+            IsConnectedLocal = ApStaClassInstance->IsConnectedToParent;
+            HasIpLocal = ApStaClassInstance->ApIpAcquired;
+            HasCandidateLocal = ApStaClassInstance->IsCandidateValid;
+            CurHopLocal = ApStaClassInstance->ParentDevice.HopCount;
+            NewHopLocal = ApStaClassInstance->CandidateHop;
+            if (ApStaClassInstance->StateMutex != nullptr) xSemaphoreGive(ApStaClassInstance->StateMutex);
+
+            if (IsConnectedLocal && HasIpLocal && HasCandidateLocal)
             {
-
-                const uint8_t curHop = ApStaClassInstance->ParentDevice.HopCount;
-                const uint8_t newHop = ApStaClassInstance->CandidateHop;
-
-                if (newHop < curHop) 
+                if (NewHopLocal < CurHopLocal) 
                 {
+                    if (ApStaClassInstance->StateMutex != nullptr) xSemaphoreTake(ApStaClassInstance->StateMutex, portMAX_DELAY);
                     ApStaClassInstance->RoamRequested = true;
+                    if (ApStaClassInstance->StateMutex != nullptr) xSemaphoreGive(ApStaClassInstance->StateMutex);
                     if (ApStaClassInstance->IsRuntimeLoggingEnabled) 
                     {
                         ESP_LOGW(STA_TAG, "Roam requested: current hop %u -> candidate hop %u",
-                                curHop, newHop);
+                                CurHopLocal, NewHopLocal);
                     }
                 }
             }
 
             break;
+        }
 
 
 
@@ -183,6 +232,7 @@ void AccessPointStation::StaWifiEventHandler(void* arg, esp_event_base_t event_b
             ApStaClassInstance->ApIpAcquired = false;
             ApStaClassInstance->ParentDevice.LastHeartbeatUs = 0;
             ApStaClassInstance->LastHeartbeatUs = 0;
+            ApStaClassInstance->LastHeartbeatSentUs = 0;
             
             // Poison the route and wifi data
             ApStaClassInstance->MyHopCount = 255; 
@@ -190,7 +240,7 @@ void AccessPointStation::StaWifiEventHandler(void* arg, esp_event_base_t event_b
             ApStaClassInstance->IsConnectedToParent = false;
             ApStaClassInstance->IsMasterFound = false;
             ApStaClassInstance->ParentDevice.WifiRecord.ssid[0] = '\0';
-            ApStaClassInstance->UpdateBeaconMetadata(255, ApStaClassInstance->ChildDevices.size());
+            ApStaClassInstance->DisconnectAllChildren("Parent disconnected");
             
             ApStaClassInstance->StopUdp();
             
@@ -235,6 +285,7 @@ void AccessPointStation::IpEventHandler(void* arg, esp_event_base_t event_base,
             ApStaClassInstance->ApIpAcquired = true;
             ApStaClassInstance->IsConnectedToParent = true;
             ApStaClassInstance->LastHeartbeatUs = 0;
+            ApStaClassInstance->LastHeartbeatSentUs = 0;
             ApStaClassInstance->ParentDevice.LastHeartbeatUs = 0;   
 
             // 4. MESH LOGIC: Path Validation
@@ -279,6 +330,7 @@ void AccessPointStation::IpEventHandler(void* arg, esp_event_base_t event_base,
             // In a mesh, the most recent device to connect is the one getting the IP.
             // We search our vector from NEWEST to OLDEST (reverse iterator).
             bool matched = false;
+            if (ApStaClassInstance->StateMutex != nullptr) xSemaphoreTake(ApStaClassInstance->StateMutex, portMAX_DELAY);
             for (auto it = ApStaClassInstance->ChildDevices.rbegin(); it != ApStaClassInstance->ChildDevices.rend(); ++it)
             {
                 // If the IpAddress is still empty, this is our target.
@@ -296,6 +348,7 @@ void AccessPointStation::IpEventHandler(void* arg, esp_event_base_t event_base,
                     break;
                 }
             }
+            if (ApStaClassInstance->StateMutex != nullptr) xSemaphoreGive(ApStaClassInstance->StateMutex);
 
             if (!matched && ApStaClassInstance->IsRuntimeLoggingEnabled) {
                 ESP_LOGE("MESH_AP", "Received IP assignment %s but found no matching child!", AssignedIp);
@@ -310,11 +363,12 @@ void AccessPointStation::IpEventHandler(void* arg, esp_event_base_t event_base,
             ApStaClassInstance->ApIpAcquired = false;
             memset(ApStaClassInstance->MyStaIpAddress, 0, 16);
             ApStaClassInstance->LastHeartbeatUs = 0;
+            ApStaClassInstance->LastHeartbeatSentUs = 0;
             ApStaClassInstance->ParentDevice.LastHeartbeatUs = 0;
 
             // MESH LOGIC: Poison the route
             ApStaClassInstance->MyHopCount = 255; 
-            ApStaClassInstance->UpdateBeaconMetadata(ApStaClassInstance->MyHopCount, (uint8_t)ApStaClassInstance->ChildDevices.size());
+            ApStaClassInstance->DisconnectAllChildren("Parent IP lost");
 
             ApStaClassInstance->StopUdp();
             
@@ -424,6 +478,16 @@ void AccessPointStation::ParseScanResults()
     uint8_t CurrentBestHop = 255; 
     uint8_t CurrentBestChildren = 255;
 
+    // Reset candidate state at the start of each scan parse so stale data
+    // cannot influence connection/roaming decisions after a failed scan.
+    if (StateMutex != nullptr) xSemaphoreTake(StateMutex, portMAX_DELAY);
+    IsCandidateValid = false;
+    IsCandidateMaster = false;
+    CandidateHop = 0;
+    CandidateChildren = 0;
+    memset(&CandidateWifiRecord, 0, sizeof(CandidateWifiRecord));
+    if (StateMutex != nullptr) xSemaphoreGive(StateMutex);
+
     
     Error = esp_wifi_scan_get_ap_num(&ApCount);
     if (ApCount == 0 || Error != ESP_OK) return;
@@ -460,17 +524,23 @@ void AccessPointStation::ParseScanResults()
 
         else if (strstr((char*)ApList[i].ssid, "node") != nullptr) 
         {
-            ESP_LOGW(STA_TAG, "Node AP BSSID = " MACSTR, MAC2STR(ApList[i].bssid));
+            if (IsRuntimeLoggingEnabled)
+            {
+                ESP_LOGW(STA_TAG, "Node AP BSSID = " MACSTR, MAC2STR(ApList[i].bssid));
+            }
             bool foundVendorData = false;
             
             for (int j = 0; j < 20; j++) 
             {
-                ESP_LOGW(STA_TAG, "IE Cache [%d] Valid=%d MAC=" MACSTR " Hop=%u Child=%u",
-                j,
-                CallbackIeData[j].IsValid,
-                MAC2STR(CallbackIeData[j].MacId),
-                CallbackIeData[j].HopCount,
-                CallbackIeData[j].ChildCount);
+                if (IsRuntimeLoggingEnabled)
+                {
+                    ESP_LOGW(STA_TAG, "IE Cache [%d] Valid=%d MAC=" MACSTR " Hop=%u Child=%u",
+                    j,
+                    CallbackIeData[j].IsValid,
+                    MAC2STR(CallbackIeData[j].MacId),
+                    CallbackIeData[j].HopCount,
+                    CallbackIeData[j].ChildCount);
+                }
 
                 // if wifi record matches IE scan by BSSID
                 if (CallbackIeData[j].IsValid && 
@@ -549,13 +619,16 @@ void AccessPointStation::ParseScanResults()
 
     if (BestAp != nullptr)
     {
+        bool CanApplyParentRoute = false;
+        if (StateMutex != nullptr) xSemaphoreTake(StateMutex, portMAX_DELAY);
+        CanApplyParentRoute = (!IsConnectedToParent && !IsConnecting);
         IsCandidateValid = true;
         IsCandidateMaster = MasterFound;
         CandidateWifiRecord = *BestAp;
         CandidateHop = CurrentBestHop;
         CandidateChildren = CurrentBestChildren;
 
-        if (!IsConnectedToParent && !IsConnecting)
+        if (CanApplyParentRoute)
         {
             IsMasterFound = IsCandidateMaster;
             ParentDevice.WifiRecord = CandidateWifiRecord;
@@ -564,11 +637,14 @@ void AccessPointStation::ParseScanResults()
 
             MyHopCount = (CandidateHop == 255) ? 255 : (uint8_t)(CandidateHop + 1);
         }
+        if (StateMutex != nullptr) xSemaphoreGive(StateMutex);
     }
 
     else
     {
+        if (StateMutex != nullptr) xSemaphoreTake(StateMutex, portMAX_DELAY);
         IsCandidateValid = false;
+        if (StateMutex != nullptr) xSemaphoreGive(StateMutex);
     }
 
     memset(CallbackIeData, 0, sizeof(CallbackIeData));
@@ -639,21 +715,6 @@ void AccessPointStation::MeshTask(void* pvParameters)
         // 2s
         if (Counter % 20 == 0)
         {
-            // if (ApStaClassInstance->ApIpAcquired && ApStaClassInstance->LastHeartbeatUs != 0 && !ApStaClassInstance->IsMasterFound)
-            // {
-            //     uint64_t TimeNow = esp_timer_get_time();
-            //     uint64_t TimeSinceLastHeartbeat = TimeNow - ApStaClassInstance->LastHeartbeatUs;
-            //     if (TimeSinceLastHeartbeat > HEARTBEAT_TIMEOUT_US) 
-            //     {
-            //         if (ApStaClassInstance->IsRuntimeLoggingEnabled) 
-            //         {
-            //             ESP_LOGE(STA_TAG, "Parent heartbeat timeout! Last heartbeat was %llu seconds ago. Initiating disconnect.", TimeSinceLastHeartbeat / 1000000);
-            //         }
-            //         esp_wifi_disconnect();
-            //         vTaskDelay(pdMS_TO_TICKS(200));
-            //     }
-            // }
-
             if (!ApStaClassInstance->IsConnectedToParent &&
                 !ApStaClassInstance->IsScanning &&
                 !ApStaClassInstance->IsConnecting)
@@ -675,22 +736,41 @@ void AccessPointStation::MeshTask(void* pvParameters)
                 ApStaClassInstance->RoamRequested &&
                 ApStaClassInstance->IsCandidateValid)
             {
-                ApStaClassInstance->RoamRequested = false;
-                ApStaClassInstance->IsConnecting = true;
+                bool ShouldRoamNow = false;
+                wifi_ap_record_t RoamWifiRecord{};
+                uint8_t RoamHop = 255;
 
-                ApStaClassInstance->IsMasterFound = ApStaClassInstance->IsCandidateMaster;
-                ApStaClassInstance->ParentDevice.WifiRecord = ApStaClassInstance->CandidateWifiRecord;
-                ApStaClassInstance->ParentDevice.HopCount = ApStaClassInstance->CandidateHop;
-                ApStaClassInstance->MyHopCount =
-                    (ApStaClassInstance->CandidateHop == 255) ? 255 : (uint8_t)(ApStaClassInstance->CandidateHop + 1);
+                if (ApStaClassInstance->StateMutex != nullptr) xSemaphoreTake(ApStaClassInstance->StateMutex, portMAX_DELAY);
+                if (ApStaClassInstance->IsConnectedToParent &&
+                    !ApStaClassInstance->IsConnecting &&
+                    ApStaClassInstance->RoamRequested &&
+                    ApStaClassInstance->IsCandidateValid)
+                {
+                    ApStaClassInstance->RoamRequested = false;
+                    ApStaClassInstance->IsConnecting = true;
 
-                ESP_LOGW(STA_TAG, "Roaming now to %s (hop %u)",
-                        (char*)ApStaClassInstance->ParentDevice.WifiRecord.ssid,
-                        ApStaClassInstance->ParentDevice.HopCount);
+                    ApStaClassInstance->IsMasterFound = ApStaClassInstance->IsCandidateMaster;
+                    ApStaClassInstance->ParentDevice.WifiRecord = ApStaClassInstance->CandidateWifiRecord;
+                    ApStaClassInstance->ParentDevice.HopCount = ApStaClassInstance->CandidateHop;
+                    ApStaClassInstance->MyHopCount =
+                        (ApStaClassInstance->CandidateHop == 255) ? 255 : (uint8_t)(ApStaClassInstance->CandidateHop + 1);
 
-                esp_wifi_disconnect();
-                vTaskDelay(pdMS_TO_TICKS(200));
-                ApStaClassInstance->ConnectToBestAp();
+                    RoamWifiRecord = ApStaClassInstance->ParentDevice.WifiRecord;
+                    RoamHop = ApStaClassInstance->ParentDevice.HopCount;
+                    ShouldRoamNow = true;
+                }
+                if (ApStaClassInstance->StateMutex != nullptr) xSemaphoreGive(ApStaClassInstance->StateMutex);
+
+                if (ShouldRoamNow)
+                {
+                    ESP_LOGW(STA_TAG, "Roaming now to %s (hop %u)",
+                            (char*)RoamWifiRecord.ssid,
+                            RoamHop);
+
+                    esp_wifi_disconnect();
+                    vTaskDelay(pdMS_TO_TICKS(200));
+                    ApStaClassInstance->ConnectToBestAp();
+                }
             }
         }
     }
@@ -700,70 +780,178 @@ void AccessPointStation::MeshTask(void* pvParameters)
 
 void AccessPointStation::CheckParentHeartbeatTimeout()
 {
-    if (!IsConnectedToParent) return;
-    if (!ApIpAcquired) return;
-    if (MyStaIpAddress[0] == '\0') return;
-    if (ParentDevice.IpAddress[0] == '\0') return;
-    if (IsMasterFound) return;
-    if (LastHeartbeatUs == 0) return;
+    static uint64_t LastHeartbeatDiagUs = 0;
+
+    bool IsConnectedToParentLocal = false;
+    bool ApIpAcquiredLocal = false;
+    bool IsMasterFoundLocal = false;
+    uint8_t MyHopCountLocal = 255;
+    char MyStaIpAddressLocal[16]{};
+    char ParentIpLocal[16]{};
+    int64_t LastHeartbeatUsLocal = 0;
+    int64_t LastHeartbeatSentUsLocal = 0;
+
+    if (StateMutex != nullptr) xSemaphoreTake(StateMutex, portMAX_DELAY);
+    IsConnectedToParentLocal = IsConnectedToParent;
+    ApIpAcquiredLocal = ApIpAcquired;
+    IsMasterFoundLocal = IsMasterFound;
+    MyHopCountLocal = MyHopCount;
+    strncpy(MyStaIpAddressLocal, MyStaIpAddress, sizeof(MyStaIpAddressLocal) - 1);
+    MyStaIpAddressLocal[sizeof(MyStaIpAddressLocal) - 1] = '\0';
+    strncpy(ParentIpLocal, ParentDevice.IpAddress, sizeof(ParentIpLocal) - 1);
+    ParentIpLocal[sizeof(ParentIpLocal) - 1] = '\0';
+    LastHeartbeatUsLocal = LastHeartbeatUs;
+    LastHeartbeatSentUsLocal = LastHeartbeatSentUs;
+    if (StateMutex != nullptr) xSemaphoreGive(StateMutex);
+
+    if (!IsConnectedToParentLocal) return;
+    if (!ApIpAcquiredLocal) return;
+    if (MyStaIpAddressLocal[0] == '\0') return;
+    if (ParentIpLocal[0] == '\0') return;
+    if (IsMasterFoundLocal && MyHopCountLocal == 1) return;
+    if (strcmp(ParentIpLocal, "192.168.0.254") == 0) return;
 
     const uint64_t TimeNow = esp_timer_get_time();
-    const uint64_t TimeSinceLastHeartbeat = TimeNow - static_cast<uint64_t>(LastHeartbeatUs);
+
+    if (IsRuntimeLoggingEnabled && (TimeNow - LastHeartbeatDiagUs >= 5000000))
+    {
+        const uint64_t RxAgeUs = (LastHeartbeatUsLocal > 0) ? (TimeNow - static_cast<uint64_t>(LastHeartbeatUsLocal)) : 0;
+        const uint64_t TxAgeUs = (LastHeartbeatSentUsLocal > 0) ? (TimeNow - static_cast<uint64_t>(LastHeartbeatSentUsLocal)) : 0;
+        ESP_LOGW(STA_TAG, "HB diag | parent=%s | rx_age_us=%llu | tx_age_us=%llu | timeout_us=%llu",
+                 ParentIpLocal,
+                 RxAgeUs,
+                 TxAgeUs,
+                 static_cast<unsigned long long>(HEARTBEAT_TIMEOUT_US));
+        LastHeartbeatDiagUs = TimeNow;
+    }
+
+    uint64_t ReferenceHeartbeatUs = 0;
+    if (LastHeartbeatUsLocal != 0)
+    {
+        ReferenceHeartbeatUs = static_cast<uint64_t>(LastHeartbeatUsLocal);
+    }
+    else if (LastHeartbeatSentUsLocal != 0)
+    {
+        // No reply received yet; supervise from the most recent request we sent.
+        ReferenceHeartbeatUs = static_cast<uint64_t>(LastHeartbeatSentUsLocal);
+    }
+    else
+    {
+        return;
+    }
+
+    const uint64_t TimeSinceLastHeartbeat = TimeNow - ReferenceHeartbeatUs;
 
     if (TimeSinceLastHeartbeat <= HEARTBEAT_TIMEOUT_US) return;
 
     if (IsRuntimeLoggingEnabled)
     {
-        ESP_LOGE(STA_TAG, "Parent heartbeat timeout! Last heartbeat was %llu us ago. Initiating disconnect.", TimeSinceLastHeartbeat);
+        ESP_LOGE(STA_TAG, "Parent heartbeat timeout! Last valid heartbeat/ref was %llu us ago. Initiating disconnect.", TimeSinceLastHeartbeat);
     }
 
+    if (StateMutex != nullptr) xSemaphoreTake(StateMutex, portMAX_DELAY);
     LastHeartbeatUs = 0;
+    LastHeartbeatSentUs = 0;
     ParentDevice.LastHeartbeatUs = 0;
+    if (StateMutex != nullptr) xSemaphoreGive(StateMutex);
     esp_wifi_disconnect();
 }
 
 void AccessPointStation::CheckChildHeartbeatTimeouts()
 {
-    if (ChildDevices.empty()) return;
-
     const uint64_t TimeNow = esp_timer_get_time();
     bool ChildRemoved = false;
+    uint8_t ChildCountAfter = 0;
+    uint8_t MyHop = 255;
 
-    for (size_t i = 0; i < ChildDevices.size();)
+    while (true)
     {
-        WifiDevice& Child = ChildDevices[i];
+        uint16_t TimedOutAid = 0;
+        uint64_t TimeSinceLastHeartbeat = 0;
+        uint8_t TimedOutMac[6]{};
+        char TimedOutIp[16]{};
+        bool TimedOutBeforeFirstHeartbeat = false;
 
-        const bool HasValidIp = (Child.IpAddress[0] != '\0');
-        const bool HasValidWifiData = (Child.aid != 0);
-
-        if (!HasValidIp || !HasValidWifiData || Child.LastHeartbeatUs == 0)
+        if (StateMutex != nullptr) xSemaphoreTake(StateMutex, portMAX_DELAY);
+        for (size_t i = 0; i < ChildDevices.size(); i++)
         {
-            i++;
-            continue;
+            WifiDevice& Child = ChildDevices[i];
+
+            const bool HasValidWifiData = (Child.aid != 0);
+            if (!HasValidWifiData) continue;
+
+            if (Child.LastHeartbeatUs == 0)
+            {
+                TimeSinceLastHeartbeat = TimeNow - Child.TimeOfConnection;
+                if (TimeSinceLastHeartbeat <= CHILD_FIRST_HEARTBEAT_GRACE_US) continue;
+                TimedOutBeforeFirstHeartbeat = true;
+            }
+            else
+            {
+                TimeSinceLastHeartbeat = TimeNow - Child.LastHeartbeatUs;
+                if (TimeSinceLastHeartbeat <= HEARTBEAT_TIMEOUT_US) continue;
+            }
+
+            TimedOutAid = Child.aid;
+            memcpy(TimedOutMac, Child.MacId, sizeof(TimedOutMac));
+            strncpy(TimedOutIp, Child.IpAddress, sizeof(TimedOutIp) - 1);
+            TimedOutIp[sizeof(TimedOutIp) - 1] = '\0';
+
+            ChildDevices.erase(ChildDevices.begin() + static_cast<long>(i));
+            ChildRemoved = true;
+            break;
         }
 
-        const uint64_t TimeSinceLastHeartbeat = TimeNow - Child.LastHeartbeatUs;
-        if (TimeSinceLastHeartbeat <= HEARTBEAT_TIMEOUT_US)
-        {
-            i++;
-            continue;
-        }
+        ChildCountAfter = static_cast<uint8_t>(ChildDevices.size());
+        MyHop = MyHopCount;
+        if (StateMutex != nullptr) xSemaphoreGive(StateMutex);
+
+        if (TimedOutAid == 0) break;
 
         if (IsRuntimeLoggingEnabled)
         {
-            ESP_LOGE("MESH_AP", "Child heartbeat timeout | MAC: " MACSTR " | IP: %s | AID: %u | Last heartbeat %llu us ago",
-                    MAC2STR(Child.MacId), Child.IpAddress, Child.aid, TimeSinceLastHeartbeat);
+            if (TimedOutBeforeFirstHeartbeat)
+            {
+                ESP_LOGE("MESH_AP", "Child timeout before first heartbeat | MAC: " MACSTR " | IP: %s | AID: %u | Connected %llu us ago",
+                        MAC2STR(TimedOutMac), TimedOutIp, TimedOutAid, TimeSinceLastHeartbeat);
+            }
+            else
+            {
+                ESP_LOGE("MESH_AP", "Child heartbeat timeout | MAC: " MACSTR " | IP: %s | AID: %u | Last heartbeat %llu us ago",
+                        MAC2STR(TimedOutMac), TimedOutIp, TimedOutAid, TimeSinceLastHeartbeat);
+            }
         }
 
-        esp_wifi_deauth_sta(Child.aid);
-        ChildDevices.erase(ChildDevices.begin() + static_cast<long>(i));
-        ChildRemoved = true;
+        // Timeout for one child should only remove that specific child.
+        esp_wifi_deauth_sta(TimedOutAid);
     }
 
-    if (ChildRemoved)
+    if (ChildRemoved) UpdateBeaconMetadata(MyHop, ChildCountAfter);
+}
+
+void AccessPointStation::DisconnectAllChildren(const char* Reason)
+{
+    std::vector<WifiDevice> Snapshot;
+    uint8_t MyHop = 255;
+
+    if (StateMutex != nullptr) xSemaphoreTake(StateMutex, portMAX_DELAY);
+    Snapshot = ChildDevices;
+    ChildDevices.clear();
+    MyHop = MyHopCount;
+    if (StateMutex != nullptr) xSemaphoreGive(StateMutex);
+
+    for (const WifiDevice& Child : Snapshot)
     {
-        UpdateBeaconMetadata(MyHopCount, (uint8_t)ChildDevices.size());
+        if (Child.aid != 0) esp_wifi_deauth_sta(Child.aid);
+
+        if (IsRuntimeLoggingEnabled)
+        {
+            ESP_LOGW("MESH_AP", "Deauth child (cascade) | MAC: " MACSTR " | IP: %s | Reason: %s",
+                     MAC2STR(Child.MacId), Child.IpAddress, (Reason != nullptr ? Reason : "unspecified"));
+        }
     }
+
+    UpdateBeaconMetadata(MyHop, 0);
 }
 
 
@@ -773,6 +961,26 @@ void AccessPointStation::HandleReceivedData(uint8_t* Data, int Length, WifiDevic
 {
     if (!Data) return;
     if (Length <= 48 + 2) return;
+    if (!IsValidMeshPacket(Data, Length)) return;
+
+    // Learn child UID from first valid packet seen from that child.
+    // PacketHeader::slaveUid is bytes [8..15] in the packed 48-byte header.
+    if (!IsFromParent && SourceDevice != nullptr && SourceDevice->UID == 0)
+    {
+        uint64_t LearnedUid = 0;
+        memcpy(&LearnedUid, Data + 8, sizeof(LearnedUid));
+
+        if (LearnedUid != 0)
+        {
+            SourceDevice->UID = LearnedUid;
+
+            if (IsRuntimeLoggingEnabled)
+            {
+                ESP_LOGI("MESH_UID", "Learned child UID %llu for child IP %s",
+                         (unsigned long long)SourceDevice->UID, SourceDevice->IpAddress);
+            }
+        }
+    }
 
     uint8_t PacketType = Data[37];
     const uint64_t TimeNow = esp_timer_get_time();
@@ -782,12 +990,35 @@ void AccessPointStation::HandleReceivedData(uint8_t* Data, int Length, WifiDevic
         case 79:    // Heartbeat
             if (IsFromParent)
             {
-                LastHeartbeatUs = TimeNow;
-                ParentDevice.LastHeartbeatUs = TimeNow;
+                uint64_t SenderUid = 0;
+                memcpy(&SenderUid, Data + 8, sizeof(SenderUid));
+
+                // In AP+STA mode, source IP can collide (e.g., both appear as
+                // 192.168.4.1). Ignore heartbeats stamped with our own UID so
+                // local looped packets cannot masquerade as parent replies.
+                if (SenderUid != MY_UID)
+                {
+                    LastHeartbeatUs = TimeNow;
+                    ParentDevice.LastHeartbeatUs = TimeNow;
+                    if (IsRuntimeLoggingEnabled)
+                    {
+                        ESP_LOGI(STA_TAG, "Heartbeat reply received from parent (sender UID=%llu)",
+                                 static_cast<unsigned long long>(SenderUid));
+                    }
+                }
+                else if (IsRuntimeLoggingEnabled)
+                {
+                    ESP_LOGW(STA_TAG, "Ignored heartbeat with local UID on parent path (UID=%llu)",
+                             static_cast<unsigned long long>(SenderUid));
+                }
             }
             else if (SourceDevice != nullptr)
             {
                 SourceDevice->LastHeartbeatUs = TimeNow;
+                if (IsRuntimeLoggingEnabled)
+                {
+                    ESP_LOGI("MESH_AP", "Heartbeat received from child IP %s", SourceDevice->IpAddress);
+                }
             }
             break;
 
@@ -868,6 +1099,10 @@ size_t AccessPointStation::CreatePacket(const uint8_t* DataToInclude,
     TempHeader.networkId = 0;
     TempHeader.chainDistance = MyHopCount;
     TempHeader.ttl = 10;
+    if (TempHeader.ttl == 0)
+    {
+        TempHeader.ttl = 10;
+    }
     TempHeader.crc32 = 0;
 
     uint8_t* p = PacketOut;
@@ -882,10 +1117,14 @@ size_t AccessPointStation::CreatePacket(const uint8_t* DataToInclude,
 bool AccessPointStation::TryAddForwarding(const uint8_t* DataIn, int LengthIn, uint8_t* DataOut, size_t& LengthOut)
 {
     if (!DataIn || !DataOut) return false;
-    if (LengthIn < 48 + 2) return false;
+    if (!IsValidMeshPacket(DataIn, LengthIn))
+    {
+        LengthOut = 0;
+        return false;
+    }
 
-    const uint8_t PacketType = DataIn[37];
     const uint8_t ForwardMode  = DataIn[43];
+    const uint8_t TtlIn = DataIn[42];
 
     if (ForwardMode == 0)
     {
@@ -896,15 +1135,21 @@ bool AccessPointStation::TryAddForwarding(const uint8_t* DataIn, int LengthIn, u
 
     if (ForwardMode == 1)
     {
-        ; // DOWNSTREAM MODE LOGIC HERE
-        
+        if (TtlIn == 0) return false;
+
+        memcpy(DataOut, DataIn, LengthIn);
+        DataOut[42] = static_cast<uint8_t>(TtlIn - 1); // Decrement TTL per hop
+        LengthOut = static_cast<size_t>(LengthIn);
         return true;
     }
 
     if (ForwardMode == 2)
     {
-        ; // UPSTREAM MODE LOGIC HERE
-        
+        if (TtlIn == 0) return false;
+
+        memcpy(DataOut, DataIn, LengthIn);
+        DataOut[42] = static_cast<uint8_t>(TtlIn - 1); // Decrement TTL per hop
+        LengthOut = static_cast<size_t>(LengthIn);
         return true;
     }
 
@@ -931,26 +1176,31 @@ bool AccessPointStation::DetermineDestinationAddress(const sockaddr_in& SourceAd
         case 1: // Downstream
         {
             const uint8_t* DestinationUid = Data + 16;
-            int MatchIndex = -1;
+            char ChildIp[16]{};
 
+            bool Found = false;
+            if (ApStaClassInstance->StateMutex != nullptr) xSemaphoreTake(ApStaClassInstance->StateMutex, portMAX_DELAY);
             for (size_t i = 0; i < ApStaClassInstance->ChildDevices.size(); i++)
             {
                 // Compare 8-byte UID
                 if (memcmp(&ApStaClassInstance->ChildDevices[i].UID, DestinationUid, 8) == 0)
                 {
-                    MatchIndex = i;
+                    strncpy(ChildIp, ApStaClassInstance->ChildDevices[i].IpAddress, sizeof(ChildIp) - 1);
+                    ChildIp[sizeof(ChildIp) - 1] = '\0';
+                    Found = true;
                     break;
                 }
             }
+            if (ApStaClassInstance->StateMutex != nullptr) xSemaphoreGive(ApStaClassInstance->StateMutex);
 
-            if (MatchIndex < 0) return false;
+            if (!Found) return false;
 
             sockaddr_in Destination{};
             Destination.sin_family = AF_INET;
             Destination.sin_port   = htons(ApStaClassInstance->UdpPort);
 
             if (inet_pton(AF_INET,
-              ApStaClassInstance->ChildDevices[MatchIndex].IpAddress,
+              ChildIp,
               &Destination.sin_addr) != 1)
             {
                 return false;
@@ -970,7 +1220,15 @@ bool AccessPointStation::DetermineDestinationAddress(const sockaddr_in& SourceAd
             Destination.sin_family = AF_INET;
             Destination.sin_port   = htons(ApStaClassInstance->UdpPort);
 
-            if (IsMasterFound)
+            bool IsMasterFoundLocal = false;
+            char ParentIp[16]{};
+            if (ApStaClassInstance->StateMutex != nullptr) xSemaphoreTake(ApStaClassInstance->StateMutex, portMAX_DELAY);
+            IsMasterFoundLocal = IsMasterFound;
+            strncpy(ParentIp, ApStaClassInstance->ParentDevice.IpAddress, sizeof(ParentIp) - 1);
+            ParentIp[sizeof(ParentIp) - 1] = '\0';
+            if (ApStaClassInstance->StateMutex != nullptr) xSemaphoreGive(ApStaClassInstance->StateMutex);
+
+            if (IsMasterFoundLocal)
             {
                 if (inet_pton(AF_INET, "192.168.0.254", &Destination.sin_addr) != 1)
                 {
@@ -980,7 +1238,7 @@ bool AccessPointStation::DetermineDestinationAddress(const sockaddr_in& SourceAd
             else 
             {
                 if (inet_pton(AF_INET,
-                  ApStaClassInstance->ParentDevice.IpAddress,
+                  ParentIp,
                   &Destination.sin_addr) != 1)
                 {
                     return false;
@@ -1035,6 +1293,14 @@ WifiDevice* AccessPointStation::FindDeviceByIp(const sockaddr_in& SourceAddress,
         return &ParentDevice;
     }
 
+    // Gateway-node special case: replies from Beckhoff master (.254) should
+    // be treated as upstream-parent replies for heartbeat supervision.
+    if (IsMasterFound && strcmp(SourceIp, "192.168.0.254") == 0)
+    {
+        if (IsParent != nullptr) *IsParent = true;
+        return &ParentDevice;
+    }
+
     for (size_t i = 0; i < ChildDevices.size(); i++)
     {
         if (strcmp(SourceIp, ChildDevices[i].IpAddress) == 0) return &ChildDevices[i];
@@ -1047,12 +1313,14 @@ WifiDevice* AccessPointStation::FindDeviceByIp(const sockaddr_in& SourceAddress,
 
 void AccessPointStation::ReceiveTask(void* pvParameters)
 {
+    static uint64_t LastRecvErrorLogUs = 0;
     uint8_t ReceiveBuffer[800];
     int ReceivedBytes = 0;
     uint8_t TempBuffer1[800];
     uint8_t TempBuffer2[800];
     uint8_t SendBuffer[800];
     size_t SendingBytes = 0;
+    size_t ForwardLength = 0;
 
     while(true)
     {
@@ -1069,14 +1337,63 @@ void AccessPointStation::ReceiveTask(void* pvParameters)
         if (ReceivedBytes > 0)
         {
             bool IsFromParent = false;
-            WifiDevice* FoundDevice = ApStaClassInstance->FindDeviceByIp(SourceAddress, &IsFromParent);
+            bool ShouldReply = false;
+            bool IsForwardPacket = false;
+            bool IsHeartbeatPacket = false;
+            uint64_t SenderUid = 0;
+            if (IsValidMeshPacket(ReceiveBuffer, ReceivedBytes))
+            {
+                // Any packet marked for forwarding is transit traffic and must not
+                // enter local payload/reply processing, even if forwarding fails.
+                IsForwardPacket = (ReceiveBuffer[43] != 0);
+                IsHeartbeatPacket = (ReceiveBuffer[37] == 79);
+                memcpy(&SenderUid, ReceiveBuffer + 8, sizeof(SenderUid));
+            }
 
+            // Drop packets that originate from this node's own UID. In AP+STA
+            // chains, local routing can loop traffic back into the RX socket.
+            if (SenderUid == MY_UID)
+            {
+                if (ApStaClassInstance->IsRuntimeLoggingEnabled)
+                {
+                    ESP_LOGW(STA_TAG, "Dropped self-origin packet in RX path (UID=%llu)",
+                             static_cast<unsigned long long>(SenderUid));
+                }
+                continue;
+            }
+            if (ApStaClassInstance->StateMutex != nullptr) xSemaphoreTake(ApStaClassInstance->StateMutex, portMAX_DELAY);
+            WifiDevice* FoundDevice = ApStaClassInstance->FindDeviceByIp(SourceAddress, &IsFromParent);
             ApStaClassInstance->HandleReceivedData(ReceiveBuffer, ReceivedBytes, FoundDevice, IsFromParent);
+            ShouldReply = (!IsFromParent && FoundDevice != nullptr);
+            if (ApStaClassInstance->StateMutex != nullptr) xSemaphoreGive(ApStaClassInstance->StateMutex);
+
+            if (ApStaClassInstance->IsRuntimeLoggingEnabled && IsHeartbeatPacket)
+            {
+                ESP_LOGI(STA_TAG, "Heartbeat RX | senderUID=%llu | fromParent=%d | shouldReply=%d | isForward=%d",
+                         static_cast<unsigned long long>(SenderUid),
+                         IsFromParent ? 1 : 0,
+                         ShouldReply ? 1 : 0,
+                         IsForwardPacket ? 1 : 0);
+            }
+
+            // Forward packets that are explicitly marked for mesh forwarding.
+            ForwardLength = 0;
+            if (ApStaClassInstance->TryAddForwarding(ReceiveBuffer, ReceivedBytes, SendBuffer, ForwardLength))
+            {
+                if (ForwardLength > 0 &&
+                    ApStaClassInstance->DetermineDestinationAddress(SourceAddress, SendBuffer, static_cast<int>(ForwardLength), DestinationAddress))
+                {
+                    ApStaClassInstance->SendData(SendBuffer, static_cast<int>(ForwardLength), DestinationAddress);
+                }
+            }
+
+            // Forwarded packets are transit traffic, not for local processing.
+            if (IsForwardPacket) continue;
 
             SendingBytes = ApStaClassInstance->GenerateResponsePayload(
                 ReceiveBuffer,
                 ReceivedBytes,
-                (!IsFromParent && FoundDevice != nullptr),
+                ShouldReply,
                 TempBuffer1,
                 sizeof(TempBuffer1));
             if (SendingBytes <= 0) continue;
@@ -1084,12 +1401,25 @@ void AccessPointStation::ReceiveTask(void* pvParameters)
             SendingBytes = ApStaClassInstance->CreatePacket(TempBuffer1, SendingBytes, 79, TempBuffer2, sizeof(TempBuffer2));
             if (SendingBytes <= 0) continue;
 
-            ApStaClassInstance->TryAddForwarding(TempBuffer2, SendingBytes, SendBuffer, SendingBytes);
-            if (SendingBytes <= 0) continue;
+            memcpy(SendBuffer, TempBuffer2, SendingBytes);
 
-            if (!ApStaClassInstance->DetermineDestinationAddress(SourceAddress, SendBuffer, SendingBytes, DestinationAddress)) continue;
+            if (!ApStaClassInstance->DetermineDestinationAddress(SourceAddress, SendBuffer, static_cast<int>(SendingBytes), DestinationAddress)) continue;
 
-            ApStaClassInstance->SendData(SendBuffer, SendingBytes, DestinationAddress);
+            ApStaClassInstance->SendData(SendBuffer, static_cast<int>(SendingBytes), DestinationAddress);
+        }
+        else if (ReceivedBytes < 0)
+        {
+            const int RecvErrno = errno;
+            if (RecvErrno != EWOULDBLOCK && RecvErrno != EAGAIN)
+            {
+                const uint64_t TimeNow = esp_timer_get_time();
+                if (ApStaClassInstance->IsRuntimeLoggingEnabled &&
+                    (TimeNow - LastRecvErrorLogUs >= 5000000))
+                {
+                    ESP_LOGW("UDP", "recvfrom error: errno=%d", RecvErrno);
+                    LastRecvErrorLogUs = TimeNow;
+                }
+            }
         }
 
         vTaskDelay(1);
@@ -1104,15 +1434,47 @@ void AccessPointStation::TransmitTask(void* pvParameters)
 {
     uint64_t CurrentTimeUs = 0;
     uint64_t LastHeartbeatTimeUs = 0;
+    uint64_t LastSystemInfoTimeUs = 0;
+    uint64_t LastTxDiagUs = 0;
+    uint32_t HeartbeatAttemptCount = 0;
+    uint32_t HeartbeatSentCount = 0;
+    uint32_t HeartbeatSendFailCount = 0;
+    uint32_t SystemInfoSentCount = 0;
+
+    struct SystemInfoPayload
+    {
+        uint64_t uptimeUs;
+        uint8_t hopCount;
+        uint8_t childCount;
+        uint8_t statusFlags;
+        uint8_t reserved;
+    };
 
     while(true)
     {
         CurrentTimeUs = esp_timer_get_time();
 
-        if (ApStaClassInstance->IsConnectedToParent &&
-            ApStaClassInstance->ApIpAcquired &&
-            !ApStaClassInstance->IsMasterFound &&
-            ApStaClassInstance->ParentDevice.IpAddress[0] != '\0' &&
+        bool IsConnectedToParentLocal = false;
+        bool ApIpAcquiredLocal = false;
+        bool IsMasterFoundLocal = false;
+        uint8_t MyHopCountLocal = 255;
+        uint8_t ChildCountLocal = 0;
+        char ParentIpLocal[16]{};
+        char MyApIpLocal[16]{};
+        if (ApStaClassInstance->StateMutex != nullptr) xSemaphoreTake(ApStaClassInstance->StateMutex, portMAX_DELAY);
+        IsConnectedToParentLocal = ApStaClassInstance->IsConnectedToParent;
+        ApIpAcquiredLocal = ApStaClassInstance->ApIpAcquired;
+        IsMasterFoundLocal = ApStaClassInstance->IsMasterFound;
+        MyHopCountLocal = ApStaClassInstance->MyHopCount;
+        ChildCountLocal = static_cast<uint8_t>(ApStaClassInstance->ChildDevices.size());
+        strncpy(ParentIpLocal, ApStaClassInstance->ParentDevice.IpAddress, sizeof(ParentIpLocal) - 1);
+        ParentIpLocal[sizeof(ParentIpLocal) - 1] = '\0';
+        strncpy(MyApIpLocal, ApStaClassInstance->MyApIpAddress, sizeof(MyApIpLocal) - 1);
+        MyApIpLocal[sizeof(MyApIpLocal) - 1] = '\0';
+        if (ApStaClassInstance->StateMutex != nullptr) xSemaphoreGive(ApStaClassInstance->StateMutex);
+
+        if (IsConnectedToParentLocal &&
+            ApIpAcquiredLocal &&
             (CurrentTimeUs - LastHeartbeatTimeUs >= HEARTBEAT_PULSE_US))
         {
             const uint8_t HeartbeatValue = 79;
@@ -1125,12 +1487,129 @@ void AccessPointStation::TransmitTask(void* pvParameters)
                 Destination.sin_family = AF_INET;
                 Destination.sin_port   = htons(ApStaClassInstance->UdpPort);
 
-                if (inet_pton(AF_INET, ApStaClassInstance->ParentDevice.IpAddress, &Destination.sin_addr) == 1)
+                const char* HeartbeatTargetIp =
+                    IsMasterFoundLocal ? "192.168.0.254" : ParentIpLocal;
+
+                if (HeartbeatTargetIp != nullptr &&
+                    HeartbeatTargetIp[0] != '\0' &&
+                    inet_pton(AF_INET, HeartbeatTargetIp, &Destination.sin_addr) == 1)
                 {
-                    ApStaClassInstance->SendData(TxBuffer, PacketLength, Destination);
-                    LastHeartbeatTimeUs = CurrentTimeUs;
+                    HeartbeatAttemptCount++;
+                    if (ApStaClassInstance->StateMutex != nullptr) xSemaphoreTake(ApStaClassInstance->StateMutex, portMAX_DELAY);
+                    // Only latch send time when starting a new request/reply cycle.
+                    // If no reply has arrived yet, keep the original send timestamp
+                    // so timeout can expire instead of sliding forever.
+                    const int64_t LastRxUs = ApStaClassInstance->LastHeartbeatUs;
+                    const int64_t LastTxUs = ApStaClassInstance->LastHeartbeatSentUs;
+                    if (LastTxUs == 0 || LastRxUs >= LastTxUs)
+                    {
+                        ApStaClassInstance->LastHeartbeatSentUs = static_cast<int64_t>(CurrentTimeUs);
+                    }
+                    if (ApStaClassInstance->StateMutex != nullptr) xSemaphoreGive(ApStaClassInstance->StateMutex);
+
+                    if (strcmp(HeartbeatTargetIp, MyApIpLocal) == 0)
+                    {
+                        if (ApStaClassInstance->IsRuntimeLoggingEnabled)
+                        {
+                            ESP_LOGE(STA_TAG, "Heartbeat target equals local AP IP (%s). Packet not sent.", HeartbeatTargetIp);
+                        }
+                    }
+                    else
+                    {
+                        const size_t Sent = ApStaClassInstance->SendData(TxBuffer, static_cast<int>(PacketLength), Destination);
+                        LastHeartbeatTimeUs = CurrentTimeUs;
+                        if (Sent > 0)
+                        {
+                            HeartbeatSentCount++;
+                        }
+                        else
+                        {
+                            HeartbeatSendFailCount++;
+                            if (ApStaClassInstance->IsRuntimeLoggingEnabled)
+                            {
+                                ESP_LOGW(STA_TAG, "Heartbeat send failed to %s", HeartbeatTargetIp);
+                            }
+                        }
+
+                        if (ApStaClassInstance->IsRuntimeLoggingEnabled)
+                        {
+                            ESP_LOGI(STA_TAG, "Heartbeat sent to %s", HeartbeatTargetIp);
+                        }
+                    }
                 }
             }
+        }
+
+        if (IsConnectedToParentLocal &&
+            ApIpAcquiredLocal &&
+            (CurrentTimeUs - LastSystemInfoTimeUs >= SYSTEM_INFO_PULSE_US))
+        {
+            SystemInfoPayload Payload{};
+            Payload.uptimeUs = CurrentTimeUs;
+            Payload.hopCount = MyHopCountLocal;
+            Payload.childCount = ChildCountLocal;
+            Payload.statusFlags = 0;
+            if (IsConnectedToParentLocal) Payload.statusFlags |= 0x01;
+            if (ApIpAcquiredLocal) Payload.statusFlags |= 0x02;
+            if (IsMasterFoundLocal) Payload.statusFlags |= 0x04;
+
+            uint8_t TxBuffer[96]{};
+            const size_t PacketLength = ApStaClassInstance->CreatePacket(
+                reinterpret_cast<const uint8_t*>(&Payload),
+                sizeof(Payload),
+                80,
+                TxBuffer,
+                sizeof(TxBuffer));
+
+            if (PacketLength > 0)
+            {
+                // Mark as generic upstream transit traffic so every node forwards.
+                TxBuffer[43] = 2;
+
+                sockaddr_in Destination{};
+                Destination.sin_family = AF_INET;
+                Destination.sin_port   = htons(ApStaClassInstance->UdpPort);
+
+                const char* SystemInfoTargetIp =
+                    IsMasterFoundLocal ? "192.168.0.254" : ParentIpLocal;
+
+                if (SystemInfoTargetIp != nullptr &&
+                    SystemInfoTargetIp[0] != '\0' &&
+                    strcmp(SystemInfoTargetIp, MyApIpLocal) != 0 &&
+                    inet_pton(AF_INET, SystemInfoTargetIp, &Destination.sin_addr) == 1)
+                {
+                    const size_t Sent = ApStaClassInstance->SendData(TxBuffer, static_cast<int>(PacketLength), Destination);
+                    LastSystemInfoTimeUs = CurrentTimeUs;
+                    if (Sent > 0)
+                    {
+                        SystemInfoSentCount++;
+                    }
+                    else if (ApStaClassInstance->IsRuntimeLoggingEnabled)
+                    {
+                        ESP_LOGW(STA_TAG, "SystemInfo send failed to %s", SystemInfoTargetIp);
+                    }
+
+                    if (ApStaClassInstance->IsRuntimeLoggingEnabled)
+                    {
+                        ESP_LOGI(STA_TAG, "SystemInfo sent upstream to %s | hop=%u child=%u flags=0x%02X",
+                                 SystemInfoTargetIp,
+                                 Payload.hopCount,
+                                 Payload.childCount,
+                                 Payload.statusFlags);
+                    }
+                }
+            }
+        }
+
+        if (ApStaClassInstance->IsRuntimeLoggingEnabled &&
+            (CurrentTimeUs - LastTxDiagUs >= 5000000))
+        {
+            ESP_LOGW(STA_TAG, "TX diag | hb_attempt=%lu hb_sent=%lu hb_fail=%lu sys_sent=%lu",
+                     static_cast<unsigned long>(HeartbeatAttemptCount),
+                     static_cast<unsigned long>(HeartbeatSentCount),
+                     static_cast<unsigned long>(HeartbeatSendFailCount),
+                     static_cast<unsigned long>(SystemInfoSentCount));
+            LastTxDiagUs = CurrentTimeUs;
         }
 
         vTaskDelay(1);
@@ -1146,20 +1625,50 @@ bool AccessPointStation::StartUdp(uint16_t Port, uint8_t Core)
     if (ApStaClassInstance->UdpStarted) return true;
     
     // We only start UDP if we have an IP (either as an AP or a STA)
-    if (!ApStaClassInstance->IsConnectedToParent && ApStaClassInstance->ChildDevices.empty()) 
+    bool IsConnectedLocal = false;
+    bool HasAnyChildrenLocal = false;
+    bool HasIpLocal = false;
+    if (ApStaClassInstance->StateMutex != nullptr) xSemaphoreTake(ApStaClassInstance->StateMutex, portMAX_DELAY);
+    IsConnectedLocal = ApStaClassInstance->IsConnectedToParent;
+    HasAnyChildrenLocal = !ApStaClassInstance->ChildDevices.empty();
+    HasIpLocal = ApStaClassInstance->ApIpAcquired;
+    if (ApStaClassInstance->StateMutex != nullptr) xSemaphoreGive(ApStaClassInstance->StateMutex);
+
+    if (!IsConnectedLocal && !HasAnyChildrenLocal) 
     {
-        if (!ApStaClassInstance->ApIpAcquired) return false;
+        if (!HasIpLocal)
+        {
+            if (ApStaClassInstance->IsRuntimeLoggingEnabled)
+            {
+                ESP_LOGW("UDP", "StartUdp skipped: no link, no children, no IP");
+            }
+            return false;
+        }
     }
     
-    if (Port == 0) return false;
+    if (Port == 0)
+    {
+        if (ApStaClassInstance->IsRuntimeLoggingEnabled)
+        {
+            ESP_LOGE("UDP", "StartUdp failed: invalid port 0");
+        }
+        return false;
+    }
 
     // Create socket
     ApStaClassInstance->UdpSocket = socket(AF_INET, SOCK_DGRAM, IPPROTO_IP);
     if (ApStaClassInstance->UdpSocket < 0)
     {
+        if (ApStaClassInstance->IsRuntimeLoggingEnabled)
+        {
+            ESP_LOGE("UDP", "StartUdp failed: socket() errno=%d", errno);
+        }
         ApStaClassInstance->UdpSocket = -1;
         return false;
     }
+
+    int ReuseAddr = 1;
+    setsockopt(ApStaClassInstance->UdpSocket, SOL_SOCKET, SO_REUSEADDR, &ReuseAddr, sizeof(ReuseAddr));
 
     // Bind
     sockaddr_in addr;
@@ -1170,6 +1679,10 @@ bool AccessPointStation::StartUdp(uint16_t Port, uint8_t Core)
 
     if (bind(ApStaClassInstance->UdpSocket, (struct sockaddr*)&addr, sizeof(addr)) != 0)
     {
+        if (ApStaClassInstance->IsRuntimeLoggingEnabled)
+        {
+            ESP_LOGE("UDP", "StartUdp failed: bind() port=%u errno=%d", Port, errno);
+        }
         close(ApStaClassInstance->UdpSocket);
         ApStaClassInstance->UdpSocket = -1;
         return false;
@@ -1179,7 +1692,11 @@ bool AccessPointStation::StartUdp(uint16_t Port, uint8_t Core)
     timeval tv;
     tv.tv_sec = 0;
     tv.tv_usec = 10000; // Increased to 10ms for better CPU efficiency in dual-mode
-    setsockopt(ApStaClassInstance->UdpSocket, SOL_SOCKET, SO_RCVTIMEO, &tv, sizeof(tv));
+    if (setsockopt(ApStaClassInstance->UdpSocket, SOL_SOCKET, SO_RCVTIMEO, &tv, sizeof(tv)) != 0 &&
+        ApStaClassInstance->IsRuntimeLoggingEnabled)
+    {
+        ESP_LOGW("UDP", "StartUdp warning: setsockopt(SO_RCVTIMEO) errno=%d", errno);
+    }
 
     if (ApStaClassInstance->ReceiveTaskHandle != nullptr) 
     {
@@ -1201,6 +1718,10 @@ bool AccessPointStation::StartUdp(uint16_t Port, uint8_t Core)
                                 &ApStaClassInstance->ReceiveTaskHandle,
                                 Core) != pdPASS)
     {
+        if (ApStaClassInstance->IsRuntimeLoggingEnabled)
+        {
+            ESP_LOGE("UDP", "StartUdp failed: create RX task");
+        }
         close(ApStaClassInstance->UdpSocket);
         ApStaClassInstance->UdpSocket = -1;
         ApStaClassInstance->ReceiveTaskHandle = nullptr;
@@ -1215,6 +1736,16 @@ bool AccessPointStation::StartUdp(uint16_t Port, uint8_t Core)
                                 &ApStaClassInstance->TransmitTaskHandle,
                                 Core) != pdPASS)
     {
+        if (ApStaClassInstance->IsRuntimeLoggingEnabled)
+        {
+            ESP_LOGE("UDP", "StartUdp failed: create TX task");
+        }
+        if (ApStaClassInstance->ReceiveTaskHandle != nullptr)
+        {
+            vTaskDelete(ApStaClassInstance->ReceiveTaskHandle);
+            ApStaClassInstance->ReceiveTaskHandle = nullptr;
+        }
+
         close(ApStaClassInstance->UdpSocket);
         ApStaClassInstance->UdpSocket = -1;
         ApStaClassInstance->TransmitTaskHandle = nullptr;
@@ -1364,6 +1895,33 @@ bool AccessPointStation::SetupWifi()
             
             ApWifiServiceConfig.ap.authmode = WIFI_AUTH_WPA2_PSK;
             ApWifiServiceConfig.ap.channel = 6; 
+
+            // Configure AP netif with a UID-derived subnet so every node AP
+            // uses a distinct gateway address. This avoids AP/STA IP collisions
+            // (for example many nodes defaulting to 192.168.4.1).
+            if (ApStaClassInstance->ApNetif != nullptr)
+            {
+                const uint8_t SubnetOctet = static_cast<uint8_t>(20 + (MY_UID % 200));
+                esp_netif_ip_info_t ApIpInfo{};
+                IP4_ADDR(&ApIpInfo.ip, 192, 168, SubnetOctet, 1);
+                IP4_ADDR(&ApIpInfo.gw, 192, 168, SubnetOctet, 1);
+                IP4_ADDR(&ApIpInfo.netmask, 255, 255, 255, 0);
+
+                // Best effort stop before setting static IP.
+                esp_netif_dhcps_stop(ApStaClassInstance->ApNetif);
+                if (esp_netif_set_ip_info(ApStaClassInstance->ApNetif, &ApIpInfo) != ESP_OK) return false;
+                if (esp_netif_dhcps_start(ApStaClassInstance->ApNetif) != ESP_OK) return false;
+
+                snprintf(ApStaClassInstance->MyApIpAddress,
+                         sizeof(ApStaClassInstance->MyApIpAddress),
+                         "192.168.%u.1",
+                         static_cast<unsigned>(SubnetOctet));
+
+                if (ApStaClassInstance->IsRuntimeLoggingEnabled)
+                {
+                    ESP_LOGW(STA_TAG, "AP subnet configured: %s/24", ApStaClassInstance->MyApIpAddress);
+                }
+            }
             SetupState++;
             break;
 

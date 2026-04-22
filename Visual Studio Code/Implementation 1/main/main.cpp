@@ -105,7 +105,7 @@ extern "C" void app_main(void)
                 if(WifiApSta->GetHopCount() == 1) GpioClass::GetInstance().ChangeOnboardLedColour(0, 255, 0);
                 if(WifiApSta->GetHopCount() == 2) GpioClass::GetInstance().ChangeOnboardLedColour(0, 200, 50);
                 if(WifiApSta->GetHopCount() == 3) GpioClass::GetInstance().ChangeOnboardLedColour(0, 150, 100);
-                if(WifiApSta->GetHopCount() == 4) GpioClass::GetInstance().ChangeOnboardLedColour(0, 50, 200);
+                if(WifiApSta->GetHopCount() == 4) GpioClass::GetInstance().ChangeOnboardLedColour(0, 80, 170);
                 if(WifiApSta->GetHopCount() == 5) GpioClass::GetInstance().ChangeOnboardLedColour(0, 0, 255);
 
                 if (not WifiApSta->IsConnectedToHost()) MainState = 3;
