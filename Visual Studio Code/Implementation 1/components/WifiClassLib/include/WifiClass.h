@@ -188,9 +188,37 @@ class Station // Singleton
         size_t SendUdpPacket(const char* DataToSend, const char* DestinationIP, uint16_t DestinationPort);  
         size_t GetDataFromBuffer(bool* IsDataAvailable, uint8_t* DataToReceive);
 
-        bool IsConnectedToHost() const { return IsConnected && ApIpAcquired; }
-        const char* GetGatewayIpAddress() const { return ApWifiDevice.IpAddress; }
-        const char* GetMyIpAddress() const { return MyIpAddress; }
+        bool IsConnectedToHost() const
+        {
+            bool Connected = false;
+            portMUX_TYPE* Lock = const_cast<portMUX_TYPE*>(&CriticalSection);
+            portENTER_CRITICAL(Lock);
+            Connected = IsConnected && ApIpAcquired;
+            portEXIT_CRITICAL(Lock);
+            return Connected;
+        }
+
+        const char* GetGatewayIpAddress() const
+        {
+            static thread_local char Snapshot[16];
+            portMUX_TYPE* Lock = const_cast<portMUX_TYPE*>(&CriticalSection);
+            portENTER_CRITICAL(Lock);
+            strncpy(Snapshot, ApWifiDevice.IpAddress, sizeof(Snapshot) - 1);
+            Snapshot[sizeof(Snapshot) - 1] = '\0';
+            portEXIT_CRITICAL(Lock);
+            return Snapshot;
+        }
+
+        const char* GetMyIpAddress() const
+        {
+            static thread_local char Snapshot[16];
+            portMUX_TYPE* Lock = const_cast<portMUX_TYPE*>(&CriticalSection);
+            portENTER_CRITICAL(Lock);
+            strncpy(Snapshot, MyIpAddress, sizeof(Snapshot) - 1);
+            Snapshot[sizeof(Snapshot) - 1] = '\0';
+            portEXIT_CRITICAL(Lock);
+            return Snapshot;
+        }
         void SetRuntimeLogging(bool EnableRuntimeLogging) { IsRuntimeLoggingEnabled = EnableRuntimeLogging; }
 };
 
@@ -338,6 +366,7 @@ class AccessPointStation // Singleton
          * @return Void.
          */
         void UpdateBeaconMetadata(uint8_t Hop, uint8_t Children);
+        uint8_t GetChildCountSnapshot() const;
 
 
 
@@ -507,7 +536,14 @@ class AccessPointStation // Singleton
          * @brief Get the Hop Count of this node in the mesh network. The Hop Count represents the number of hops to the root node (or master). A value of 255 indicates that the node is not currently connected to a parent and is effectively "infinite" hops away from the root.
          * @return uint8_t: The current Hop Count of this node, or 255 if not connected to a parent.
          */
-        uint8_t GetHopCount() const { return MyHopCount; }
+        uint8_t GetHopCount() const
+        {
+            uint8_t Hop = 255;
+            if (StateMutex != nullptr) xSemaphoreTake(StateMutex, portMAX_DELAY);
+            Hop = MyHopCount;
+            if (StateMutex != nullptr) xSemaphoreGive(StateMutex);
+            return Hop;
+        }
 
 
 
@@ -515,7 +551,14 @@ class AccessPointStation // Singleton
          * @brief Check if the device is currently connected to a parent AP (host) and has acquired an IP address. This indicates that the device is successfully part of the mesh network and can communicate with other nodes.
          * @return bool: True if the device is connected to a parent and has an IP address, false otherwise.
          */
-        bool IsConnectedToHost() const { return IsConnectedToParent && ApIpAcquired; }
+        bool IsConnectedToHost() const
+        {
+            bool Connected = false;
+            if (StateMutex != nullptr) xSemaphoreTake(StateMutex, portMAX_DELAY);
+            Connected = IsConnectedToParent && ApIpAcquired;
+            if (StateMutex != nullptr) xSemaphoreGive(StateMutex);
+            return Connected;
+        }
         
         
         
@@ -523,7 +566,15 @@ class AccessPointStation // Singleton
          * @brief Get the Parent Ip Address object. This is the IP address of the AP that this device is currently connected to as a station. If the device is not currently connected to a parent, this will return an empty string or an invalid IP.
          * @return const char*: The IP address of the parent AP, or an empty string if not connected.
          */
-        const char* GetParentIpAddress() const { return ParentDevice.IpAddress; }
+        const char* GetParentIpAddress() const
+        {
+            static thread_local char Snapshot[16];
+            if (StateMutex != nullptr) xSemaphoreTake(StateMutex, portMAX_DELAY);
+            strncpy(Snapshot, ParentDevice.IpAddress, sizeof(Snapshot) - 1);
+            Snapshot[sizeof(Snapshot) - 1] = '\0';
+            if (StateMutex != nullptr) xSemaphoreGive(StateMutex);
+            return Snapshot;
+        }
 
 
 
@@ -531,7 +582,15 @@ class AccessPointStation // Singleton
          * @brief Get the IP address of this device as a station. This is the IP address assigned to this device by the parent AP. If the device is not currently connected to a parent, this will return an empty string or an invalid IP.
          * @return const char*: The IP address of this device as a station, or an empty string if not connected.
          */
-        const char* GetMyIpAddress() const { return MyStaIpAddress; }
+        const char* GetMyIpAddress() const
+        {
+            static thread_local char Snapshot[16];
+            if (StateMutex != nullptr) xSemaphoreTake(StateMutex, portMAX_DELAY);
+            strncpy(Snapshot, MyStaIpAddress, sizeof(Snapshot) - 1);
+            Snapshot[sizeof(Snapshot) - 1] = '\0';
+            if (StateMutex != nullptr) xSemaphoreGive(StateMutex);
+            return Snapshot;
+        }
 
 
 

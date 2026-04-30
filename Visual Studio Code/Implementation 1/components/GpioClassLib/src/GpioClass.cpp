@@ -66,7 +66,7 @@ bool GpioClass::SetupRmtTxChannel(gpio_num_t GpioNumber, uint32_t Resolution)
         .gpio_num = GpioNumber,             // GPIO to use
         .clk_src = RMT_CLK_SRC_APB,         // Use default clock source
         .resolution_hz = Resolution,        // Set resolution
-        .mem_block_symbols = 64,            // Memory block size (adjust if needed)
+        .mem_block_symbols = 64,            // Memory block size for LED transmission
         .trans_queue_depth = 4,             // Transmission queue depth
         .flags = 
         {

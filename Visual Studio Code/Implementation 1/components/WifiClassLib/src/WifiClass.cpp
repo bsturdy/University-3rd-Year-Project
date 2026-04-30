@@ -302,7 +302,9 @@ void AccessPointStation::IpEventHandler(void* arg, esp_event_base_t event_base,
             }
 
             // 5. Broadcast our new status (Host + 1)
-            ApStaClassInstance->UpdateBeaconMetadata(ApStaClassInstance->MyHopCount, (uint8_t)ApStaClassInstance->ChildDevices.size());
+            ApStaClassInstance->UpdateBeaconMetadata(
+                ApStaClassInstance->MyHopCount,
+                ApStaClassInstance->GetChildCountSnapshot());
 
             // 6. Start UDP
             bool UdpStartedOk = ApStaClassInstance->StartUdp(ApStaClassInstance->UdpPort, ApStaClassInstance->UdpCore);
@@ -439,6 +441,8 @@ bool AccessPointStation::InitiateMeshScan()
 
 void AccessPointStation::UpdateBeaconMetadata(uint8_t Hop, uint8_t Children)
 {
+    const uint8_t ActualChildCount = GetChildCountSnapshot();
+
     // Define the structure exactly as expected by the hardware
     typedef struct 
     {
@@ -466,10 +470,19 @@ void AccessPointStation::UpdateBeaconMetadata(uint8_t Hop, uint8_t Children)
     if (IsRuntimeLoggingEnabled) 
     {
         ESP_LOGW(STA_TAG, "UpdateBeaconMetadata(Hop=%u, Children=%u, ActualSize=%u, Len=%u, Type=%u, BCN=0x%x, PRB=0x%x)",
-                 Hop, Children, (unsigned)ChildDevices.size(),
+                 Hop, Children, static_cast<unsigned>(ActualChildCount),
                  my_ie.header.length, my_ie.header.vendor_oui_type,
                  res_bcn, res_prb);
     }
+}
+
+uint8_t AccessPointStation::GetChildCountSnapshot() const
+{
+    uint8_t Count = 0;
+    if (StateMutex != nullptr) xSemaphoreTake(StateMutex, portMAX_DELAY);
+    Count = static_cast<uint8_t>(ChildDevices.size());
+    if (StateMutex != nullptr) xSemaphoreGive(StateMutex);
+    return Count;
 }
 
 void AccessPointStation::ParseScanResults()
@@ -707,7 +720,7 @@ void AccessPointStation::MeshTask(void* pvParameters)
         {                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                        
             ApStaClassInstance->UpdateBeaconMetadata(
                 ApStaClassInstance->MyHopCount,
-                (uint8_t)ApStaClassInstance->ChildDevices.size()
+                ApStaClassInstance->GetChildCountSnapshot()
             );
         }
 
@@ -1092,7 +1105,7 @@ size_t AccessPointStation::CreatePacket(const uint8_t* DataToInclude,
     TempHeader.slaveUid = MY_UID;
     TempHeader.senderTimestampUs = (uint64_t)esp_timer_get_time();
     TempHeader.prevCycleTimeUs = 0;
-    TempHeader.chainedSlaveCount = ChildDevices.size();
+    TempHeader.chainedSlaveCount = GetChildCountSnapshot();
     TempHeader.PacketType = PacketType;
     TempHeader.flags = 0;
     TempHeader.headerVersion = 1;
@@ -1495,18 +1508,6 @@ void AccessPointStation::TransmitTask(void* pvParameters)
                     inet_pton(AF_INET, HeartbeatTargetIp, &Destination.sin_addr) == 1)
                 {
                     HeartbeatAttemptCount++;
-                    if (ApStaClassInstance->StateMutex != nullptr) xSemaphoreTake(ApStaClassInstance->StateMutex, portMAX_DELAY);
-                    // Only latch send time when starting a new request/reply cycle.
-                    // If no reply has arrived yet, keep the original send timestamp
-                    // so timeout can expire instead of sliding forever.
-                    const int64_t LastRxUs = ApStaClassInstance->LastHeartbeatUs;
-                    const int64_t LastTxUs = ApStaClassInstance->LastHeartbeatSentUs;
-                    if (LastTxUs == 0 || LastRxUs >= LastTxUs)
-                    {
-                        ApStaClassInstance->LastHeartbeatSentUs = static_cast<int64_t>(CurrentTimeUs);
-                    }
-                    if (ApStaClassInstance->StateMutex != nullptr) xSemaphoreGive(ApStaClassInstance->StateMutex);
-
                     if (strcmp(HeartbeatTargetIp, MyApIpLocal) == 0)
                     {
                         if (ApStaClassInstance->IsRuntimeLoggingEnabled)
@@ -1517,10 +1518,25 @@ void AccessPointStation::TransmitTask(void* pvParameters)
                     else
                     {
                         const size_t Sent = ApStaClassInstance->SendData(TxBuffer, static_cast<int>(PacketLength), Destination);
-                        LastHeartbeatTimeUs = CurrentTimeUs;
                         if (Sent > 0)
                         {
+                            LastHeartbeatTimeUs = CurrentTimeUs;
                             HeartbeatSentCount++;
+                            if (ApStaClassInstance->StateMutex != nullptr) xSemaphoreTake(ApStaClassInstance->StateMutex, portMAX_DELAY);
+                            // Only latch send time when starting a new request/reply cycle.
+                            // If no reply has arrived yet, keep the original send timestamp
+                            // so timeout can expire instead of sliding forever.
+                            const int64_t LastRxUs = ApStaClassInstance->LastHeartbeatUs;
+                            const int64_t LastTxUs = ApStaClassInstance->LastHeartbeatSentUs;
+                            if (LastTxUs == 0 || LastRxUs >= LastTxUs)
+                            {
+                                ApStaClassInstance->LastHeartbeatSentUs = static_cast<int64_t>(CurrentTimeUs);
+                            }
+                            if (ApStaClassInstance->StateMutex != nullptr) xSemaphoreGive(ApStaClassInstance->StateMutex);
+                            if (ApStaClassInstance->IsRuntimeLoggingEnabled)
+                            {
+                                ESP_LOGI(STA_TAG, "Heartbeat sent to %s", HeartbeatTargetIp);
+                            }
                         }
                         else
                         {
@@ -1529,11 +1545,6 @@ void AccessPointStation::TransmitTask(void* pvParameters)
                             {
                                 ESP_LOGW(STA_TAG, "Heartbeat send failed to %s", HeartbeatTargetIp);
                             }
-                        }
-
-                        if (ApStaClassInstance->IsRuntimeLoggingEnabled)
-                        {
-                            ESP_LOGI(STA_TAG, "Heartbeat sent to %s", HeartbeatTargetIp);
                         }
                     }
                 }
@@ -1622,7 +1633,25 @@ void AccessPointStation::TransmitTask(void* pvParameters)
 
 bool AccessPointStation::StartUdp(uint16_t Port, uint8_t Core)
 {
-    if (ApStaClassInstance->UdpStarted) return true;
+    if (ApStaClassInstance->UdpStarted)
+    {
+        const bool SocketHealthy = (ApStaClassInstance->UdpSocket >= 0);
+        const bool RxTaskHealthy = (ApStaClassInstance->ReceiveTaskHandle != nullptr);
+        const bool TxTaskHealthy = (ApStaClassInstance->TransmitTaskHandle != nullptr);
+
+        if (SocketHealthy && RxTaskHealthy && TxTaskHealthy) return true;
+
+        if (ApStaClassInstance->IsRuntimeLoggingEnabled)
+        {
+            ESP_LOGW("UDP", "StartUdp detected stale state (socket=%d rx=%d tx=%d). Reinitializing.",
+                     SocketHealthy ? 1 : 0,
+                     RxTaskHealthy ? 1 : 0,
+                     TxTaskHealthy ? 1 : 0);
+        }
+
+        // Clear any partial/stale resources and proceed with fresh startup.
+        ApStaClassInstance->StopUdp();
+    }
     
     // We only start UDP if we have an IP (either as an AP or a STA)
     bool IsConnectedLocal = false;
@@ -1996,41 +2025,11 @@ bool AccessPointStation::SetupWifi()
 
 #define FACTORY_TAG "Factory"
 
-// Station* WifiFactory::CreateStation(uint8_t CoreToUse, uint16_t UdpPort, bool EnableRuntimeLogging)
-// {
-//     if (StaClassInstance != nullptr)
-//     {
-//         return StaClassInstance;
-//     }
-
-//     if (ApStaClassInstance != nullptr) // Placeholder for access point and ApSta pointers
-//     {
-//         return nullptr;
-//     }
-
-//     StaClassInstance = new Station(CoreToUse, UdpPort, EnableRuntimeLogging);
-
-//     if (StaClassInstance == nullptr)
-//     {
-//         ESP_LOGE(FACTORY_TAG, "Failed to create Station instance!");
-//         return nullptr;
-//     }
-
-//     ESP_LOGW(FACTORY_TAG, "Station instance created successfully");
-//     return StaClassInstance;
-// }
-
 AccessPointStation* WifiFactory::CreateAccessPointStation(uint8_t CoreToUse, uint16_t UdpPort, bool EnableRuntimeLogging)
 {
     if (ApStaClassInstance != nullptr)
     {
         return ApStaClassInstance;
-    }
-
-    if (false)
-    //if (StaClassInstance != nullptr) // Placeholder for access point and ApSta pointers
-    {
-        return nullptr;
     }
 
     ApStaClassInstance = new AccessPointStation(CoreToUse, UdpPort, EnableRuntimeLogging);

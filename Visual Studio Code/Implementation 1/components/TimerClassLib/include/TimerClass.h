@@ -51,7 +51,7 @@ class TimerClass
         static inline void SetWatchdogProbeHigh()  { gpio_set_level(WatchdogProbePin, 1); }
         static inline void SetWatchdogProbeLow()   { gpio_set_level(WatchdogProbePin, 0); }
 
-        // Probe pins - CHANGE THESE IF NEEDED
+        // Probe pins used for oscilloscope timing validation.
         static constexpr gpio_num_t CyclicProbePin   = GPIO_NUM_4;
         static constexpr gpio_num_t WatchdogProbePin = GPIO_NUM_5;
 

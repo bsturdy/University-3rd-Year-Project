@@ -5,7 +5,7 @@
 #         range 0 1
 #         default 0
 #         help
-#             Choose the wifi mode for your application.
+#             Select the WiFi operating mode.
 
 #                 0 = Access Point 
             
@@ -15,7 +15,7 @@
 #         string "WiFi SSID"
 #         default "Access Point"
 #         help
-#             SSID (network name) for the example to connect to
+#             SSID used by the WiFi station.
 
 #     config ESP_WIFI_PASSWORD
 #         string "WiFi Password"
