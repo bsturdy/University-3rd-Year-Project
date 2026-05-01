@@ -1,0 +1,56 @@
+<?xml version="1.0" encoding="utf-8"?>
+<TcPlcObject Version="1.1.0.1">
+  <POU Name="EspHeaderCrc32" Id="{df9845f9-68bb-4c66-bb0f-66eb6e16eaef}" SpecialFunc="None">
+    <Declaration><![CDATA[FUNCTION EspHeaderCrc32 : UDINT
+VAR_INPUT
+	HeaderAddress		: PVOID;
+END_VAR
+VAR
+	HeaderBytes			: ARRAY [0..47] OF BYTE;
+	ByteIndex			: UINT;
+	BitIndex			: BYTE;
+	Crc					: UDINT;
+END_VAR
+]]></Declaration>
+    <Implementation>
+      <ST><![CDATA[IF HeaderAddress = 0 THEN
+	
+	EspHeaderCrc32 := 0;
+	RETURN;
+	
+END_IF
+
+MEMCPY(ADR(HeaderBytes), HeaderAddress, 48);
+
+HeaderBytes[44] := 0;
+HeaderBytes[45] := 0;
+HeaderBytes[46] := 0;
+HeaderBytes[47] := 0;
+
+Crc := 16#FFFFFFFF;
+
+FOR ByteIndex := 0 TO 47 BY 1 DO
+	
+	Crc := Crc XOR TO_UDINT(HeaderBytes[ByteIndex]);
+	
+	FOR BitIndex := 0 TO 7 BY 1 DO
+		
+		IF (Crc AND 16#00000001) = 16#00000001 THEN
+			
+			Crc := SHR(Crc, 1) XOR 16#EDB88320;
+			
+		ELSE
+			
+			Crc := SHR(Crc, 1);
+			
+		END_IF
+		
+	END_FOR
+	
+END_FOR
+
+EspHeaderCrc32 := Crc XOR 16#FFFFFFFF;
+]]></ST>
+    </Implementation>
+  </POU>
+</TcPlcObject>

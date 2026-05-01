@@ -1,0 +1,61 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>ESP Mesh HMI</title>
+  <link rel="stylesheet" href="/styles.css">
+</head>
+<body>
+  <header class="topbar">
+    <div>
+      <p class="eyebrow">TwinCAT ADS Device View</p>
+      <h1>ESP Mesh HMI</h1>
+    </div>
+  </header>
+
+  <main class="layout">
+    <section class="panel topology-panel">
+      <div class="panel-head">
+        <div>
+          <h2>Topology</h2>
+          <p>Lines show inferred parent links from TwinCAT snapshot data.</p>
+        </div>
+        <div class="metrics">
+          <div><strong id="total-count">0</strong><span>Total</span></div>
+          <div><strong id="online-count">0</strong><span>Online</span></div>
+        </div>
+      </div>
+      <svg id="topology" role="img" aria-label="ESP mesh topology"></svg>
+    </section>
+
+    <section class="panel table-panel">
+      <div class="panel-head">
+        <div>
+          <h2>Devices</h2>
+          <p>ADS snapshot exported by <code>GVL_EspVisualisation</code>.</p>
+        </div>
+      </div>
+      <div class="table-wrap">
+        <table>
+          <thead>
+            <tr>
+              <th>UID</th>
+              <th>State</th>
+              <th>Parent</th>
+              <th>IP</th>
+              <th>Age</th>
+              <th>Last Seen</th>
+              <th>Chain</th>
+              <th>Packets</th>
+            </tr>
+          </thead>
+          <tbody id="device-table"></tbody>
+        </table>
+      </div>
+    </section>
+  </main>
+
+  <script src="/app.js"></script>
+</body>
+</html>

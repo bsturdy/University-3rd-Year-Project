@@ -3,6 +3,7 @@ idf_component_register(
         "main.cpp" 
         "packet_processors.cpp"
         "tests.cpp"
+        "throughput_tests.cpp"
     INCLUDE_DIRS "."
     REQUIRES 
         GpioClassLib 

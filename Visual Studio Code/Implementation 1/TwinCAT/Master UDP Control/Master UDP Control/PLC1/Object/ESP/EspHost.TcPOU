@@ -1,0 +1,348 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<TcPlcObject Version="1.1.0.1">
+  <POU Name="EspHost" Id="{b3fe8272-bf4b-4466-9679-d62f1ddfa137}" SpecialFunc="None">
+    <Declaration><![CDATA[{attribute 'enable_dynamic_creation'}
+FUNCTION_BLOCK EspHost IMPLEMENTS ITF_EspHost, ITF_Node
+VAR
+	
+	// Node information
+	_LastNode					: ITF_Node;
+	_NextNode					: ITF_Node;
+	_PositionInList				: UINT;
+	
+	
+	
+	// ESP information
+	_Data						: EspPacketHeader;
+	_SystemInfo					: EspSystemInfo;
+	_LastReceivedIp				: T_IPv4Addr;
+	_Online						: BOOL;
+	_PacketsReceivedCount		: ULINT;
+	_FirstReceivedTimestamp		: ULINT;
+	_LastReceivedTimestamp		: ULINT;
+	_DataBuffer					: ARRAY [0..511] OF BYTE;
+	
+END_VAR
+]]></Declaration>
+    <Implementation>
+      <ST><![CDATA[]]></ST>
+    </Implementation>
+    <Folder Name="ITF_EspHost" Id="{3e1ad894-296e-4a6b-bccd-5c988016ec11}" />
+    <Folder Name="ITF_Node" Id="{1137c9b1-75b7-4fc7-8824-f307a94e0aea}" />
+    <Method Name="CyclicUpdate" Id="{54910a29-7116-406b-ac34-c30fe7d4116f}" FolderPath="ITF_EspHost\">
+      <Declaration><![CDATA[METHOD CyclicUpdate : BOOL
+VAR_INPUT
+END_VAR
+]]></Declaration>
+      <Implementation>
+        <ST><![CDATA[CyclicUpdate := IsOnline(150000000);]]></ST>
+      </Implementation>
+    </Method>
+    <Method Name="GetDataBuffer" Id="{2ac55e4a-5e5d-4e04-a89a-b3b9e95a64dd}" FolderPath="ITF_EspHost\">
+      <Declaration><![CDATA[METHOD GetDataBuffer : BOOL
+VAR_INPUT
+	Address	: REFERENCE TO PVOID;
+	Size	: REFERENCE TO UDINT;
+END_VAR
+]]></Declaration>
+      <Implementation>
+        <ST><![CDATA[Address := ADR(_DataBuffer);
+Size := SIZEOF(_DataBuffer);
+
+GetDataBuffer := TRUE;]]></ST>
+      </Implementation>
+    </Method>
+    <Method Name="GetLastNode" Id="{40659afe-16b7-4736-a59c-d79330896cb4}" FolderPath="ITF_Node\">
+      <Declaration><![CDATA[METHOD GetLastNode : ITF_Node
+]]></Declaration>
+      <Implementation>
+        <ST><![CDATA[GetLastNode := _LastNode;
+
+RETURN;]]></ST>
+      </Implementation>
+    </Method>
+    <Method Name="GetLastReceivedIp" Id="{3d910315-0feb-4a49-bd09-23002783f780}" FolderPath="ITF_EspHost\">
+      <Declaration><![CDATA[METHOD GetLastReceivedIp : T_IPv4Addr
+VAR_INPUT
+END_VAR
+]]></Declaration>
+      <Implementation>
+        <ST><![CDATA[GetLastReceivedIp := _LastReceivedIp;]]></ST>
+      </Implementation>
+    </Method>
+    <Method Name="GetFirstReceivedTimestamp" Id="{b6f17683-1729-4e7c-a3e4-5cf75ed29768}" FolderPath="ITF_EspHost\">
+      <Declaration><![CDATA[METHOD GetFirstReceivedTimestamp : ULINT
+VAR_INPUT
+END_VAR
+]]></Declaration>
+      <Implementation>
+        <ST><![CDATA[GetFirstReceivedTimestamp := _FirstReceivedTimestamp;]]></ST>
+      </Implementation>
+    </Method>
+    <Method Name="GetLastReceivedTimestamp" Id="{7f972fe9-21de-4fce-8786-274548528a73}" FolderPath="ITF_EspHost\">
+      <Declaration><![CDATA[METHOD GetLastReceivedTimestamp : ULINT
+VAR_INPUT
+END_VAR
+]]></Declaration>
+      <Implementation>
+        <ST><![CDATA[GetLastReceivedTimestamp := _LastReceivedTimestamp;]]></ST>
+      </Implementation>
+    </Method>
+    <Method Name="GetMetadata" Id="{7f6446d0-88f1-47cd-8cb9-c3796e759e00}" FolderPath="ITF_EspHost\">
+      <Declaration><![CDATA[METHOD GetMetadata : EspPacketHeader
+VAR_INPUT
+END_VAR
+]]></Declaration>
+      <Implementation>
+        <ST><![CDATA[GetMetadata := _Data;]]></ST>
+      </Implementation>
+    </Method>
+    <Method Name="GetMyPointer" Id="{278de2df-56c5-465c-bf04-1733d5508c6f}" FolderPath="ITF_Node\">
+      <Declaration><![CDATA[METHOD GetMyPointer : PVOID
+]]></Declaration>
+      <Implementation>
+        <ST><![CDATA[GetMyPointer := ADR(THIS^);]]></ST>
+      </Implementation>
+    </Method>
+    <Method Name="GetNextNode" Id="{b8dfccf7-235a-47d0-aadc-c1a9701a3cc6}" FolderPath="ITF_Node\">
+      <Declaration><![CDATA[METHOD GetNextNode : ITF_Node
+]]></Declaration>
+      <Implementation>
+        <ST><![CDATA[GetNextNode := _NextNode;
+
+RETURN;]]></ST>
+      </Implementation>
+    </Method>
+    <Method Name="GetPacketToSend" Id="{b42e5fbc-c601-4a14-b846-b8badd4c1736}" FolderPath="ITF_EspHost\">
+      <Declaration><![CDATA[{warning 'Add method implementation '}
+METHOD GetPacketToSend : BOOL
+VAR_INPUT
+	Address	: REFERENCE TO PVOID;
+	Size	: REFERENCE TO UDINT;
+END_VAR
+]]></Declaration>
+      <Implementation>
+        <ST><![CDATA[GetPacketToSend := FALSE;]]></ST>
+      </Implementation>
+    </Method>
+    <Method Name="GetPacketsReceived" Id="{319d4a81-3d32-43bc-a7cb-86589cd6b512}" FolderPath="ITF_EspHost\">
+      <Declaration><![CDATA[METHOD GetPacketsReceived : ULINT
+VAR_INPUT
+END_VAR
+]]></Declaration>
+      <Implementation>
+        <ST><![CDATA[GetPacketsReceived := _PacketsReceivedCount;]]></ST>
+      </Implementation>
+    </Method>
+    <Method Name="GetPositionInList" Id="{30f4f578-233f-46f8-bc0a-f0861309c4dc}" FolderPath="ITF_Node\">
+      <Declaration><![CDATA[METHOD GetPositionInList : UINT
+]]></Declaration>
+      <Implementation>
+        <ST><![CDATA[GetPositionInList := _PositionInList;
+
+RETURN;]]></ST>
+      </Implementation>
+    </Method>
+    <Method Name="GetSystemInfo" Id="{2f08df1f-0f28-4879-9c11-edb04a6b2d4a}" FolderPath="ITF_EspHost\">
+      <Declaration><![CDATA[METHOD GetSystemInfo : EspSystemInfo
+VAR_INPUT
+END_VAR
+]]></Declaration>
+      <Implementation>
+        <ST><![CDATA[GetSystemInfo := _SystemInfo;]]></ST>
+      </Implementation>
+    </Method>
+    <Method Name="IsOnline" Id="{e4cb73bc-7830-4d4e-8733-23851e68f6c4}" FolderPath="ITF_EspHost\">
+      <Declaration><![CDATA[METHOD IsOnline : BOOL
+VAR_INPUT
+	Timeout100Ns	: ULINT;
+END_VAR
+VAR
+	Now100Ns		: ULINT;
+END_VAR
+]]></Declaration>
+      <Implementation>
+        <ST><![CDATA[Now100Ns := F_GetSystemTime();
+
+IF _LastReceivedTimestamp = 0 THEN
+	
+	_Online := FALSE;
+	
+ELSIF Now100Ns - _LastReceivedTimestamp <= Timeout100Ns THEN
+	
+	_Online := TRUE;
+	
+ELSE
+	
+	_Online := FALSE;
+	
+END_IF
+
+IsOnline := _Online;
+]]></ST>
+      </Implementation>
+    </Method>
+    <Method Name="SetPacketType" Id="{1c42e45e-5780-4704-8339-02500e9ebdcb}" FolderPath="ITF_EspHost\">
+      <Declaration><![CDATA[METHOD SetPacketType : BOOL
+VAR_INPUT
+	PacketType	: BYTE;
+END_VAR]]></Declaration>
+      <Implementation>
+        <ST><![CDATA[IF _Data.PacketType = 0 THEN
+	
+	_Data.PacketType := PacketType;
+	
+	SetPacketType := TRUE;
+
+END_IF
+
+RETURN;]]></ST>
+      </Implementation>
+    </Method>
+    <Method Name="SetLastReceivedIp" Id="{93580cc3-cc67-4122-9df1-06b68d60478a}" FolderPath="ITF_EspHost\">
+      <Declaration><![CDATA[METHOD SetLastReceivedIp : BOOL
+VAR_INPUT
+	IpAddress	: T_IPv4Addr;
+END_VAR
+]]></Declaration>
+      <Implementation>
+        <ST><![CDATA[_LastReceivedIp := IpAddress;
+
+SetLastReceivedIp := TRUE;
+]]></ST>
+      </Implementation>
+    </Method>
+    <Method Name="SetLastNode" Id="{c5dd63a9-ada1-4b64-97ef-df115a746a4e}" FolderPath="ITF_Node\">
+      <Declaration><![CDATA[METHOD SetLastNode : BOOL
+VAR_INPUT
+	Node	: ITF_Node;
+END_VAR
+]]></Declaration>
+      <Implementation>
+        <ST><![CDATA[_LastNode := Node;
+
+SetLastNode := TRUE;
+
+RETURN;]]></ST>
+      </Implementation>
+    </Method>
+    <Method Name="SetNextNode" Id="{c54b15ba-0586-46b9-8a8b-5078fec904e4}" FolderPath="ITF_Node\">
+      <Declaration><![CDATA[METHOD SetNextNode : BOOL
+VAR_INPUT
+	Node	: ITF_Node;
+END_VAR]]></Declaration>
+      <Implementation>
+        <ST><![CDATA[_NextNode := Node;
+
+SetNextNode := TRUE;
+
+RETURN;]]></ST>
+      </Implementation>
+    </Method>
+    <Method Name="SetPositionInList" Id="{d2bd9100-91b9-4c94-b69e-66d983599699}" FolderPath="ITF_Node\">
+      <Declaration><![CDATA[METHOD SetPositionInList : BOOL
+VAR_INPUT
+	Index	: UINT;
+END_VAR
+]]></Declaration>
+      <Implementation>
+        <ST><![CDATA[_PositionInList := Index;
+
+SetPositionInList := TRUE;
+
+RETURN;]]></ST>
+      </Implementation>
+    </Method>
+    <Method Name="SetUID" Id="{518ae377-b86c-4bdb-ac7b-f06adc4eba5e}" FolderPath="ITF_EspHost\">
+      <Declaration><![CDATA[METHOD SetUID : BOOL
+VAR_INPUT
+	UID	: ULINT;
+END_VAR]]></Declaration>
+      <Implementation>
+        <ST><![CDATA[IF _Data.SlaveUid = 0 THEN
+	
+	_Data.SlaveUid := UID;
+	
+	SetUID := TRUE;
+
+END_IF
+
+RETURN;]]></ST>
+      </Implementation>
+    </Method>
+    <Method Name="UpdateMetadata" Id="{139b3c3d-2898-4d80-819a-1c7ff810c5c8}" FolderPath="ITF_EspHost\">
+      <Declaration><![CDATA[METHOD UpdateMetadata : BOOL
+VAR_INPUT
+	Data	: EspPacketHeader;
+END_VAR
+]]></Declaration>
+      <Implementation>
+        <ST><![CDATA[IF MEMCPY(ADR(_Data), ADR(Data), 48) = 48 THEN
+	
+	_PacketsReceivedCount := _PacketsReceivedCount + 1;	
+
+	_LastReceivedTimestamp := F_GetSystemTime();
+	IF _FirstReceivedTimestamp = 0 THEN
+		
+		_FirstReceivedTimestamp := _LastReceivedTimestamp;
+		
+	END_IF
+
+	UpdateMetadata := TRUE;
+	
+ELSE
+	
+	UpdateMetadata := FALSE;
+
+END_IF
+
+
+// IF Data.SenderTimestampUs <> 0 THEN
+// 	
+// 	_Data.SenderTimestampUs := Data.SenderTimestampUs;
+// 
+// END_IF
+// 
+// IF Data.PrevCycleTimeUs <> 0 THEN
+// 	
+// 	_Data.PrevCycleTimeUs := Data.PrevCycleTimeUs;
+// 
+// END_IF
+// 
+// UpdateMetadata := TRUE;
+// 
+// _PacketsReceivedCount := _PacketsReceivedCount + 1;
+// 
+// RETURN;
+]]></ST>
+      </Implementation>
+    </Method>
+    <Method Name="UpdateSystemInfo" Id="{fb3dccff-8b92-4ffc-ae6b-5915512e6022}" FolderPath="ITF_EspHost\">
+      <Declaration><![CDATA[METHOD UpdateSystemInfo : BOOL
+VAR_INPUT
+	PayloadAddress	: PVOID;
+	PayloadLength	: UINT;
+END_VAR
+]]></Declaration>
+      <Implementation>
+        <ST><![CDATA[IF PayloadAddress = 0 OR PayloadLength < SIZEOF(_SystemInfo) THEN
+	
+	UpdateSystemInfo := FALSE;
+	RETURN;
+	
+END_IF
+
+IF MEMCPY(ADR(_SystemInfo), PayloadAddress, SIZEOF(_SystemInfo)) = SIZEOF(_SystemInfo) THEN
+	
+	UpdateSystemInfo := TRUE;
+	
+ELSE
+	
+	UpdateSystemInfo := FALSE;
+	
+END_IF
+]]></ST>
+      </Implementation>
+    </Method>
+  </POU>
+</TcPlcObject>

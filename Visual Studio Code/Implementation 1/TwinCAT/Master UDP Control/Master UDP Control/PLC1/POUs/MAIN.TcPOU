@@ -1,0 +1,43 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<TcPlcObject Version="1.1.0.1">
+  <POU Name="MAIN" Id="{85dee3db-2224-4778-955d-df7bd8df7b99}" SpecialFunc="None">
+    <Declaration><![CDATA[PROGRAM MAIN
+VAR
+	Test	: BOOL := FALSE;
+	Ready	: BOOL := FALSE;
+	i		: INT;
+END_VAR]]></Declaration>
+    <Implementation>
+      <ST><![CDATA[
+i := i + 1;
+
+IF Ready THEN
+	
+	Ready := Init();
+	
+	RETURN;
+
+END_IF
+
+
+IF Test THEN
+	
+	Tests();
+	
+ELSE
+	
+	Application();
+	
+END_IF]]></ST>
+    </Implementation>
+    <Method Name="Init" Id="{13e3f36c-2350-4c1a-9b98-cb6bec86661d}">
+      <Declaration><![CDATA[METHOD Init : BOOL
+VAR_INPUT
+END_VAR
+]]></Declaration>
+      <Implementation>
+        <ST><![CDATA[Init := GVL_EspVisualisation.VisualisationReady;]]></ST>
+      </Implementation>
+    </Method>
+  </POU>
+</TcPlcObject>

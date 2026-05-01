@@ -1,0 +1,13 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<TcPlcObject Version="1.1.0.1">
+  <DUT Name="UpdaterEntry" Id="{929be010-92ad-4ce6-9437-b7a7b3639152}">
+    <Declaration><![CDATA[TYPE UpdaterEntry :
+STRUCT
+	TypeID	: BYTE;
+	Version	: BYTE;
+	Updater	: ITF_Updater;
+END_STRUCT
+END_TYPE
+]]></Declaration>
+  </DUT>
+</TcPlcObject>

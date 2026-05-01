@@ -1,0 +1,31 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<TcPlcObject Version="1.1.0.1">
+  <Itf Name="ITF_LinkedList" Id="{29ba7d83-d588-4c91-a07a-ac71bb854e67}">
+    <Declaration><![CDATA[INTERFACE ITF_LinkedList
+]]></Declaration>
+    <Method Name="CreateNode" Id="{7316e16a-9a25-4a9f-8d84-207735dd7ed5}">
+      <Declaration><![CDATA[METHOD CreateNode : BOOL
+]]></Declaration>
+    </Method>
+    <Method Name="DestroyNode" Id="{01e5e783-b54e-4c86-8226-42249c0a8a75}">
+      <Declaration><![CDATA[METHOD DestroyNode : BOOL
+VAR_INPUT
+	Index		: UINT;
+END_VAR
+]]></Declaration>
+    </Method>
+    <Method Name="GetListLength" Id="{39ad9b36-39f6-4720-97d9-c6079edb8b99}">
+      <Declaration><![CDATA[METHOD GetListLength : UINT
+VAR_INPUT
+END_VAR
+]]></Declaration>
+    </Method>
+    <Method Name="GetNode" Id="{2ec29a15-c236-42bf-92d3-64ec2951ff5e}">
+      <Declaration><![CDATA[METHOD GetNode : ITF_Node
+VAR_INPUT
+	Index	: UINT;
+END_VAR
+]]></Declaration>
+    </Method>
+  </Itf>
+</TcPlcObject>

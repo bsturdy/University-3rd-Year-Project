@@ -1,0 +1,112 @@
+<?xml version="1.0" encoding="utf-8"?>
+<TcPlcObject Version="1.1.0.1">
+  <POU Name="EspPacketBuilder" Id="{89e1122d-9c2c-48bd-86e5-2835ee307de7}" SpecialFunc="None">
+    <Declaration><![CDATA[FUNCTION_BLOCK EspPacketBuilder
+VAR
+END_VAR
+]]></Declaration>
+    <Implementation>
+      <ST><![CDATA[]]></ST>
+    </Implementation>
+    <Method Name="BuildHeartbeatReply" Id="{49c889cb-d328-4ad7-a862-2518d3642e16}">
+      <Declaration><![CDATA[METHOD BuildHeartbeatReply : UDINT
+VAR_INPUT
+	MasterUid			: ULINT;
+	DestinationUid		: ULINT;
+	ForwardingMode		: BYTE;
+END_VAR
+VAR_IN_OUT
+	PacketBuffer		: ARRAY [0..255] OF BYTE;
+END_VAR
+VAR
+	CrcValue			: UDINT;
+END_VAR
+]]></Declaration>
+      <Implementation>
+        <ST><![CDATA[MEMSET(ADR(PacketBuffer), 0, SIZEOF(PacketBuffer));
+
+PacketBuffer[0] := GVL_Udp.StartDelimiter1;
+PacketBuffer[1] := GVL_Udp.StartDelimiter2;
+PacketBuffer[2] := 0;
+PacketBuffer[3] := 1;
+
+MEMCPY(ADR(PacketBuffer[8]), ADR(MasterUid), 8);
+MEMCPY(ADR(PacketBuffer[16]), ADR(DestinationUid), 8);
+
+PacketBuffer[37] := 79;
+PacketBuffer[39] := 1;
+PacketBuffer[42] := 10;
+PacketBuffer[43] := ForwardingMode;
+PacketBuffer[48] := 79;
+PacketBuffer[49] := GVL_Udp.EndDelimiter1;
+PacketBuffer[50] := GVL_Udp.EndDelimiter2;
+
+CrcValue := EspHeaderCrc32(ADR(PacketBuffer));
+PacketBuffer[44] := TO_BYTE(CrcValue AND 16#000000FF);
+PacketBuffer[45] := TO_BYTE(SHR(CrcValue, 8) AND 16#000000FF);
+PacketBuffer[46] := TO_BYTE(SHR(CrcValue, 16) AND 16#000000FF);
+PacketBuffer[47] := TO_BYTE(SHR(CrcValue, 24) AND 16#000000FF);
+
+BuildHeartbeatReply := 51;
+]]></ST>
+      </Implementation>
+    </Method>
+    <Method Name="BuildPacket" Id="{55d88e8f-595a-473f-9ab6-1e17f852a14f}">
+      <Declaration><![CDATA[METHOD BuildPacket : UDINT
+VAR_INPUT
+	MasterUid			: ULINT;
+	DestinationUid		: ULINT;
+	PacketType			: BYTE;
+	ForwardingMode		: BYTE;
+	PayloadAddress		: PVOID;
+	PayloadLength		: UINT;
+END_VAR
+VAR_IN_OUT
+	PacketBuffer		: ARRAY [0..255] OF BYTE;
+END_VAR
+VAR
+	EndIndex			: UINT;
+	CrcValue			: UDINT;
+END_VAR
+]]></Declaration>
+      <Implementation>
+        <ST><![CDATA[IF PacketType = 0 OR PayloadLength = 0 OR PayloadLength > 205 OR PayloadAddress = 0 THEN
+	
+	BuildPacket := 0;
+	RETURN;
+	
+END_IF
+
+MEMSET(ADR(PacketBuffer), 0, SIZEOF(PacketBuffer));
+
+PacketBuffer[0] := GVL_Udp.StartDelimiter1;
+PacketBuffer[1] := GVL_Udp.StartDelimiter2;
+PacketBuffer[2] := TO_BYTE(PayloadLength / 256);
+PacketBuffer[3] := TO_BYTE(PayloadLength MOD 256);
+
+MEMCPY(ADR(PacketBuffer[8]), ADR(MasterUid), 8);
+MEMCPY(ADR(PacketBuffer[16]), ADR(DestinationUid), 8);
+
+PacketBuffer[37] := PacketType;
+PacketBuffer[39] := 1;
+PacketBuffer[42] := 10;
+PacketBuffer[43] := ForwardingMode;
+
+MEMCPY(ADR(PacketBuffer[48]), PayloadAddress, PayloadLength);
+
+EndIndex := 48 + PayloadLength;
+PacketBuffer[EndIndex] := GVL_Udp.EndDelimiter1;
+PacketBuffer[EndIndex + 1] := GVL_Udp.EndDelimiter2;
+
+CrcValue := EspHeaderCrc32(ADR(PacketBuffer));
+PacketBuffer[44] := TO_BYTE(CrcValue AND 16#000000FF);
+PacketBuffer[45] := TO_BYTE(SHR(CrcValue, 8) AND 16#000000FF);
+PacketBuffer[46] := TO_BYTE(SHR(CrcValue, 16) AND 16#000000FF);
+PacketBuffer[47] := TO_BYTE(SHR(CrcValue, 24) AND 16#000000FF);
+
+BuildPacket := TO_UDINT(EndIndex + 2);
+]]></ST>
+      </Implementation>
+    </Method>
+  </POU>
+</TcPlcObject>

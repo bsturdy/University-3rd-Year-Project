@@ -52,14 +52,33 @@ constexpr uint16_t PACKET_END_DELIMITER     = 0x035B;
 static const char* PARENT_SSID = "SturdyAP";
 static const char* PARENT_PASS = "SturdyAP79";
 
-static const uint64_t MY_UID = 2;
+static constexpr uint64_t MASTER_UID = 999999999;
+static constexpr uint64_t MY_UID = 1;
 static const char* MY_PASS = "12345678";
-static const uint8_t MAX_STA_CONN = 1;
-static const bool ENABLE_MASTER_CONNECTION = false;
+static constexpr uint8_t MAX_STA_CONN = 1;
+static constexpr bool ENABLE_MASTER_CONNECTION = true;
 static const uint64_t HEARTBEAT_PULSE_US = 250000;
-static const uint64_t HEARTBEAT_TIMEOUT_US = HEARTBEAT_PULSE_US * 3;
+static const uint64_t HEARTBEAT_TIMEOUT_US = 750000;
 static const uint64_t CHILD_FIRST_HEARTBEAT_GRACE_US = 10000000;
 static const uint64_t SYSTEM_INFO_PULSE_US = 1000000;
+
+static constexpr bool THROUGHPUT_TEST_ENABLED = false;
+static constexpr uint8_t THROUGHPUT_MODE_DISABLED = 0;
+static constexpr uint8_t THROUGHPUT_MODE_TX_TO_MASTER = 1;
+static constexpr uint8_t THROUGHPUT_MODE_TX_TO_NODE = 2;
+static constexpr uint8_t THROUGHPUT_MODE_RX_NODE = 3;
+static constexpr uint8_t THROUGHPUT_MODE_TX_FORWARDED_TO_MASTER = 4;
+static constexpr uint8_t THROUGHPUT_MODE_RELAY_MONITOR = 5;
+static constexpr uint8_t THROUGHPUT_PACKET_TYPE = 90;
+static constexpr uint8_t THROUGHPUT_TEST_MODE = THROUGHPUT_MODE_DISABLED;
+static const char* THROUGHPUT_TARGET_IP = "AUTO_CHILD";
+static constexpr uint16_t THROUGHPUT_TARGET_PORT = 10050;
+static constexpr uint32_t THROUGHPUT_TEST_DURATION_MS = 0;
+static constexpr size_t THROUGHPUT_PAYLOAD_BYTES = 512;
+static constexpr uint32_t THROUGHPUT_TX_BURST_PACKETS = 0;
+static constexpr uint32_t THROUGHPUT_TX_DELAY_TICKS = 0;
+static constexpr uint8_t THROUGHPUT_TASK_CORE = 1;
+static constexpr uint32_t THROUGHPUT_TASK_STACK_BYTES = 4096;
 
 struct WifiDevice
 {
@@ -120,6 +139,22 @@ struct MeshMetadata
     uint8_t HopCount;
     uint8_t ChildCount;
     bool IsValid;
+};
+
+struct MeshRoute
+{
+    uint64_t DestinationUid;
+    char NextHopIp[16];
+    uint8_t Distance;
+    uint64_t LastSeenUs;
+};
+
+struct ThroughputStats
+{
+    uint64_t ReceivedPackets;
+    uint64_t ReceivedBytes;
+    uint64_t ForwardedPackets;
+    uint64_t ForwardedBytes;
 };
 
 
@@ -252,6 +287,8 @@ class AccessPointStation // Singleton
         char MyApIpAddress[16];     // IP of this AP
         WifiDevice ParentDevice{};  
         std::vector<WifiDevice> ChildDevices{};
+        std::vector<MeshRoute> RouteTable{};
+        ThroughputStats TestStats{};
 
         volatile int64_t LastHeartbeatUs = 0;
         volatile int64_t LastHeartbeatSentUs = 0;
@@ -378,6 +415,7 @@ class AccessPointStation // Singleton
         wifi_ap_record_t CandidateWifiRecord{};
         bool IsCandidateValid = false;
         bool IsCandidateMaster = false;
+        uint64_t CandidateParentUid = 0;
         uint8_t CandidateHop = 0;
         uint8_t CandidateChildren = 0;
 
@@ -417,6 +455,10 @@ class AccessPointStation // Singleton
          * @return Void.
          */
         void HandleReceivedData(uint8_t* data, int length, WifiDevice* SourceDevice, bool IsFromParent);
+
+        void LearnRoute(uint64_t DestinationUid, const char* NextHopIp, uint8_t Distance);
+        bool TryGetRoute(uint64_t DestinationUid, char* NextHopIpOut, size_t NextHopIpOutSize, uint8_t* DistanceOut);
+        void RemoveRoutesViaNextHop(const char* NextHopIp);
 
 
 
@@ -520,6 +562,8 @@ class AccessPointStation // Singleton
          * @return size_t: The length of the data that was sent, or 0 if the system did not send the data (e.g., due to system errors). 
          */
         size_t SendData(const uint8_t* TxData, int TxLength, const sockaddr_in& DestinationAddress);
+        void ResetThroughputStats();
+        ThroughputStats GetThroughputStats() const;
 
 
 
@@ -604,6 +648,28 @@ class AccessPointStation // Singleton
             const size_t Count = ChildDevices.size();
             if (StateMutex != nullptr) xSemaphoreGive(StateMutex);
             return Count;
+        }
+
+
+
+        const char* GetFirstChildIpAddress() const
+        {
+            static thread_local char Snapshot[16];
+            Snapshot[0] = '\0';
+
+            if (StateMutex != nullptr) xSemaphoreTake(StateMutex, portMAX_DELAY);
+            for (const WifiDevice& Child : ChildDevices)
+            {
+                if (Child.IpAddress[0] != '\0')
+                {
+                    strncpy(Snapshot, Child.IpAddress, sizeof(Snapshot) - 1);
+                    Snapshot[sizeof(Snapshot) - 1] = '\0';
+                    break;
+                }
+            }
+            if (StateMutex != nullptr) xSemaphoreGive(StateMutex);
+
+            return Snapshot;
         }
 
 

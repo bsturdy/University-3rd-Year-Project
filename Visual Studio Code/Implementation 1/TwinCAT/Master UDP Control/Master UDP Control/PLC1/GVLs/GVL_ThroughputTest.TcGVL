@@ -1,0 +1,35 @@
+<?xml version="1.0" encoding="utf-8"?>
+<TcPlcObject Version="1.1.0.1">
+  <GVL Name="GVL_ThroughputTest" Id="{6cc12781-df79-4f3d-9d87-bfdbd8be59c5}">
+    <Declaration><![CDATA[{attribute 'qualified_only'}
+VAR_GLOBAL
+	Enabled					: BOOL := TRUE;
+	Reset					: BOOL;
+	Active					: BOOL;
+	TestPacketType			: BYTE := 90;
+	TestStart100Ns			: ULINT;
+	TestDurationS			: LREAL;
+	WindowStart100Ns		: ULINT;
+	LastPacketTimestamp100Ns	: ULINT;
+	TotalPackets			: ULINT;
+	TotalBytes				: ULINT;
+	WindowPackets			: ULINT;
+	WindowBytes				: ULINT;
+	LastWindowPackets		: ULINT;
+	LastWindowBytes			: ULINT;
+	PacketsPerSecond		: LREAL;
+	BytesPerSecond			: LREAL;
+	MbitsPerSecond			: LREAL;
+	AveragePacketsPerSecond	: LREAL;
+	AverageBytesPerSecond	: LREAL;
+	AverageMbitsPerSecond	: LREAL;
+	LastSequence			: UDINT;
+	SequenceValid			: BOOL;
+	MissingSequenceCount	: ULINT;
+	LastSourceUid			: ULINT;
+	LastSourceIp			: T_IPv4Addr;
+	LastPacketSize			: UINT;
+END_VAR
+]]></Declaration>
+  </GVL>
+</TcPlcObject>

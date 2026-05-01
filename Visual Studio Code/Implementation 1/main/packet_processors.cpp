@@ -131,7 +131,7 @@
 //     LastHeader.startDelimiter     = PACKET_START_DELIMITER;
 //     LastHeader.payloadSize        = sizeof(Payload1);
 //     LastHeader.reserved0          = 0;
-//     LastHeader.slaveUid           = CONFIG_ESP_NODE_UID;
+//     LastHeader.slaveUid           = MY_UID;
 //     LastHeader.messageCounter++;
 //     LastHeader.prevCycleTimeUs    = UtilitiesClass::GetInstance().GetUptimeUs() - LastHeader.senderTimestampUs;
 //     LastHeader.senderTimestampUs  = UtilitiesClass::GetInstance().GetUptimeUs();

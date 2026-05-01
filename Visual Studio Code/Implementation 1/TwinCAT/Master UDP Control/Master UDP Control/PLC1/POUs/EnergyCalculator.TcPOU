@@ -1,0 +1,62 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<TcPlcObject Version="1.1.0.1">
+  <POU Name="EnergyCalculator" Id="{1525c984-d7b0-4f6b-9518-3580053f2170}" SpecialFunc="None">
+    <Declaration><![CDATA[FUNCTION_BLOCK EnergyCalculator
+VAR_INPUT
+	Voltage							: LREAL;
+	Current							: LREAL;
+END_VAR
+VAR_OUTPUT	
+	PowerConsumptionAverageW		: LREAL;
+	EnergyConsumptionTotalJ			: LREAL;
+	EnergyConsumptionTotalkWh		: LREAL;
+	EnergyConsumptionCostPence		: LREAL;
+END_VAR
+VAR
+	Initialized						: BOOL;
+	TaskIndex						: DINT;
+	TaskTimeS						: REAL;
+	CyclesExecuted					: ULINT;
+	PowerConsumptionW				: LREAL;
+	PowerConsumptionThisCycleJ		: LREAL;
+	TimeAliveS						: LREAL;
+END_VAR
+VAR CONSTANT
+	EnergyPricePence				: REAL := 26.35;
+END_VAR
+]]></Declaration>
+    <Implementation>
+      <ST><![CDATA[
+CyclesExecuted := CyclesExecuted + 1;
+
+IF NOT Initialized THEN
+	
+	TaskIndex := GETCURTASKINDEXEX();
+	
+	TaskTimeS := _TaskInfo[TaskIndex].CycleTime / 10000000.0;
+	
+	Initialized := TRUE;
+
+END_IF
+
+PowerConsumptionW := Voltage * Current;
+
+PowerConsumptionThisCycleJ := PowerConsumptionW * TaskTimeS;
+
+EnergyConsumptionTotalJ := EnergyConsumptionTotalJ + PowerConsumptionThisCycleJ;
+
+EnergyConsumptionTotalkWh := EnergyConsumptionTotalJ / 3600000.0;
+
+TimeAliveS := CyclesExecuted * TaskTimeS;
+
+IF TimeAliveS <> 0 THEN
+	
+	PowerConsumptionAverageW := EnergyConsumptionTotalJ / TimeAliveS;
+
+END_IF
+
+EnergyConsumptionCostPence := EnergyConsumptionTotalkWh * EnergyPricePence;
+]]></ST>
+    </Implementation>
+  </POU>
+</TcPlcObject>

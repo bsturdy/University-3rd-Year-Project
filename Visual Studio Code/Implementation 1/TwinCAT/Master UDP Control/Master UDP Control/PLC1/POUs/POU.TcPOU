@@ -1,0 +1,16 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<TcPlcObject Version="1.1.0.1">
+  <POU Name="POU" Id="{d72a43ca-9f18-499f-9d7b-288c12cd0740}" SpecialFunc="None">
+    <Declaration><![CDATA[PROGRAM POU
+VAR
+	i	: LWORD;
+END_VAR
+]]></Declaration>
+    <Implementation>
+      <ST><![CDATA[
+RETURN;
+
+i := i + 1;]]></ST>
+    </Implementation>
+  </POU>
+</TcPlcObject>

@@ -1,0 +1,28 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<TcPlcObject Version="1.1.0.1">
+  <POU Name="BytesToUlint" Id="{ff55f86e-a6c3-4149-87c0-d9d6e65837bb}" SpecialFunc="None">
+    <Declaration><![CDATA[FUNCTION BytesToUlint : ULINT
+VAR_INPUT
+	b0		: BYTE;
+	b1		: BYTE;
+	b2		: BYTE;
+	b3		: BYTE;
+	b4		: BYTE;
+	b5		: BYTE;
+	b6		: BYTE;
+	b7		: BYTE;
+END_VAR
+]]></Declaration>
+    <Implementation>
+      <ST><![CDATA[BytesToUlint := TO_ULINT(b7)
+     + TO_ULINT(b6) * 256
+     + TO_ULINT(b5) * 256 * 256
+     + TO_ULINT(b4) * 256 * 256 * 256
+     + TO_ULINT(b3) * 256 * 256 * 256 * 256
+     + TO_ULINT(b2) * 256 * 256 * 256 * 256 * 256
+     + TO_ULINT(b1) * 256 * 256 * 256 * 256 * 256 * 256
+     + TO_ULINT(b0) * 256 * 256 * 256 * 256 * 256 * 256 * 256;
+]]></ST>
+    </Implementation>
+  </POU>
+</TcPlcObject>

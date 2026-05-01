@@ -1,0 +1,739 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<TcPlcObject Version="1.1.0.1">
+  <POU Name="Application" Id="{e755b4b3-663e-4aba-9984-5644739ccf72}" SpecialFunc="None">
+    <Declaration><![CDATA[PROGRAM Application
+VAR CONSTANT
+	Port 					: UDINT := 10050;
+	MasterUid				: ULINT := 999999999;
+	VisualOnlineTimeout100Ns	: ULINT := 150000000;
+END_VAR
+VAR
+	UdpWin10				: UdpWindowsSocket('192.168.137.1', Port);
+	UdpRt					: UdpRealtimeSocket(Port);
+	Udp						: ITF_UdpConnection := UdpRt;
+	
+	EspFactory				: EspHostFactory;
+	List					: List(EspFactory);
+	
+	DataDecoder				: DataDecoder(Udp, List);
+	PacketBuilder			: EspPacketBuilder;
+	UpdaterRegistry			: UpdaterRegistry;
+	TestUpdater				: Updater_TestPacket;
+	
+	Init					: BOOL := FALSE;
+	i						: BYTE;
+	j						: UINT;
+	State					: BYTE;
+	hr						: HRESULT;
+
+	ReceivedIP				: T_IPv4Addr;
+	InputHeader				: EspPacketHeader;	
+	TempEspPtr				: POINTER TO EspHost;
+	TempEsp					: ITF_EspHost;
+	TempEspHeader			: EspPacketHeader;
+	
+	PacketToSendAdr			: PVOID;
+	PacketToSendLength		: UDINT;
+	PacketToSendBuffer		: ARRAY [0..255] OF BYTE;
+	ReplyForwardingMode		: BYTE;
+	
+	ReceivedPacketType		: BYTE;
+	ReceivedPacketAddress	: PVOID;
+	ReceivedPacketLength	: UINT;
+	ReceivedDataLength		: UINT;
+
+	CommandRequest			: BOOL;
+	CommandTargetUid		: ULINT;
+	CommandPacketType		: BYTE;
+	CommandPayloadLength		: UINT;
+	CommandPayload			: ARRAY [0..63] OF BYTE;
+	
+	PacketsProcessed		: ULINT;
+	HeartbeatReplyCount		: ULINT;
+	SystemInfoPacketCount	: ULINT;
+	UnknownPacketTypeCount	: ULINT;
+	TxFailCount				: ULINT;
+	CommandAcceptedCount		: ULINT;
+	CommandTargetNotFoundCount	: ULINT;
+	
+	SnapshotNow				: ULINT;
+	SnapshotListIndex		: UINT;
+	SnapshotWriteIndex		: UINT;
+	SnapshotHeader			: EspPacketHeader;
+	SnapshotSystemInfo		: EspSystemInfo;
+	SnapshotLastIp			: T_IPv4Addr;
+	SnapshotFirstSeen		: ULINT;
+	SnapshotLastSeen		: ULINT;
+	SnapshotParentUid		: ULINT;
+	SnapshotEspPtr			: POINTER TO EspHost;
+	SnapshotEsp				: ITF_EspHost;
+	ThroughputNow			: ULINT;
+	ThroughputElapsed100Ns	: ULINT;
+	ThroughputTotalElapsed100Ns	: ULINT;
+END_VAR
+]]></Declaration>
+    <Implementation>
+      <ST><![CDATA[
+IF NOT Init THEN
+
+	IF NOT GVL_EspVisualisation.VisualisationReady THEN
+		
+		RETURN;
+		
+	END_IF
+
+	IF Udp.TryOpenConnection() <> S_OK THEN
+		
+		RETURN;
+	
+	END_IF
+
+	UpdaterRegistry.TryRegister(TestUpdater);
+	
+	Init := TRUE;
+
+END_IF
+
+
+
+
+
+ThroughputNow := F_GetSystemTime();
+
+IF GVL_ThroughputTest.Reset THEN
+	
+	GVL_ThroughputTest.Active := FALSE;
+	GVL_ThroughputTest.TestStart100Ns := 0;
+	GVL_ThroughputTest.TestDurationS := 0;
+	GVL_ThroughputTest.WindowStart100Ns := ThroughputNow;
+	GVL_ThroughputTest.LastPacketTimestamp100Ns := 0;
+	GVL_ThroughputTest.TotalPackets := 0;
+	GVL_ThroughputTest.TotalBytes := 0;
+	GVL_ThroughputTest.WindowPackets := 0;
+	GVL_ThroughputTest.WindowBytes := 0;
+	GVL_ThroughputTest.LastWindowPackets := 0;
+	GVL_ThroughputTest.LastWindowBytes := 0;
+	GVL_ThroughputTest.PacketsPerSecond := 0;
+	GVL_ThroughputTest.BytesPerSecond := 0;
+	GVL_ThroughputTest.MbitsPerSecond := 0;
+	GVL_ThroughputTest.AveragePacketsPerSecond := 0;
+	GVL_ThroughputTest.AverageBytesPerSecond := 0;
+	GVL_ThroughputTest.AverageMbitsPerSecond := 0;
+	GVL_ThroughputTest.LastSequence := 0;
+	GVL_ThroughputTest.SequenceValid := FALSE;
+	GVL_ThroughputTest.MissingSequenceCount := 0;
+	GVL_ThroughputTest.LastSourceUid := 0;
+	GVL_ThroughputTest.LastSourceIp := '';
+	GVL_ThroughputTest.LastPacketSize := 0;
+	GVL_ThroughputTest.Reset := FALSE;
+	
+END_IF
+
+IF GVL_ThroughputTest.WindowStart100Ns = 0 THEN
+	
+	GVL_ThroughputTest.WindowStart100Ns := ThroughputNow;
+	
+END_IF
+
+IF ThroughputNow >= GVL_ThroughputTest.WindowStart100Ns THEN
+	
+	ThroughputElapsed100Ns := ThroughputNow - GVL_ThroughputTest.WindowStart100Ns;
+	
+	IF ThroughputElapsed100Ns >= 10000000 THEN
+		
+		GVL_ThroughputTest.LastWindowPackets := GVL_ThroughputTest.WindowPackets;
+		GVL_ThroughputTest.LastWindowBytes := GVL_ThroughputTest.WindowBytes;
+		GVL_ThroughputTest.PacketsPerSecond := TO_LREAL(GVL_ThroughputTest.WindowPackets) * 10000000.0 / TO_LREAL(ThroughputElapsed100Ns);
+		GVL_ThroughputTest.BytesPerSecond := TO_LREAL(GVL_ThroughputTest.WindowBytes) * 10000000.0 / TO_LREAL(ThroughputElapsed100Ns);
+		GVL_ThroughputTest.MbitsPerSecond := GVL_ThroughputTest.BytesPerSecond * 8.0 / 1000000.0;
+		GVL_ThroughputTest.WindowPackets := 0;
+		GVL_ThroughputTest.WindowBytes := 0;
+		GVL_ThroughputTest.WindowStart100Ns := ThroughputNow;
+		
+	END_IF
+	
+END_IF
+
+IF GVL_ThroughputTest.TestStart100Ns <> 0 AND_THEN GVL_ThroughputTest.LastPacketTimestamp100Ns > GVL_ThroughputTest.TestStart100Ns THEN
+	
+	ThroughputTotalElapsed100Ns := GVL_ThroughputTest.LastPacketTimestamp100Ns - GVL_ThroughputTest.TestStart100Ns;
+	GVL_ThroughputTest.TestDurationS := TO_LREAL(ThroughputTotalElapsed100Ns) / 10000000.0;
+	GVL_ThroughputTest.AveragePacketsPerSecond := TO_LREAL(GVL_ThroughputTest.TotalPackets) * 10000000.0 / TO_LREAL(ThroughputTotalElapsed100Ns);
+	GVL_ThroughputTest.AverageBytesPerSecond := TO_LREAL(GVL_ThroughputTest.TotalBytes) * 10000000.0 / TO_LREAL(ThroughputTotalElapsed100Ns);
+	GVL_ThroughputTest.AverageMbitsPerSecond := GVL_ThroughputTest.AverageBytesPerSecond * 8.0 / 1000000.0;
+	
+END_IF
+
+// Publish a flat ADS-friendly view for external HMIs.
+SnapshotNow := F_GetSystemTime();
+GVL_EspVisualisation.MasterUid := MasterUid;
+GVL_EspVisualisation.SnapshotTimestamp := SnapshotNow;
+GVL_EspVisualisation.SnapshotUpdateCounter := GVL_EspVisualisation.SnapshotUpdateCounter + 1;
+GVL_EspVisualisation.DeviceCount := 0;
+MEMSET(ADR(GVL_EspVisualisation.Devices), 0, SIZEOF(GVL_EspVisualisation.Devices));
+
+SnapshotWriteIndex := 0;
+
+FOR SnapshotListIndex := 1 TO List.GetListLength() BY 1 DO
+	
+	IF SnapshotWriteIndex > 63 THEN
+		
+		EXIT;
+		
+	END_IF
+	
+	SnapshotEspPtr := List.GetNode(SnapshotListIndex).GetMyPointer();
+	
+	IF SnapshotEspPtr <> 0 THEN
+		
+		SnapshotEsp := SnapshotEspPtr^;
+		SnapshotHeader := SnapshotEsp.GetMetadata();
+		SnapshotSystemInfo := SnapshotEsp.GetSystemInfo();
+		SnapshotLastIp := SnapshotEsp.GetLastReceivedIp();
+		IF SnapshotSystemInfo.ReportedIp <> '' THEN
+			
+			SnapshotLastIp := SnapshotSystemInfo.ReportedIp;
+			
+		END_IF
+		SnapshotFirstSeen := SnapshotEsp.GetFirstReceivedTimestamp();
+		SnapshotLastSeen := SnapshotEsp.GetLastReceivedTimestamp();
+		SnapshotParentUid := SnapshotSystemInfo.ParentUid;
+		
+		IF SnapshotParentUid = 0 THEN
+			
+			IF SnapshotHeader.ChainDistance <= 1 THEN
+				
+				SnapshotParentUid := MasterUid;
+				
+			ELSE
+				
+				SnapshotParentUid := 0;
+				
+			END_IF
+			
+		END_IF
+		
+		GVL_EspVisualisation.Devices[SnapshotWriteIndex].InUse := TRUE;
+		GVL_EspVisualisation.Devices[SnapshotWriteIndex].Online := SnapshotEsp.IsOnline(VisualOnlineTimeout100Ns);
+		GVL_EspVisualisation.Devices[SnapshotWriteIndex].Uid := SnapshotHeader.SlaveUid;
+		GVL_EspVisualisation.Devices[SnapshotWriteIndex].ParentUid := SnapshotParentUid;
+		GVL_EspVisualisation.Devices[SnapshotWriteIndex].LastReceivedIp := SnapshotLastIp;
+		GVL_EspVisualisation.Devices[SnapshotWriteIndex].PacketsReceived := SnapshotEsp.GetPacketsReceived();
+		GVL_EspVisualisation.Devices[SnapshotWriteIndex].FirstSeenTimestamp := SnapshotFirstSeen;
+		GVL_EspVisualisation.Devices[SnapshotWriteIndex].LastSeenTimestamp := SnapshotLastSeen;
+		IF SnapshotFirstSeen > 0 AND_THEN SnapshotNow >= SnapshotFirstSeen THEN
+			
+			GVL_EspVisualisation.Devices[SnapshotWriteIndex].Age100Ns := SnapshotNow - SnapshotFirstSeen;
+			
+		END_IF
+		IF SnapshotLastSeen > 0 AND_THEN SnapshotNow >= SnapshotLastSeen THEN
+			
+			GVL_EspVisualisation.Devices[SnapshotWriteIndex].TimeSinceLastSeen100Ns := SnapshotNow - SnapshotLastSeen;
+			
+		END_IF
+		GVL_EspVisualisation.Devices[SnapshotWriteIndex].UptimeUs := SnapshotSystemInfo.UptimeUs;
+		GVL_EspVisualisation.Devices[SnapshotWriteIndex].PacketType := SnapshotHeader.PacketType;
+		GVL_EspVisualisation.Devices[SnapshotWriteIndex].ForwardingMode := SnapshotHeader.ForwardingMode;
+		GVL_EspVisualisation.Devices[SnapshotWriteIndex].ChainDistance := SnapshotHeader.ChainDistance;
+		GVL_EspVisualisation.Devices[SnapshotWriteIndex].ChildCount := SnapshotHeader.ChainedSlaveCount;
+		GVL_EspVisualisation.Devices[SnapshotWriteIndex].HopCount := SnapshotSystemInfo.HopCount;
+		GVL_EspVisualisation.Devices[SnapshotWriteIndex].StatusFlags := SnapshotSystemInfo.StatusFlags;
+		
+		SnapshotWriteIndex := SnapshotWriteIndex + 1;
+		
+	END_IF
+	
+END_FOR
+
+GVL_EspVisualisation.DeviceCount := SnapshotWriteIndex;
+
+// Multiple processing calls per cycle are possible
+
+FOR i := 0 TO 9 BY 1 DO
+	
+	Udp.CyclicUpdate();
+	
+	CASE State OF
+		
+		0:	// Is data available
+			
+			IF CommandRequest THEN
+				
+				CommandRequest := FALSE;
+				PacketToSendLength := 0;
+				PacketToSendAdr := 0;
+				
+				IF CommandPayloadLength > SIZEOF(CommandPayload) THEN
+					
+					State := 0;
+					
+				ELSE
+				
+				FOR j := 1 TO List.GetListLength() BY 1 DO
+					
+					TempEspPtr := List.GetNode(j).GetMyPointer();
+					
+					IF TempEspPtr <> 0 THEN
+						
+						TempEsp := TempEspPtr^;
+						TempEspHeader := TempEsp.GetMetadata();
+						
+						IF TempEspHeader.SlaveUid = CommandTargetUid THEN
+							
+							IF TempEspHeader.ChainDistance > 1 THEN
+								
+								ReplyForwardingMode := 1;
+								
+							ELSE
+								
+								ReplyForwardingMode := 0;
+								
+							END_IF
+							
+							PacketToSendLength := PacketBuilder.BuildPacket(
+								MasterUid := MasterUid,
+								DestinationUid := CommandTargetUid,
+								PacketType := CommandPacketType,
+								ForwardingMode := ReplyForwardingMode,
+								PayloadAddress := ADR(CommandPayload),
+								PayloadLength := CommandPayloadLength,
+								PacketBuffer := PacketToSendBuffer);
+								
+							IF PacketToSendLength > 0 THEN
+								
+								ReceivedIP := TempEsp.GetLastReceivedIp();
+								PacketToSendAdr := ADR(PacketToSendBuffer);
+								CommandAcceptedCount := CommandAcceptedCount + 1;
+								State := 6;
+								
+							END_IF
+							
+							EXIT;
+							
+						END_IF
+						
+					END_IF
+					
+				END_FOR
+				
+				END_IF
+				
+				IF State <> 6 THEN
+					
+					CommandTargetNotFoundCount := CommandTargetNotFoundCount + 1;
+					State := 0;
+					
+				END_IF
+				
+			ELSE
+				
+				hr := DataDecoder.TryFindPacketInBuffer(ReceivedPacketType, ReceivedPacketAddress, ReceivedPacketLength, ReceivedDataLength);
+				
+				IF hr = S_OK THEN
+					
+					ReceivedIP := UdpRt.LastReceivedIp;
+					
+					State := 1;
+					
+				ELSIF hr <> S_PENDING THEN
+					
+					EXIT;
+					
+				END_IF
+				
+			END_IF
+			
+	
+
+		1:	// Decode header
+		
+			InputHeader := DataDecoder.GetPacketHeader();
+
+			IF InputHeader.SlaveUid = 0 THEN
+				
+				DataDecoder.ClearBufferAtLocation(ReceivedPacketAddress, ReceivedPacketLength);
+				
+				State := 0;
+				EXIT;
+				
+			END_IF
+			
+			State := 2;
+
+
+
+		2:	// Check CRC
+		
+			// CRC Check Function on TargetHeader
+			
+			// If fail, clear buffer, state := 0
+			
+			State := 3;
+
+
+
+		3:	// Find UID in list
+		
+			j := 0;
+			
+			IF List.GetListLength() = 0 THEN
+				
+				State := 4;
+				
+			END_IF
+		
+			FOR j := 1 TO List.GetListLength() BY 1 DO
+			
+				TempEspPtr := List.GetNode(j).GetMyPointer();
+				
+				IF TempEspPtr = 0 THEN
+					
+					// No matching device in list, create
+					
+					State := 4;
+					
+				ELSE
+					
+					// Check if correct UID
+					
+					TempEsp := TempEspPtr^;
+				
+					TempEspHeader := TempEsp.GetMetadata();
+					
+					IF InputHeader.SlaveUid = TempEspHeader.SlaveUid THEN
+						
+						State := 5;
+						
+						EXIT;
+						
+					END_IF
+					
+				END_IF
+				
+			END_FOR	
+			
+			IF j = List.GetListLength() + 1 THEN
+				
+				State := 4;
+				
+			END_IF
+			
+			
+			
+		4:	// Create device in list
+			
+			IF List.CreateNode() THEN
+						
+				TempEspPtr := List.GetNode(List.GetListLength()).GetMyPointer();
+				
+				TempEsp := TempEspPtr^;
+				
+				TempEsp.SetUID(InputHeader.SlaveUid);
+				
+				TempEsp.SetPacketType(ReceivedPacketType);
+				
+				State := 5;
+			
+			END_IF
+			
+			
+			
+		5:	// Apply data
+		
+			IF TempEsp.UpdateMetadata(InputHeader) THEN
+				
+				TempEsp.SetLastReceivedIp(ReceivedIP);
+				
+				CASE ReceivedPacketType OF
+					
+					79:
+						
+						IF (InputHeader.ChainDistance > 1) OR (InputHeader.ForwardingMode = 2) THEN
+							
+							ReplyForwardingMode := 1;
+							
+						ELSE
+							
+							ReplyForwardingMode := 0;
+							
+						END_IF
+						
+						PacketToSendLength := PacketBuilder.BuildHeartbeatReply(
+							MasterUid := MasterUid,
+							DestinationUid := InputHeader.SlaveUid,
+							ForwardingMode := ReplyForwardingMode,
+							PacketBuffer := PacketToSendBuffer);
+						
+						IF PacketToSendLength > 0 THEN
+							
+							PacketToSendAdr := ADR(PacketToSendBuffer);
+							HeartbeatReplyCount := HeartbeatReplyCount + 1;
+							State := 6;
+							
+						ELSE
+							
+							State := 7;
+							
+						END_IF
+						
+					80:
+						
+						IF TempEsp.UpdateSystemInfo(ReceivedPacketAddress + 48, ReceivedDataLength) THEN
+							
+							SystemInfoPacketCount := SystemInfoPacketCount + 1;
+							
+						END_IF
+						
+						State := 7;
+
+					90:
+						
+						IF GVL_ThroughputTest.Enabled THEN
+							
+							ThroughputNow := F_GetSystemTime();
+							IF GVL_ThroughputTest.TestStart100Ns = 0 THEN
+								
+								GVL_ThroughputTest.TestStart100Ns := ThroughputNow;
+								GVL_ThroughputTest.WindowStart100Ns := ThroughputNow;
+								
+							END_IF
+							GVL_ThroughputTest.Active := TRUE;
+							GVL_ThroughputTest.TotalPackets := GVL_ThroughputTest.TotalPackets + 1;
+							GVL_ThroughputTest.TotalBytes := GVL_ThroughputTest.TotalBytes + TO_ULINT(ReceivedPacketLength);
+							GVL_ThroughputTest.WindowPackets := GVL_ThroughputTest.WindowPackets + 1;
+							GVL_ThroughputTest.WindowBytes := GVL_ThroughputTest.WindowBytes + TO_ULINT(ReceivedPacketLength);
+							GVL_ThroughputTest.LastPacketTimestamp100Ns := ThroughputNow;
+							GVL_ThroughputTest.LastSourceUid := InputHeader.SlaveUid;
+							GVL_ThroughputTest.LastSourceIp := ReceivedIP;
+							GVL_ThroughputTest.LastPacketSize := ReceivedPacketLength;
+							
+							IF GVL_ThroughputTest.SequenceValid THEN
+								
+								IF InputHeader.PrevCycleTimeUs > GVL_ThroughputTest.LastSequence + 1 THEN
+									
+									GVL_ThroughputTest.MissingSequenceCount := GVL_ThroughputTest.MissingSequenceCount + TO_ULINT(InputHeader.PrevCycleTimeUs - GVL_ThroughputTest.LastSequence - 1);
+									
+								END_IF
+								
+							ELSE
+								
+								GVL_ThroughputTest.SequenceValid := TRUE;
+								
+							END_IF
+							
+							GVL_ThroughputTest.LastSequence := InputHeader.PrevCycleTimeUs;
+							
+						END_IF
+						
+						State := 7;
+					
+				ELSE
+					
+					UnknownPacketTypeCount := UnknownPacketTypeCount + 1;
+					State := 7;
+					
+				END_CASE
+				
+				IF State <> 6 AND TempEsp.GetPacketToSend(PacketToSendAdr, PacketToSendLength) THEN
+					
+					TempEsp.CyclicUpdate();
+					
+					State := 6;
+
+				END_IF
+				
+			END_IF
+		
+		
+		
+		6:	// Send data
+		
+			hr := UdpRt.TrySendData(ReceivedIP, Port, PacketToSendAdr, PacketToSendLength);
+			
+			IF hr <> S_PENDING AND SUCCEEDED(hr) THEN
+				
+				State := 7;
+				
+			ELSIF FAILED(hr) THEN
+				
+				State := 8;
+				
+			END_IF
+		
+		
+		
+		7:	// System function OK
+			
+			ReceivedIP := '';
+			MEMSET(ADR(InputHeader), 0, 48);
+			TempEspPtr := 0;
+			TempEsp := 0;
+			MEMSET(ADR(TempEspHeader), 0, 48);
+			PacketToSendAdr := 0;
+			PacketToSendLength := 0;
+			MEMSET(ADR(PacketToSendBuffer), 0, SIZEOF(PacketToSendBuffer));
+			DataDecoder.ClearBufferAtLocation(ReceivedPacketAddress, ReceivedPacketLength);
+			
+			PacketsProcessed := PacketsProcessed + 1;
+			State := 0;
+			
+			
+		
+		
+		8:	// System RX OK, TX FAIL
+			
+			TxFailCount := TxFailCount + 1;
+			ReceivedIP := '';
+			MEMSET(ADR(InputHeader), 0, 48);
+			TempEspPtr := 0;
+			TempEsp := 0;
+			MEMSET(ADR(TempEspHeader), 0, 48);
+			PacketToSendAdr := 0;
+			PacketToSendLength := 0;
+			MEMSET(ADR(PacketToSendBuffer), 0, SIZEOF(PacketToSendBuffer));
+			DataDecoder.ClearBufferAtLocation(ReceivedPacketAddress, ReceivedPacketLength);
+			
+			State := 0;
+		
+// 		
+// 		
+// 		
+// 		5:
+// 		
+// 			hr := TempUpdater.TryApplyPayload(ReceivedPacketAddress, ReceivedPacketLength, TempEsp);
+// 			
+// 			IF hr <> S_PENDING AND SUCCEEDED(hr) THEN
+// 				
+// 				TempEsp.UpdateMetadata(DataDecoder.CreateMetadataUpdate());
+// 				
+// 				DataDecoder.ClearBufferAtLocation(ReceivedPacketAddress, ReceivedPacketLength);
+// 				
+// 				ReceivedPacketAddress := 0;
+// 				ReceivedPacketLength := 0;
+// 				ReceivedPacketType := 0;
+// 			
+// 				TargetEspUID := 0;
+// 				TempEspPtr := 0;	
+// 				TempEsp := 0;
+// 				MEMSET(ADR(TempEspHeader), 0, SIZEOF(TempEspHeader));
+// 				TempUpdater := 0;
+// 				
+// 				State := 0;
+// 				
+// 			END_IF
+// 		
+// 		
+// 			
+// 			
+// 		1:
+// 		
+// 			TempUpdater := UpdaterRegistry.ResolveUpdater(ReceivedPacketType, 1);
+// 			
+// 			IF TempUpdater = 0 THEN
+// 				
+// 				;// ERROR
+// 				
+// 			END_IF
+// 			
+// 			State := 2;
+// 			
+// 		
+// 		
+// 		2:
+// 		
+// 			TargetEspUID := DataDecoder.GetPacketUID();
+// 			
+// 			IF TargetEspUID = 0 THEN
+// 				
+// 				;// ERROR
+// 				
+// 			END_IF
+// 			
+// 			State := 3;
+// 			
+// 			
+// 			
+// 		3:
+// 		
+// 			FOR j := 1 TO List.GetListLength() BY 1 DO
+// 			
+// 				TempEspPtr := List.GetNode(j).GetMyPointer();
+// 			
+// 				TempEsp := TempEspPtr^;
+// 				
+// 				TempEspHeader := TempEsp.GetMetadata();
+// 				
+// 				IF TargetEspUID = TempEspHeader.SlaveUid THEN
+// 					
+// 					FoundEsp := TRUE;
+// 					
+// 					EXIT;
+// 					
+// 				END_IF
+// 				
+// 			END_FOR
+// 			
+// 			IF FoundEsp THEN
+// 				
+// 				FoundEsp := FALSE;
+// 				
+// 				State := 5;
+// 				
+// 			ELSE
+// 				
+// 				State := 4;
+// 				
+// 			END_IF
+// 			
+// 			
+// 			
+// 		4:
+// 			
+// 			IF List.CreateNode() THEN
+// 						
+// 				TempEspPtr := List.GetNode(List.GetListLength()).GetMyPointer();
+// 				
+// 				TempEsp := TempEspPtr^;
+// 				
+// 				TempEsp.SetUID(TargetEspUID);
+// 				
+// 				TempEsp.SetPacketType(ReceivedPacketType);
+// 				
+// 				State := 5;
+// 			
+// 			END_IF
+// 		
+// 		
+// 		
+// 		5:
+// 		
+// 			hr := TempUpdater.TryApplyPayload(ReceivedPacketAddress, ReceivedPacketLength, TempEsp);
+// 			
+// 			IF hr <> S_PENDING AND SUCCEEDED(hr) THEN
+// 				
+// 				TempEsp.UpdateMetadata(DataDecoder.CreateMetadataUpdate());
+// 				
+// 				DataDecoder.ClearBufferAtLocation(ReceivedPacketAddress, ReceivedPacketLength);
+// 				
+// 				ReceivedPacketAddress := 0;
+// 				ReceivedPacketLength := 0;
+// 				ReceivedPacketType := 0;
+// 			
+// 				TargetEspUID := 0;
+// 				TempEspPtr := 0;	
+// 				TempEsp := 0;
+// 				MEMSET(ADR(TempEspHeader), 0, SIZEOF(TempEspHeader));
+// 				TempUpdater := 0;
+// 				
+// 				State := 0;
+// 				
+// 			END_IF
+			
+	END_CASE
+
+END_FOR
+]]></ST>
+    </Implementation>
+  </POU>
+</TcPlcObject>
+

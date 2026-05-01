@@ -1,0 +1,56 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<TcPlcObject Version="1.1.0.1">
+  <POU Name="EspNodeController" Id="{c6bd84ac-1a70-48cb-b8d1-05da0a65a282}" SpecialFunc="None">
+    <Declaration><![CDATA[PROGRAM EspNodeController
+VAR
+	EspFactory			: EspHostFactory;
+	List				: List(EspFactory);
+	Node				: ITF_Node;
+	NodePtr				: POINTER TO EspHost;
+	EspDevice			: ITF_EspHost;
+	ListIndex			: UINT;
+	CreateEspDevice		: BOOL;
+	DestroyEspDevice	: BOOL;
+	GetEspDevice		: BOOL;
+END_VAR
+]]></Declaration>
+    <Implementation>
+      <ST><![CDATA[IF CreateEspDevice THEN
+
+	IF List.CreateNode() THEN
+		
+		CreateEspDevice := FALSE;
+		
+	END_IF
+
+END_IF
+
+IF DestroyEspDevice THEN
+
+	IF List.DestroyNode(ListIndex) THEN
+		
+		DestroyEspDevice := FALSE;
+		
+	END_IF
+
+END_IF
+
+IF GetEspDevice THEN
+
+	Node := List.GetNode(ListIndex);
+	
+	NodePtr := Node.GetMyPointer();
+	
+	EspDevice := NodePtr^;
+	
+	IF EspDevice <> 0 THEN
+		
+		GetEspDevice := FALSE;
+		
+	END_IF
+
+END_IF
+]]></ST>
+    </Implementation>
+  </POU>
+</TcPlcObject>

@@ -7,6 +7,7 @@
 #include "UtilitiesClass.h"
 #include "packet_processors.h"
 #include "tests.h"
+#include "throughput_tests.h"
 #include <cstddef>
 #include <cstdint>
 #include <cstdlib>
@@ -28,20 +29,32 @@ AccessPointStation* WifiApSta = nullptr;
 //Packet1 packet1;
 //ITF_PacketProcessor* processor = &packet1;
 
-uint64_t Uid = CONFIG_ESP_NODE_UID;
+uint64_t Uid = MY_UID;
 uint8_t MainState = 0;
 uint64_t CyclicCalls = 0;
 uint8_t CyclicState = 0;
 uint8_t TestFails = 0;
 
 
+static constexpr bool ThroughputModeCanRunWithoutParent()
+{
+    return THROUGHPUT_TEST_ENABLED &&
+        (THROUGHPUT_TEST_MODE == THROUGHPUT_MODE_TX_TO_NODE ||
+         THROUGHPUT_TEST_MODE == THROUGHPUT_MODE_RX_NODE);
+}
+
+static constexpr bool ThroughputTaskShouldRun()
+{
+    return THROUGHPUT_TEST_ENABLED &&
+        (THROUGHPUT_TEST_MODE != THROUGHPUT_MODE_DISABLED);
+}
+
+
 void CyclicTask1(void* pvParameters)
 {
     CyclicCalls++;
 
-    esp_rom_delay_us(900);
-
-    if (!WifiApSta->IsConnectedToHost()) CyclicState = 99;
+    esp_rom_delay_us(500);
 
     switch(CyclicState)
     {
@@ -61,8 +74,7 @@ extern "C" void app_main(void)
 {
 
     // Init singleton instances
-    //WifiSta = WifiFactory::CreateStation(1, 10050, true);
-    WifiApSta = WifiFactory::CreateAccessPointStation(1, 10050, true);
+    WifiApSta = WifiFactory::CreateAccessPointStation(0, 10050, true);
     TimerClass::GetInstance();
     GpioClass::GetInstance();
     UtilitiesClass::GetInstance();
@@ -76,7 +88,10 @@ extern "C" void app_main(void)
         {
             case 0: // Power on
                 ESP_LOGI(TAG, "POWER ON");
-                if (GpioClass::GetInstance().SetupOnboardLed()) MainState = 1;
+                if (GpioClass::GetInstance().SetupOnboardLed())
+                {
+                    MainState = THROUGHPUT_TEST_ENABLED ? 3 : 1;
+                }
                 break;
             
             
@@ -88,27 +103,38 @@ extern "C" void app_main(void)
 
 
             case 2: // Start cyclic task
-                if (TimerClass::GetInstance().SetupCyclicTask(CyclicTask1, 0)) MainState = 3;
+                if (TimerClass::GetInstance().SetupCyclicTask(CyclicTask1, 1)) MainState = 3;
                 else MainState = 99;
                 break;
 
 
             case 3: // Connect to wifi
                 GpioClass::GetInstance().ChangeOnboardLedColour(255, 165, 0);
-                WifiApSta->SetupWifi();
-                if (WifiApSta->IsConnectedToHost()) MainState = 4;
+                if (WifiApSta->SetupWifi())
+                {
+                    if (WifiApSta->IsConnectedToHost() || ThroughputModeCanRunWithoutParent())
+                    {
+                        MainState = 4;
+                    }
+                }
                 break;
 
 
             case 4: // Normal operation
+                if (ThroughputTaskShouldRun())
+                {
+                    GpioClass::GetInstance().ChangeOnboardLedColour(255, 0, 255);
+                    StartThroughputTestMode(WifiApSta);
+                }
 
                 if(WifiApSta->GetHopCount() == 1) GpioClass::GetInstance().ChangeOnboardLedColour(0, 255, 0);
-                if(WifiApSta->GetHopCount() == 2) GpioClass::GetInstance().ChangeOnboardLedColour(0, 200, 50);
-                if(WifiApSta->GetHopCount() == 3) GpioClass::GetInstance().ChangeOnboardLedColour(0, 150, 100);
-                if(WifiApSta->GetHopCount() == 4) GpioClass::GetInstance().ChangeOnboardLedColour(0, 80, 170);
-                if(WifiApSta->GetHopCount() == 5) GpioClass::GetInstance().ChangeOnboardLedColour(0, 0, 255);
+                if(WifiApSta->GetHopCount() == 2) GpioClass::GetInstance().ChangeOnboardLedColour(0, 212, 43);
+                if(WifiApSta->GetHopCount() == 3) GpioClass::GetInstance().ChangeOnboardLedColour(0, 169, 86);
+                if(WifiApSta->GetHopCount() == 4) GpioClass::GetInstance().ChangeOnboardLedColour(0, 126, 129);
+                if(WifiApSta->GetHopCount() == 5) GpioClass::GetInstance().ChangeOnboardLedColour(0, 83, 172);
+                if(WifiApSta->GetHopCount() == 6) GpioClass::GetInstance().ChangeOnboardLedColour(0, 40, 215);
 
-                if (not WifiApSta->IsConnectedToHost()) MainState = 3;
+                if (not WifiApSta->IsConnectedToHost() && !ThroughputModeCanRunWithoutParent()) MainState = 3;
                 else
                 {
                     float temp = UtilitiesClass::GetInstance().GetChipTemperatureC();

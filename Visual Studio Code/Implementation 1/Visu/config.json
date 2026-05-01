@@ -1,0 +1,8 @@
+{
+  "ams_net_id": "local",
+  "ads_port": 851,
+  "http_host": "0.0.0.0",
+  "http_port": 8080,
+  "refresh_ms": 1000,
+  "demo": false
+}

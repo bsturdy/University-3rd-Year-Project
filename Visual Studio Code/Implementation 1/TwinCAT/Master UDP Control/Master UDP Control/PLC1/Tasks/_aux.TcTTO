@@ -1,0 +1,16 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<TcPlcObject Version="1.1.0.1">
+  <Task Name="Aux" Id="{f0f79429-1376-47fc-9865-95e05a4cc131}">
+    <!--CycleTime in micro seconds.-->
+    <CycleTime>10000</CycleTime>
+    <Priority>2</Priority>
+    <PouCall>
+      <Name>Utility</Name>
+    </PouCall>
+    <TaskFBGuid>{6c1cec08-c7c6-43cd-a666-baadd1a5197b}</TaskFBGuid>
+    <Fb_init>{f89c09e9-b23f-4feb-992b-954965465f4f}</Fb_init>
+    <Fb_exit>{08cd2fb9-2841-4b02-b181-05ac32e60fa2}</Fb_exit>
+    <CycleUpdate>{4b848e7d-c1e6-4c2a-bd24-4c0fa6b933e6}</CycleUpdate>
+    <PostCycleUpdate>{427c2adc-6691-4205-89d3-bb1bd0b6bf43}</PostCycleUpdate>
+  </Task>
+</TcPlcObject>

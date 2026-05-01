@@ -1,0 +1,27 @@
+<?xml version="1.0" encoding="utf-8"?>
+<TcPlcObject Version="1.1.0.1">
+  <DUT Name="EspDeviceSnapshot" Id="{2d86a242-930d-4f4b-a8cb-d6455ecee360}">
+    <Declaration><![CDATA[TYPE EspDeviceSnapshot :
+STRUCT
+	InUse					: BOOL;
+	Online					: BOOL;
+	Uid						: ULINT;
+	ParentUid				: ULINT;
+	LastReceivedIp			: T_IPv4Addr;
+	PacketsReceived			: ULINT;
+	FirstSeenTimestamp		: ULINT;
+	LastSeenTimestamp		: ULINT;
+	Age100Ns				: ULINT;
+	TimeSinceLastSeen100Ns	: ULINT;
+	UptimeUs				: ULINT;
+	PacketType				: BYTE;
+	ForwardingMode			: BYTE;
+	ChainDistance			: BYTE;
+	ChildCount				: BYTE;
+	HopCount				: BYTE;
+	StatusFlags				: BYTE;
+END_STRUCT
+END_TYPE
+]]></Declaration>
+  </DUT>
+</TcPlcObject>

@@ -1,0 +1,13 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<TcPlcObject Version="1.1.0.1">
+  <GVL Name="GVL_Udp" Id="{211c7497-89c4-400d-b0cd-ced95c632280}">
+    <Declaration><![CDATA[{attribute 'qualified_only'}
+VAR_GLOBAL CONSTANT
+	StartDelimiter1				: BYTE := 002;
+	StartDelimiter2				: BYTE := 181;
+	EndDelimiter1				: BYTE := 091;
+	EndDelimiter2				: BYTE := 003;
+	PacketTypePosition			: BYTE := 037;
+END_VAR]]></Declaration>
+  </GVL>
+</TcPlcObject>
