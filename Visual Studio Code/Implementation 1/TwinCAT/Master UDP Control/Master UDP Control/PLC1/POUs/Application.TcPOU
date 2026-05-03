@@ -1,4 +1,4 @@
-﻿<?xml version="1.0" encoding="utf-8"?>
+<?xml version="1.0" encoding="utf-8"?>
 <TcPlcObject Version="1.1.0.1">
   <POU Name="Application" Id="{e755b4b3-663e-4aba-9984-5644739ccf72}" SpecialFunc="None">
     <Declaration><![CDATA[PROGRAM Application
@@ -70,6 +70,7 @@ VAR
 	ThroughputNow			: ULINT;
 	ThroughputElapsed100Ns	: ULINT;
 	ThroughputTotalElapsed100Ns	: ULINT;
+	ThroughputUniquePackets	: ULINT;
 END_VAR
 ]]></Declaration>
     <Implementation>
@@ -120,14 +121,36 @@ IF GVL_ThroughputTest.Reset THEN
 	GVL_ThroughputTest.AverageBytesPerSecond := 0;
 	GVL_ThroughputTest.AverageMbitsPerSecond := 0;
 	GVL_ThroughputTest.LastSequence := 0;
+	GVL_ThroughputTest.FirstSequence := 0;
 	GVL_ThroughputTest.SequenceValid := FALSE;
+	GVL_ThroughputTest.ExpectedPackets := 0;
+	GVL_ThroughputTest.ObservedSequenceSpan := 0;
 	GVL_ThroughputTest.MissingSequenceCount := 0;
+	GVL_ThroughputTest.LostPacketCount := 0;
+	GVL_ThroughputTest.PacketLossPercent := 0;
+	GVL_ThroughputTest.DuplicateOrOutOfOrderCount := 0;
+	GVL_ThroughputTest.UdpRxCallbackPackets := 0;
+	GVL_ThroughputTest.UdpRxQueuedPackets := 0;
+	GVL_ThroughputTest.UdpRxDequeuedPackets := 0;
+	GVL_ThroughputTest.UdpRxQueueOverflowDrops := 0;
+	GVL_ThroughputTest.UdpRxQueueOversizeDrops := 0;
+	GVL_ThroughputTest.UdpRxQueueDepth := 0;
+	GVL_ThroughputTest.UdpRxQueueMaxDepth := 0;
+	UdpRt.ResetReceiveQueue();
 	GVL_ThroughputTest.LastSourceUid := 0;
 	GVL_ThroughputTest.LastSourceIp := '';
 	GVL_ThroughputTest.LastPacketSize := 0;
 	GVL_ThroughputTest.Reset := FALSE;
 	
 END_IF
+
+GVL_ThroughputTest.UdpRxCallbackPackets := UdpRt.RxCallbackPackets;
+GVL_ThroughputTest.UdpRxQueuedPackets := UdpRt.RxQueuedPackets;
+GVL_ThroughputTest.UdpRxDequeuedPackets := UdpRt.RxDequeuedPackets;
+GVL_ThroughputTest.UdpRxQueueOverflowDrops := UdpRt.RxQueueOverflowDrops;
+GVL_ThroughputTest.UdpRxQueueOversizeDrops := UdpRt.RxQueueOversizeDrops;
+GVL_ThroughputTest.UdpRxQueueDepth := UdpRt.RxQueueDepth;
+GVL_ThroughputTest.UdpRxQueueMaxDepth := UdpRt.RxQueueMaxDepth;
 
 IF GVL_ThroughputTest.WindowStart100Ns = 0 THEN
 	
@@ -161,6 +184,43 @@ IF GVL_ThroughputTest.TestStart100Ns <> 0 AND_THEN GVL_ThroughputTest.LastPacket
 	GVL_ThroughputTest.AveragePacketsPerSecond := TO_LREAL(GVL_ThroughputTest.TotalPackets) * 10000000.0 / TO_LREAL(ThroughputTotalElapsed100Ns);
 	GVL_ThroughputTest.AverageBytesPerSecond := TO_LREAL(GVL_ThroughputTest.TotalBytes) * 10000000.0 / TO_LREAL(ThroughputTotalElapsed100Ns);
 	GVL_ThroughputTest.AverageMbitsPerSecond := GVL_ThroughputTest.AverageBytesPerSecond * 8.0 / 1000000.0;
+	
+END_IF
+
+IF GVL_ThroughputTest.SequenceValid AND_THEN GVL_ThroughputTest.LastSequence >= GVL_ThroughputTest.FirstSequence THEN
+	
+	GVL_ThroughputTest.ObservedSequenceSpan := TO_ULINT(GVL_ThroughputTest.LastSequence - GVL_ThroughputTest.FirstSequence + 1);
+	
+END_IF
+
+IF GVL_ThroughputTest.ExpectedPackets > 0 THEN
+
+	IF GVL_ThroughputTest.TotalPackets > GVL_ThroughputTest.DuplicateOrOutOfOrderCount THEN
+		
+		ThroughputUniquePackets := GVL_ThroughputTest.TotalPackets - GVL_ThroughputTest.DuplicateOrOutOfOrderCount;
+		
+	ELSE
+		
+		ThroughputUniquePackets := 0;
+		
+	END_IF
+	
+	IF GVL_ThroughputTest.ExpectedPackets > ThroughputUniquePackets THEN
+		
+		GVL_ThroughputTest.LostPacketCount := GVL_ThroughputTest.ExpectedPackets - ThroughputUniquePackets;
+		
+	ELSE
+		
+		GVL_ThroughputTest.LostPacketCount := 0;
+		
+	END_IF
+	
+	GVL_ThroughputTest.PacketLossPercent := TO_LREAL(GVL_ThroughputTest.LostPacketCount) * 100.0 / TO_LREAL(GVL_ThroughputTest.ExpectedPackets);
+	
+ELSIF GVL_ThroughputTest.ObservedSequenceSpan > 0 THEN
+	
+	GVL_ThroughputTest.LostPacketCount := GVL_ThroughputTest.MissingSequenceCount;
+	GVL_ThroughputTest.PacketLossPercent := TO_LREAL(GVL_ThroughputTest.MissingSequenceCount) * 100.0 / TO_LREAL(GVL_ThroughputTest.ObservedSequenceSpan);
 	
 END_IF
 
@@ -363,10 +423,6 @@ FOR i := 0 TO 9 BY 1 DO
 
 
 		2:	// Check CRC
-		
-			// CRC Check Function on TargetHeader
-			
-			// If fail, clear buffer, state := 0
 			
 			State := 3;
 
@@ -506,22 +562,38 @@ FOR i := 0 TO 9 BY 1 DO
 							GVL_ThroughputTest.LastSourceUid := InputHeader.SlaveUid;
 							GVL_ThroughputTest.LastSourceIp := ReceivedIP;
 							GVL_ThroughputTest.LastPacketSize := ReceivedPacketLength;
+
+							IF InputHeader.PacketCountLimit > 0 THEN
+								
+								GVL_ThroughputTest.ExpectedPackets := TO_ULINT(InputHeader.PacketCountLimit);
+								
+							END_IF
 							
 							IF GVL_ThroughputTest.SequenceValid THEN
 								
-								IF InputHeader.PrevCycleTimeUs > GVL_ThroughputTest.LastSequence + 1 THEN
+								IF InputHeader.PrevCycleTimeUs > GVL_ThroughputTest.LastSequence THEN
 									
-									GVL_ThroughputTest.MissingSequenceCount := GVL_ThroughputTest.MissingSequenceCount + TO_ULINT(InputHeader.PrevCycleTimeUs - GVL_ThroughputTest.LastSequence - 1);
+									IF InputHeader.PrevCycleTimeUs > GVL_ThroughputTest.LastSequence + 1 THEN
+										
+										GVL_ThroughputTest.MissingSequenceCount := GVL_ThroughputTest.MissingSequenceCount + TO_ULINT(InputHeader.PrevCycleTimeUs - GVL_ThroughputTest.LastSequence - 1);
+										
+									END_IF
+									
+									GVL_ThroughputTest.LastSequence := InputHeader.PrevCycleTimeUs;
+									
+								ELSE
+									
+									GVL_ThroughputTest.DuplicateOrOutOfOrderCount := GVL_ThroughputTest.DuplicateOrOutOfOrderCount + 1;
 									
 								END_IF
 								
 							ELSE
 								
+								GVL_ThroughputTest.FirstSequence := InputHeader.PrevCycleTimeUs;
+								GVL_ThroughputTest.LastSequence := InputHeader.PrevCycleTimeUs;
 								GVL_ThroughputTest.SequenceValid := TRUE;
 								
 							END_IF
-							
-							GVL_ThroughputTest.LastSequence := InputHeader.PrevCycleTimeUs;
 							
 						END_IF
 						
@@ -595,140 +667,6 @@ FOR i := 0 TO 9 BY 1 DO
 			
 			State := 0;
 		
-// 		
-// 		
-// 		
-// 		5:
-// 		
-// 			hr := TempUpdater.TryApplyPayload(ReceivedPacketAddress, ReceivedPacketLength, TempEsp);
-// 			
-// 			IF hr <> S_PENDING AND SUCCEEDED(hr) THEN
-// 				
-// 				TempEsp.UpdateMetadata(DataDecoder.CreateMetadataUpdate());
-// 				
-// 				DataDecoder.ClearBufferAtLocation(ReceivedPacketAddress, ReceivedPacketLength);
-// 				
-// 				ReceivedPacketAddress := 0;
-// 				ReceivedPacketLength := 0;
-// 				ReceivedPacketType := 0;
-// 			
-// 				TargetEspUID := 0;
-// 				TempEspPtr := 0;	
-// 				TempEsp := 0;
-// 				MEMSET(ADR(TempEspHeader), 0, SIZEOF(TempEspHeader));
-// 				TempUpdater := 0;
-// 				
-// 				State := 0;
-// 				
-// 			END_IF
-// 		
-// 		
-// 			
-// 			
-// 		1:
-// 		
-// 			TempUpdater := UpdaterRegistry.ResolveUpdater(ReceivedPacketType, 1);
-// 			
-// 			IF TempUpdater = 0 THEN
-// 				
-// 				;// ERROR
-// 				
-// 			END_IF
-// 			
-// 			State := 2;
-// 			
-// 		
-// 		
-// 		2:
-// 		
-// 			TargetEspUID := DataDecoder.GetPacketUID();
-// 			
-// 			IF TargetEspUID = 0 THEN
-// 				
-// 				;// ERROR
-// 				
-// 			END_IF
-// 			
-// 			State := 3;
-// 			
-// 			
-// 			
-// 		3:
-// 		
-// 			FOR j := 1 TO List.GetListLength() BY 1 DO
-// 			
-// 				TempEspPtr := List.GetNode(j).GetMyPointer();
-// 			
-// 				TempEsp := TempEspPtr^;
-// 				
-// 				TempEspHeader := TempEsp.GetMetadata();
-// 				
-// 				IF TargetEspUID = TempEspHeader.SlaveUid THEN
-// 					
-// 					FoundEsp := TRUE;
-// 					
-// 					EXIT;
-// 					
-// 				END_IF
-// 				
-// 			END_FOR
-// 			
-// 			IF FoundEsp THEN
-// 				
-// 				FoundEsp := FALSE;
-// 				
-// 				State := 5;
-// 				
-// 			ELSE
-// 				
-// 				State := 4;
-// 				
-// 			END_IF
-// 			
-// 			
-// 			
-// 		4:
-// 			
-// 			IF List.CreateNode() THEN
-// 						
-// 				TempEspPtr := List.GetNode(List.GetListLength()).GetMyPointer();
-// 				
-// 				TempEsp := TempEspPtr^;
-// 				
-// 				TempEsp.SetUID(TargetEspUID);
-// 				
-// 				TempEsp.SetPacketType(ReceivedPacketType);
-// 				
-// 				State := 5;
-// 			
-// 			END_IF
-// 		
-// 		
-// 		
-// 		5:
-// 		
-// 			hr := TempUpdater.TryApplyPayload(ReceivedPacketAddress, ReceivedPacketLength, TempEsp);
-// 			
-// 			IF hr <> S_PENDING AND SUCCEEDED(hr) THEN
-// 				
-// 				TempEsp.UpdateMetadata(DataDecoder.CreateMetadataUpdate());
-// 				
-// 				DataDecoder.ClearBufferAtLocation(ReceivedPacketAddress, ReceivedPacketLength);
-// 				
-// 				ReceivedPacketAddress := 0;
-// 				ReceivedPacketLength := 0;
-// 				ReceivedPacketType := 0;
-// 			
-// 				TargetEspUID := 0;
-// 				TempEspPtr := 0;	
-// 				TempEsp := 0;
-// 				MEMSET(ADR(TempEspHeader), 0, SIZEOF(TempEspHeader));
-// 				TempUpdater := 0;
-// 				
-// 				State := 0;
-// 				
-// 			END_IF
-			
 	END_CASE
 
 END_FOR

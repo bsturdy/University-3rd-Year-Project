@@ -5,7 +5,6 @@
 #include "TimerClass.h"
 #include "WifiClass.h"
 #include "UtilitiesClass.h"
-#include "packet_processors.h"
 #include "tests.h"
 #include "throughput_tests.h"
 #include <cstddef>
@@ -24,12 +23,8 @@
 #define CYAN   "\x1b[36m"
 #define YELLOW "\x1b[33m"
 
-Station* WifiSta = nullptr;
 AccessPointStation* WifiApSta = nullptr;
-//Packet1 packet1;
-//ITF_PacketProcessor* processor = &packet1;
 
-uint64_t Uid = MY_UID;
 uint8_t MainState = 0;
 uint64_t CyclicCalls = 0;
 uint8_t CyclicState = 0;
@@ -52,6 +47,7 @@ static constexpr bool ThroughputTaskShouldRun()
 
 void CyclicTask1(void* pvParameters)
 {
+    (void)pvParameters;
     CyclicCalls++;
 
     esp_rom_delay_us(500);
@@ -142,7 +138,6 @@ extern "C" void app_main(void)
                     size_t heap = UtilitiesClass::GetInstance().GetFreeHeapBytes();
                     uint64_t uptime = UtilitiesClass::GetInstance().GetUptimeMs();
 
-                    //printf("\033[H\033[J"); // Clears terminal so the dashboard stays at the top
                     printf(BOLD GREEN "┌────────────────────────────────────────────────────────────┐" RESET "\n");
                     printf(BOLD GREEN "│" RESET BOLD "                   ESP32 S3 NODE DASHBOARD                  " BOLD GREEN "│" RESET "\n");
                     printf(BOLD GREEN "├──────────────────────────────┬─────────────────────────────┤" RESET "\n");

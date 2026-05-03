@@ -1,4 +1,4 @@
-﻿<?xml version="1.0" encoding="utf-8"?>
+<?xml version="1.0" encoding="utf-8"?>
 <TcPlcObject Version="1.1.0.1">
   <POU Name="HeaderEndianSwap" Id="{ceabc220-fd15-4dc0-b93e-ab2b6f583046}" SpecialFunc="None">
     <Declaration><![CDATA[FUNCTION HeaderEndianSwap : EspPacketHeader
@@ -11,6 +11,7 @@ END_VAR
     <Implementation>
       <ST><![CDATA[In.StartDelimiter        := BE16_TO_HOST(In.StartDelimiter);
 In.PayloadSize           := BE16_TO_HOST(In.PayloadSize);
+In.PacketCountLimit      := BE32_TO_HOST(In.PacketCountLimit);
 In.SlaveUid              := BE64_TO_HOSTEX(In.SlaveUid);
 In.DestinationUid        := BE64_TO_HOSTEX(In.DestinationUid);
 In.SenderTimestampUs     := BE64_TO_HOSTEX(In.SenderTimestampUs);

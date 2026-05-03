@@ -39,46 +39,48 @@
 #include <arpa/inet.h>
 #include <unistd.h>
 
-static constexpr size_t UDP_SLOTS = 10;
-static constexpr size_t UDP_PACKET_SIZE = 256;
-static const uint8_t MESH_OUI_0 = 0xB5;
-static const uint8_t MESH_OUI_1 = 0x79;
-static const uint8_t MESH_OUI_2 = 0x5B;
+inline constexpr size_t UDP_SLOTS = 10;
+inline constexpr size_t UDP_PACKET_SIZE = 256;
+inline constexpr uint8_t MESH_OUI_0 = 0xB5;
+inline constexpr uint8_t MESH_OUI_1 = 0x79;
+inline constexpr uint8_t MESH_OUI_2 = 0x5B;
 
 constexpr uint16_t PACKET_START_DELIMITER   = 0xB502;
 constexpr size_t   PACKET_HEADER_SIZE       = 48;
 constexpr uint16_t PACKET_END_DELIMITER     = 0x035B;
 
-static const char* PARENT_SSID = "SturdyAP";
-static const char* PARENT_PASS = "SturdyAP79";
+inline constexpr const char* PARENT_SSID = "SturdyAP";
+inline constexpr const char* PARENT_PASS = "SturdyAP79";
 
-static constexpr uint64_t MASTER_UID = 999999999;
-static constexpr uint64_t MY_UID = 1;
-static const char* MY_PASS = "12345678";
-static constexpr uint8_t MAX_STA_CONN = 1;
-static constexpr bool ENABLE_MASTER_CONNECTION = true;
-static const uint64_t HEARTBEAT_PULSE_US = 250000;
-static const uint64_t HEARTBEAT_TIMEOUT_US = 750000;
-static const uint64_t CHILD_FIRST_HEARTBEAT_GRACE_US = 10000000;
-static const uint64_t SYSTEM_INFO_PULSE_US = 1000000;
+inline constexpr uint64_t MASTER_UID = 999999999;
+inline constexpr uint64_t MY_UID = 6;
+inline constexpr const char* MY_PASS = "12345678";
+inline constexpr uint8_t MAX_STA_CONN = 1;
+inline constexpr bool ENABLE_MASTER_CONNECTION = false;
+inline constexpr uint64_t HEARTBEAT_PULSE_US = 250000;
+inline constexpr uint64_t HEARTBEAT_TIMEOUT_US = 750000;
+inline constexpr uint64_t CHILD_FIRST_HEARTBEAT_GRACE_US = 10000000;
+inline constexpr uint64_t SYSTEM_INFO_PULSE_US = 1000000;
 
-static constexpr bool THROUGHPUT_TEST_ENABLED = false;
-static constexpr uint8_t THROUGHPUT_MODE_DISABLED = 0;
-static constexpr uint8_t THROUGHPUT_MODE_TX_TO_MASTER = 1;
-static constexpr uint8_t THROUGHPUT_MODE_TX_TO_NODE = 2;
-static constexpr uint8_t THROUGHPUT_MODE_RX_NODE = 3;
-static constexpr uint8_t THROUGHPUT_MODE_TX_FORWARDED_TO_MASTER = 4;
-static constexpr uint8_t THROUGHPUT_MODE_RELAY_MONITOR = 5;
-static constexpr uint8_t THROUGHPUT_PACKET_TYPE = 90;
-static constexpr uint8_t THROUGHPUT_TEST_MODE = THROUGHPUT_MODE_DISABLED;
-static const char* THROUGHPUT_TARGET_IP = "AUTO_CHILD";
-static constexpr uint16_t THROUGHPUT_TARGET_PORT = 10050;
-static constexpr uint32_t THROUGHPUT_TEST_DURATION_MS = 0;
-static constexpr size_t THROUGHPUT_PAYLOAD_BYTES = 512;
-static constexpr uint32_t THROUGHPUT_TX_BURST_PACKETS = 0;
-static constexpr uint32_t THROUGHPUT_TX_DELAY_TICKS = 0;
-static constexpr uint8_t THROUGHPUT_TASK_CORE = 1;
-static constexpr uint32_t THROUGHPUT_TASK_STACK_BYTES = 4096;
+inline constexpr bool THROUGHPUT_TEST_ENABLED = false;
+inline constexpr uint8_t THROUGHPUT_MODE_DISABLED = 0;
+inline constexpr uint8_t THROUGHPUT_MODE_TX_TO_MASTER = 1;
+inline constexpr uint8_t THROUGHPUT_MODE_TX_TO_NODE = 2;
+inline constexpr uint8_t THROUGHPUT_MODE_RX_NODE = 3;
+inline constexpr uint8_t THROUGHPUT_MODE_TX_FORWARDED_TO_MASTER = 4;
+inline constexpr uint8_t THROUGHPUT_MODE_RELAY_MONITOR = 5;
+inline constexpr uint8_t THROUGHPUT_PACKET_TYPE = 90;
+inline constexpr uint8_t THROUGHPUT_TEST_MODE = THROUGHPUT_MODE_TX_TO_MASTER;
+inline constexpr const char* THROUGHPUT_TARGET_IP = "192.168.0.254";
+inline constexpr uint16_t THROUGHPUT_TARGET_PORT = 10050;
+inline constexpr uint32_t THROUGHPUT_TEST_DURATION_MS = 0;
+inline constexpr uint32_t THROUGHPUT_PACKET_LIMIT = 10000;
+inline constexpr size_t THROUGHPUT_PAYLOAD_BYTES = 512;
+inline constexpr uint32_t THROUGHPUT_TX_DELAY_US = 0;
+inline constexpr uint32_t THROUGHPUT_TX_BURST_PACKETS = 0;
+inline constexpr uint32_t THROUGHPUT_TX_DELAY_TICKS = 0;
+inline constexpr uint8_t THROUGHPUT_TASK_CORE = 1;
+inline constexpr uint32_t THROUGHPUT_TASK_STACK_BYTES = 4096;
 
 struct WifiDevice
 {
@@ -99,7 +101,7 @@ struct PacketHeader
 {
     uint16_t startDelimiter;      // 0x02B5
     uint16_t payloadSize;         // bytes after header
-    uint32_t reserved0;
+    uint32_t packetCountLimit;
 
     uint64_t slaveUid;
     uint64_t destinationUid;
@@ -155,6 +157,12 @@ struct ThroughputStats
     uint64_t ReceivedBytes;
     uint64_t ForwardedPackets;
     uint64_t ForwardedBytes;
+    uint64_t ExpectedPackets;
+    uint64_t MissingSequenceCount;
+    uint64_t DuplicateOrOutOfOrderPackets;
+    uint32_t FirstSequence;
+    uint32_t LastSequence;
+    bool SequenceValid;
 };
 
 

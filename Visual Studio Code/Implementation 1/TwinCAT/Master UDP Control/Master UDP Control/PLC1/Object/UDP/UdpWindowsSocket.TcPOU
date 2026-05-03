@@ -130,8 +130,7 @@ RETURN;]]></ST>
       </Implementation>
     </Method>
     <Property Name="LastReceivedIp" Id="{1be0fcdb-6c80-41d0-8463-11d58649fa80}" FolderPath="ITF_UdpConnection\">
-      <Declaration><![CDATA[{warning 'Add property implementation'}
-PROPERTY LastReceivedIp : T_IPv4Addr
+        <Declaration><![CDATA[PROPERTY LastReceivedIp : T_IPv4Addr
 ]]></Declaration>
       <Get Name="Get" Id="{9284e367-4412-4008-b229-2bd469f707d3}">
         <Declaration><![CDATA[VAR
@@ -143,8 +142,7 @@ END_VAR
       </Get>
     </Property>
     <Property Name="LastReceivedPort" Id="{a3bba1ac-ec01-40a6-b89d-1cf870cb9c74}" FolderPath="ITF_UdpConnection\">
-      <Declaration><![CDATA[{warning 'Add property implementation'}
-PROPERTY LastReceivedPort : UDINT
+        <Declaration><![CDATA[PROPERTY LastReceivedPort : UDINT
 ]]></Declaration>
       <Get Name="Get" Id="{8db3583f-bc06-41ef-b2ad-28b4e5aca0c5}">
         <Declaration><![CDATA[VAR
@@ -156,8 +154,7 @@ END_VAR
       </Get>
     </Property>
     <Property Name="ReceiveBufferReference" Id="{f4d6b744-2f99-48da-b241-cf7eb4cefdcd}" FolderPath="ITF_UdpConnection\">
-      <Declaration><![CDATA[{warning 'Add property implementation'}
-PROPERTY ReceiveBufferReference : REFERENCE TO ARRAY [0..(TCPADS_MAXUDP_BUFFSIZE - 1)] OF BYTE
+        <Declaration><![CDATA[PROPERTY ReceiveBufferReference : REFERENCE TO ARRAY [0..(TCPADS_MAXUDP_BUFFSIZE - 1)] OF BYTE
 ]]></Declaration>
       <Get Name="Get" Id="{a0b1ba46-ae51-4579-baf6-f1a850ff7a54}">
         <Declaration><![CDATA[VAR

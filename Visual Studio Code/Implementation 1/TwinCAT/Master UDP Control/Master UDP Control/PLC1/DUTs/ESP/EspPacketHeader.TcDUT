@@ -5,7 +5,7 @@
 STRUCT
 	StartDelimiter			: UINT := 693;
 	PayloadSize				: UINT;
-	Reserved0				: ARRAY [1..4] OF BYTE;
+	PacketCountLimit		: UDINT;
 	SlaveUid				: ULINT;
 	DestinationUid			: ULINT;
 	SenderTimestampUs		: ULINT;

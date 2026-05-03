@@ -5,7 +5,6 @@
 // only once in a project. This class provides general functions for the GPIO features
 // that are found on the ESP32 S3 board - including control of the on board LED,
 // controlling analog input and output pins, creating PWM functionality and more.
-// This class is a work in progress
 
 
 
@@ -61,18 +60,13 @@ bool GpioClass::SetupRmtTxChannel(gpio_num_t GpioNumber, uint32_t Resolution)
 
     if (IsRuntimeLoggingEnabled) ESP_LOGW(TAG, "SETUP RMT TX CHANNEL BEGIN");
 
-    RmtConfig = 
-    {
-        .gpio_num = GpioNumber,             // GPIO to use
-        .clk_src = RMT_CLK_SRC_APB,         // Use default clock source
-        .resolution_hz = Resolution,        // Set resolution
-        .mem_block_symbols = 64,            // Memory block size for LED transmission
-        .trans_queue_depth = 4,             // Transmission queue depth
-        .flags = 
-        {
-            .with_dma = false,            // No DMA for now
-        }
-    };    
+    RmtConfig = {};
+    RmtConfig.gpio_num = GpioNumber;
+    RmtConfig.clk_src = RMT_CLK_SRC_APB;
+    RmtConfig.resolution_hz = Resolution;
+    RmtConfig.mem_block_symbols = 64;
+    RmtConfig.trans_queue_depth = 4;
+    RmtConfig.flags.with_dma = false;
 
     Error = rmt_new_tx_channel(&RmtConfig, &RmtLedChannel);
     if (Error != ESP_OK) 
@@ -198,10 +192,8 @@ bool GpioClass::ChangeOnboardLedColour(uint8_t Red, uint8_t Green, uint8_t Blue)
 
 
     // Send the data
-    rmt_transmit_config_t TransmitConfig = 
-    {
-        .loop_count = 0,
-    };
+    rmt_transmit_config_t TransmitConfig = {};
+    TransmitConfig.loop_count = 0;
     esp_err_t err = rmt_transmit(RmtLedChannel, RmtLedEncoder, LedData, 24, &TransmitConfig);
     if (err != ESP_OK) 
     {
@@ -228,11 +220,3 @@ bool GpioClass::ChangeOnboardLedColour(uint8_t Red, uint8_t Green, uint8_t Blue)
 //                             Get / Set                                        //
 //                                                                              //
 //==============================================================================//
-
-// Produces logs for runtime functions. Useful for debugging
-// void GpioClass::SetRuntimeLogging(bool EnableRuntimeLogging)
-// {
-//     IsRuntimeLoggingEnabled = EnableRuntimeLogging;
-// } 
-
-

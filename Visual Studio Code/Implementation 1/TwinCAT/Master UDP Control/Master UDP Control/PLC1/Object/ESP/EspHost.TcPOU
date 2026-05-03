@@ -295,25 +295,6 @@ ELSE
 	UpdateMetadata := FALSE;
 
 END_IF
-
-
-// IF Data.SenderTimestampUs <> 0 THEN
-// 	
-// 	_Data.SenderTimestampUs := Data.SenderTimestampUs;
-// 
-// END_IF
-// 
-// IF Data.PrevCycleTimeUs <> 0 THEN
-// 	
-// 	_Data.PrevCycleTimeUs := Data.PrevCycleTimeUs;
-// 
-// END_IF
-// 
-// UpdateMetadata := TRUE;
-// 
-// _PacketsReceivedCount := _PacketsReceivedCount + 1;
-// 
-// RETURN;
 ]]></ST>
       </Implementation>
     </Method>

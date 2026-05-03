@@ -20,6 +20,21 @@ VAR
 	_ReceivedDataLength		: UDINT;
 		
 	_ReceiveBuffer			: ARRAY [0..TCPADS_MAXUDP_BUFFSIZE - 1] OF BYTE;
+	_RxQueue				: ARRAY [0..511, 0..511] OF BYTE;
+	_RxQueueLengths			: ARRAY [0..511] OF UDINT;
+	_RxQueueIpAddr			: ARRAY [0..511] OF UDINT;
+	_RxQueuePort			: ARRAY [0..511] OF UDINT;
+	_RxQueueWriteIndex		: UINT;
+	_RxQueueReadIndex		: UINT;
+	_RxQueueCount			: UINT;
+	
+	RxCallbackPackets		: ULINT;
+	RxQueuedPackets			: ULINT;
+	RxDequeuedPackets		: ULINT;
+	RxQueueOverflowDrops	: ULINT;
+	RxQueueOversizeDrops	: ULINT;
+	RxQueueDepth			: UINT;
+	RxQueueMaxDepth			: UINT;
 
 END_VAR
 ]]></Declaration>
@@ -35,6 +50,40 @@ END_VAR
         <ST><![CDATA[IF _ipUdp <> 0 THEN
 	
 	_ipUdp.CheckReceived();
+	
+END_IF
+
+IF _ReceiveBuffer[0] = 0 AND_THEN _RxQueueCount > 0 THEN
+	
+	IF _ReceivedDataLength > 0 THEN
+		
+		MEMSET(ADR(_ReceiveBuffer), 0, _ReceivedDataLength);
+		
+	END_IF
+	
+	_ReceivedDataLength := _RxQueueLengths[_RxQueueReadIndex];
+	MEMCPY(ADR(_ReceiveBuffer), ADR(_RxQueue[_RxQueueReadIndex, 0]), _ReceivedDataLength);
+	_LastReceivedIpAddr.IpUdint := _RxQueueIpAddr[_RxQueueReadIndex];
+	_LastReceivedPort := _RxQueuePort[_RxQueueReadIndex];
+	
+	_RxQueueLengths[_RxQueueReadIndex] := 0;
+	_RxQueueIpAddr[_RxQueueReadIndex] := 0;
+	_RxQueuePort[_RxQueueReadIndex] := 0;
+	
+	IF _RxQueueReadIndex >= 511 THEN
+		
+		_RxQueueReadIndex := 0;
+		
+	ELSE
+		
+		_RxQueueReadIndex := _RxQueueReadIndex + 1;
+		
+	END_IF
+	
+	_RxQueueCount := _RxQueueCount - 1;
+	RxQueueDepth := _RxQueueCount;
+	RxDequeuedPackets := RxDequeuedPackets + 1;
+	CyclicUpdate := TRUE;
 	
 END_IF]]></ST>
       </Implementation>
@@ -64,28 +113,9 @@ VAR_INPUT
 	Port	: UDINT;
 END_VAR
 VAR
-	//ipSrv: ITComObjectServer;
 END_VAR]]></Declaration>
       <Implementation>
         <ST><![CDATA[_UdpPort := TO_UINT(Port);
-// 
-// IF NOT bInCopyCode THEN // no online change
-// 	IF ipUdp = 0 AND ObjectId <> 0 THEN
-// 	 hrInit := FW_ObjMgr_GetObjectInstance(oid:=ObjectId, iid:=TC_GLOBAL_IID_LIST.IID_ITcIoUdpProtocol, pipUnk:=ADR(ipUdp) );
-// 		IF SUCCEEDED(hrInit) THEN 
-// 			IF SUCCEEDED(ipUdp.RegisterReceiver(UdpPort, THIS^)) THEN //open port
-// 				SocketOpen := TRUE;
-// 				FB_init := TRUE;
-// 			ELSE 
-// 				FB_init := FALSE; 
-// 				FW_SafeRelease(ADR(ipUdp));
-// 			END_IF
-// 		END_IF
-// 	ELSIF ObjectId = 0 THEN 
-// 		FB_init := FALSE; 
-// 		hrInit := ERR_INVALID_PARAM; 				
-// 	END_IF
-// END_IF
 ]]></ST>
       </Implementation>
     </Method>
@@ -133,8 +163,7 @@ END_VAR
       </Get>
     </Property>
     <Property Name="LastReceivedPort" Id="{f7b35e1d-8e60-4248-856a-fef380f4fff2}" FolderPath="ITF_UdpConnection\">
-      <Declaration><![CDATA[{warning 'Add property implementation'}
-PROPERTY LastReceivedPort : UDINT
+        <Declaration><![CDATA[PROPERTY LastReceivedPort : UDINT
 ]]></Declaration>
       <Get Name="Get" Id="{32c184fa-88eb-4584-aebf-64a5e07ad708}">
         <Declaration><![CDATA[VAR
@@ -146,8 +175,7 @@ END_VAR
       </Get>
     </Property>
     <Property Name="ReceiveBufferReference" Id="{a75e7a58-2c37-4510-908d-aef7b56361ad}" FolderPath="ITF_UdpConnection\">
-      <Declaration><![CDATA[{warning 'Add property implementation'}
-PROPERTY ReceiveBufferReference : REFERENCE TO ARRAY [0..(TCPADS_MAXUDP_BUFFSIZE - 1)] OF BYTE
+        <Declaration><![CDATA[PROPERTY ReceiveBufferReference : REFERENCE TO ARRAY [0..(TCPADS_MAXUDP_BUFFSIZE - 1)] OF BYTE
 ]]></Declaration>
       <Get Name="Get" Id="{81f763c3-8144-46d4-8deb-e1860ad3195a}">
         <Declaration><![CDATA[VAR
@@ -158,6 +186,28 @@ END_VAR
         </Implementation>
       </Get>
     </Property>
+    <Method Name="ResetReceiveQueue" Id="{b77d5398-eef4-4718-8318-0e2db78efcc7}">
+      <Declaration><![CDATA[METHOD ResetReceiveQueue : BOOL
+VAR_INPUT
+END_VAR
+]]></Declaration>
+      <Implementation>
+        <ST><![CDATA[MEMSET(ADR(_ReceiveBuffer), 0, SIZEOF(_ReceiveBuffer));
+_ReceivedDataLength := 0;
+_ReceivedData := 0;
+_RxQueueWriteIndex := 0;
+_RxQueueReadIndex := 0;
+_RxQueueCount := 0;
+RxCallbackPackets := 0;
+RxQueuedPackets := 0;
+RxDequeuedPackets := 0;
+RxQueueOverflowDrops := 0;
+RxQueueOversizeDrops := 0;
+RxQueueDepth := 0;
+RxQueueMaxDepth := 0;
+ResetReceiveQueue := TRUE;]]></ST>
+      </Implementation>
+    </Method>
     <Method Name="ReceiveData" Id="{cb5b89bf-a2d8-4ac3-bd40-64d876626d0f}" FolderPath="ITcIoUdpProtocolRecv\">
       <Declaration><![CDATA[{attribute 'object_name' := 'ReceiveData'}
 {attribute 'c++_compatible'}
@@ -176,34 +226,49 @@ END_VAR
 ]]></Declaration>
       <Implementation>
         <ST><![CDATA[_ReceivedPackets := _ReceivedPackets + 1;
+RxCallbackPackets := RxCallbackPackets + 1;
+ReceiveData := S_OK;
 
-_LastReceivedIpAddr.IpUdint := ipAddr;
+IF nData > 512 THEN
+	
+	RxQueueOversizeDrops := RxQueueOversizeDrops + 1;
+	ReceiveData := -1;
+	RETURN;
+	
+END_IF
 
-_LastReceivedPort := TO_UDINT(udpSrcPort);
+IF _RxQueueCount >= 512 THEN
+	
+	RxQueueOverflowDrops := RxQueueOverflowDrops + 1;
+	ReceiveData := -2;
+	RETURN;
+	
+END_IF
 
-IF _ipUdp <> 0 THEN
-	
-	//ipUdp.SendData(ipAddr, udpSrcPort, udpDestPort, nData, pData, TRUE, 0); // send data back
+MEMCPY(ADR(_RxQueue[_RxQueueWriteIndex, 0]), pData, nData);
+_RxQueueLengths[_RxQueueWriteIndex] := nData;
+_RxQueueIpAddr[_RxQueueWriteIndex] := ipAddr;
+_RxQueuePort[_RxQueueWriteIndex] := TO_UDINT(udpSrcPort);
 
-	MEMSET(ADR(_ReceiveBuffer), 0, SIZEOF(_ReceiveBuffer));
+IF _RxQueueWriteIndex >= 511 THEN
 	
-	IF nData <= SIZEOF(_ReceiveBuffer) THEN
-		
-		MEMCPY(ADR(_ReceiveBuffer), pData, nData);
-		
-		_ReceivedDataLength := nData;
-		
-	ELSE
-		
-		MEMCPY(ADR(_ReceiveBuffer), pData, SIZEOF(_ReceiveBuffer));
-		
-		_ReceivedDataLength := SIZEOF(_ReceiveBuffer);
-		
-	END_IF
+	_RxQueueWriteIndex := 0;
 	
-	_ReceivedData := 0;
+ELSE
 	
-END_IF]]></ST>
+	_RxQueueWriteIndex := _RxQueueWriteIndex + 1;
+	
+END_IF
+
+_RxQueueCount := _RxQueueCount + 1;
+RxQueueDepth := _RxQueueCount;
+IF RxQueueDepth > RxQueueMaxDepth THEN
+	
+	RxQueueMaxDepth := RxQueueDepth;
+	
+END_IF
+RxQueuedPackets := RxQueuedPackets + 1;
+_ReceivedData := 0;]]></ST>
       </Implementation>
     </Method>
     <Method Name="TcAddRef" Id="{2d410f6b-c6bd-4033-8c18-8496c8308aff}" FolderPath="ITcIoUdpProtocolRecv\">

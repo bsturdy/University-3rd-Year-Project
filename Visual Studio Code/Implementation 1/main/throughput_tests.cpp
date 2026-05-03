@@ -1,6 +1,7 @@
 #include "throughput_tests.h"
 
 #include "esp_log.h"
+#include "esp_rom_sys.h"
 #include "esp_timer.h"
 #include "freertos/FreeRTOS.h"
 #include "freertos/task.h"
@@ -55,6 +56,7 @@ static size_t BuildThroughputPacket(uint8_t* Buffer,
     PacketHeader Header{};
     Header.startDelimiter = PACKET_START_DELIMITER;
     Header.payloadSize = htons(static_cast<uint16_t>(PayloadSize));
+    Header.packetCountLimit = THROUGHPUT_PACKET_LIMIT;
     Header.slaveUid = MY_UID;
     Header.destinationUid = DestinationUid;
     Header.senderTimestampUs = static_cast<uint64_t>(esp_timer_get_time());
@@ -108,6 +110,79 @@ static void PrintRate(const char* Label,
              PacketsPerSecond);
 }
 
+static void PrintPacketLoss(const char* Label, const ThroughputStats& Stats)
+{
+    uint64_t ExpectedPackets = Stats.ExpectedPackets;
+
+    if (ExpectedPackets == 0 && Stats.SequenceValid && Stats.LastSequence >= Stats.FirstSequence)
+    {
+        ExpectedPackets = static_cast<uint64_t>(Stats.LastSequence - Stats.FirstSequence) + 1;
+    }
+
+    const uint64_t ReceivedForLoss = Stats.ReceivedPackets > Stats.DuplicateOrOutOfOrderPackets
+        ? Stats.ReceivedPackets - Stats.DuplicateOrOutOfOrderPackets
+        : 0;
+    const uint64_t LostPackets = ExpectedPackets > ReceivedForLoss
+        ? ExpectedPackets - ReceivedForLoss
+        : Stats.MissingSequenceCount;
+    const double LossPercent = ExpectedPackets > 0
+        ? (static_cast<double>(LostPackets) * 100.0) / static_cast<double>(ExpectedPackets)
+        : 0.0;
+
+    ESP_LOGW(TAG,
+             "%s loss | received=%llu expected=%llu lost=%llu loss=%.2f%% missing_seq=%llu duplicate_or_old=%llu last_seq=%u",
+             Label,
+             static_cast<unsigned long long>(Stats.ReceivedPackets),
+             static_cast<unsigned long long>(ExpectedPackets),
+             static_cast<unsigned long long>(LostPackets),
+             LossPercent,
+             static_cast<unsigned long long>(Stats.MissingSequenceCount),
+             static_cast<unsigned long long>(Stats.DuplicateOrOutOfOrderPackets),
+             static_cast<unsigned>(Stats.LastSequence));
+}
+
+static void WaitForTransmitSlot(int64_t& NextTransmitUs)
+{
+    if constexpr (THROUGHPUT_TX_DELAY_US > 0)
+    {
+        int64_t NowUs = esp_timer_get_time();
+        if (NextTransmitUs == 0)
+        {
+            NextTransmitUs = NowUs;
+        }
+
+        while (NowUs < NextTransmitUs)
+        {
+            const int64_t RemainingUs = NextTransmitUs - NowUs;
+
+            if (RemainingUs >= 2000)
+            {
+                vTaskDelay(pdMS_TO_TICKS(static_cast<uint32_t>(RemainingUs / 1000)));
+            }
+            else
+            {
+                esp_rom_delay_us(static_cast<uint32_t>(RemainingUs));
+            }
+
+            NowUs = esp_timer_get_time();
+        }
+
+        if (NextTransmitUs + static_cast<int64_t>(THROUGHPUT_TX_DELAY_US) > NowUs)
+        {
+            NextTransmitUs += static_cast<int64_t>(THROUGHPUT_TX_DELAY_US);
+        }
+        else
+        {
+            NextTransmitUs = NowUs + static_cast<int64_t>(THROUGHPUT_TX_DELAY_US);
+        }
+    }
+
+    if constexpr (THROUGHPUT_TX_DELAY_TICKS > 0)
+    {
+        vTaskDelay(static_cast<TickType_t>(THROUGHPUT_TX_DELAY_TICKS));
+    }
+}
+
 static void RunSender(AccessPointStation* Wifi,
                       const char* TargetIp,
                       uint8_t ForwardingMode,
@@ -124,6 +199,7 @@ static void RunSender(AccessPointStation* Wifi,
     const size_t PayloadSize = std::min(THROUGHPUT_PAYLOAD_BYTES, UDP_PACKET_SIZE - PACKET_HEADER_SIZE - 2);
     const int64_t StartUs = esp_timer_get_time();
     const bool RunContinuously = (THROUGHPUT_TEST_DURATION_MS == 0);
+    const bool RunUntilPacketLimit = (THROUGHPUT_PACKET_LIMIT > 0);
     const int64_t EndUs = RunContinuously
         ? INT64_MAX
         : StartUs + (static_cast<int64_t>(THROUGHPUT_TEST_DURATION_MS) * 1000);
@@ -133,15 +209,18 @@ static void RunSender(AccessPointStation* Wifi,
     uint64_t SentPackets = 0;
     uint64_t SentBytes = 0;
     uint32_t Sequence = 0;
+    int64_t NextTransmitUs = 0;
 
-    ESP_LOGW(TAG, "TX start | target=%s port=%u payload=%u mode=%u duration_ms=%u",
+    ESP_LOGW(TAG, "TX start | target=%s port=%u payload=%u mode=%u duration_ms=%u packet_limit=%u delay_us=%u",
              TargetIp,
              static_cast<unsigned>(THROUGHPUT_TARGET_PORT),
              static_cast<unsigned>(PayloadSize),
              static_cast<unsigned>(ForwardingMode),
-             static_cast<unsigned>(THROUGHPUT_TEST_DURATION_MS));
+             static_cast<unsigned>(THROUGHPUT_TEST_DURATION_MS),
+             static_cast<unsigned>(THROUGHPUT_PACKET_LIMIT),
+             static_cast<unsigned>(THROUGHPUT_TX_DELAY_US));
 
-    while (esp_timer_get_time() < EndUs)
+    while (esp_timer_get_time() < EndUs && (!RunUntilPacketLimit || SentPackets < THROUGHPUT_PACKET_LIMIT))
     {
         if (ForwardingMode == 2 && !Wifi->IsConnectedToHost())
         {
@@ -149,12 +228,14 @@ static void RunSender(AccessPointStation* Wifi,
             return;
         }
 
+        WaitForTransmitSlot(NextTransmitUs);
+
         const size_t PacketLength = BuildThroughputPacket(Packet,
                                                           sizeof(Packet),
                                                           PayloadSize,
                                                           ForwardingMode,
                                                           DestinationUid,
-                                                          Sequence++);
+                                                          Sequence);
         if (PacketLength == 0) continue;
 
         const size_t Sent = Wifi->SendData(Packet, static_cast<int>(PacketLength), Destination);
@@ -164,17 +245,11 @@ static void RunSender(AccessPointStation* Wifi,
             SentBytes += Sent;
             WindowPackets++;
             WindowBytes += Sent;
+            Sequence++;
         }
         else
         {
-            if constexpr (THROUGHPUT_TX_DELAY_TICKS > 0)
-            {
-                vTaskDelay(static_cast<TickType_t>(THROUGHPUT_TX_DELAY_TICKS));
-            }
-            else
-            {
-                taskYIELD();
-            }
+            taskYIELD();
         }
 
         const int64_t NowUs = esp_timer_get_time();
@@ -190,21 +265,21 @@ static void RunSender(AccessPointStation* Wifi,
         {
             if ((Sequence % THROUGHPUT_TX_BURST_PACKETS) == 0)
             {
-                if constexpr (THROUGHPUT_TX_DELAY_TICKS > 0)
-                {
-                    vTaskDelay(static_cast<TickType_t>(THROUGHPUT_TX_DELAY_TICKS));
-                }
-                else
-                {
-                    taskYIELD();
-                }
+                taskYIELD();
             }
         }
     }
 
-    if (!RunContinuously)
+    if (!RunContinuously || RunUntilPacketLimit)
     {
-        PrintRate("TX complete", SentPackets, SentBytes, THROUGHPUT_TEST_DURATION_MS);
+        const int64_t FinishedUs = esp_timer_get_time();
+        uint32_t DurationMs = static_cast<uint32_t>((FinishedUs - StartUs) / 1000);
+        if (DurationMs == 0) DurationMs = 1;
+        PrintRate("TX complete", SentPackets, SentBytes, DurationMs);
+        ESP_LOGW(TAG,
+                 "TX packet count | sent=%llu target=%u",
+                 static_cast<unsigned long long>(SentPackets),
+                 static_cast<unsigned>(THROUGHPUT_PACKET_LIMIT));
     }
 }
 
@@ -239,6 +314,10 @@ static void RunSenderToParent(AccessPointStation* Wifi)
         {
             ESP_LOGW(TAG, "Using parent target IP: %s", ParentIp);
             RunSender(Wifi, ParentIp, 2, MASTER_UID);
+            if constexpr (THROUGHPUT_PACKET_LIMIT > 0 || THROUGHPUT_TEST_DURATION_MS > 0)
+            {
+                return;
+            }
         }
         else
         {
@@ -253,6 +332,10 @@ static void RunCounter(AccessPointStation* Wifi, const char* Label)
 {
     Wifi->ResetThroughputStats();
     const uint32_t WindowMs = 1000;
+    uint64_t PreviousRxPackets = 0;
+    uint64_t PreviousRxBytes = 0;
+    uint64_t PreviousForwardedPackets = 0;
+    uint64_t PreviousForwardedBytes = 0;
 
     ESP_LOGW(TAG, "%s start | counting type-%u packets", Label, static_cast<unsigned>(THROUGHPUT_PACKET_TYPE));
 
@@ -260,9 +343,14 @@ static void RunCounter(AccessPointStation* Wifi, const char* Label)
     {
         vTaskDelay(pdMS_TO_TICKS(WindowMs));
         const ThroughputStats Stats = Wifi->GetThroughputStats();
-        PrintRate("RX", Stats.ReceivedPackets, Stats.ReceivedBytes, WindowMs);
-        PrintRate("FWD", Stats.ForwardedPackets, Stats.ForwardedBytes, WindowMs);
-        Wifi->ResetThroughputStats();
+        PrintRate("RX", Stats.ReceivedPackets - PreviousRxPackets, Stats.ReceivedBytes - PreviousRxBytes, WindowMs);
+        PrintRate("FWD", Stats.ForwardedPackets - PreviousForwardedPackets, Stats.ForwardedBytes - PreviousForwardedBytes, WindowMs);
+        PrintPacketLoss(Label, Stats);
+
+        PreviousRxPackets = Stats.ReceivedPackets;
+        PreviousRxBytes = Stats.ReceivedBytes;
+        PreviousForwardedPackets = Stats.ForwardedPackets;
+        PreviousForwardedBytes = Stats.ForwardedBytes;
     }
 }
 

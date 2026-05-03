@@ -11,7 +11,7 @@ END_VAR]]></Declaration>
       <ST><![CDATA[
 i := i + 1;
 
-IF Ready THEN
+IF NOT Ready THEN
 	
 	Ready := Init();
 	

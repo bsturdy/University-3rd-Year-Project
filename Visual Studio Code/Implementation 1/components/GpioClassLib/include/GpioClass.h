@@ -6,7 +6,6 @@
 // only once in a project. This class provides general functions for the GPIO features
 // that are found on the ESP32 S3 board - including control of the on board LED,
 // controlling analog input and output pins, creating PWM functionality and more.
-// This class is a work in progress
 
 #include "esp_log.h"
 #include "driver/rmt_tx.h"         
@@ -24,7 +23,6 @@ class GpioClass
 
         esp_err_t Error;
         rmt_tx_channel_config_t RmtConfig;
-        uint8_t SetupRmtState = 0;
         bool RmtChannelSetupComplete = false;
         bool OnboardLedSetupComplete = false;
 

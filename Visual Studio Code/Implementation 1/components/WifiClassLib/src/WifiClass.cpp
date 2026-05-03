@@ -348,12 +348,6 @@ void AccessPointStation::IpEventHandler(void* arg, esp_event_base_t event_base,
             strcpy(ApStaClassInstance->MyStaIpAddress, MyStr);
             strcpy(ApStaClassInstance->ParentDevice.IpAddress, GwStr);
 
-            // char* LastDot = strrchr(ApStaClassInstance->ParentDevice.IpAddress, '.');
-            // if (LastDot != nullptr && strcmp(LastDot, ".1") == 0)
-            // {
-            //     strcpy(LastDot, ".254");
-            // }
-
             // 3. Update State Flags
             ApStaClassInstance->ApIpAcquired = true;
             ApStaClassInstance->IsConnectedToParent = true;
@@ -1620,9 +1614,43 @@ void AccessPointStation::ReceiveTask(void* pvParameters)
 
                 if (ReceiveBuffer[37] == THROUGHPUT_PACKET_TYPE)
                 {
+                    uint32_t PacketLimit = 0;
+                    uint32_t PacketSequence = 0;
+                    memcpy(&PacketLimit, ReceiveBuffer + 4, sizeof(PacketLimit));
+                    memcpy(&PacketSequence, ReceiveBuffer + 32, sizeof(PacketSequence));
+
                     if (ApStaClassInstance->StateMutex != nullptr) xSemaphoreTake(ApStaClassInstance->StateMutex, portMAX_DELAY);
                     ApStaClassInstance->TestStats.ReceivedPackets++;
                     ApStaClassInstance->TestStats.ReceivedBytes += static_cast<uint64_t>(ReceivedBytes);
+
+                    if (PacketLimit > 0)
+                    {
+                        ApStaClassInstance->TestStats.ExpectedPackets = PacketLimit;
+                    }
+
+                    if (ApStaClassInstance->TestStats.SequenceValid)
+                    {
+                        if (PacketSequence > ApStaClassInstance->TestStats.LastSequence)
+                        {
+                            if (PacketSequence > ApStaClassInstance->TestStats.LastSequence + 1)
+                            {
+                                ApStaClassInstance->TestStats.MissingSequenceCount +=
+                                    static_cast<uint64_t>(PacketSequence - ApStaClassInstance->TestStats.LastSequence - 1);
+                            }
+                            ApStaClassInstance->TestStats.LastSequence = PacketSequence;
+                        }
+                        else
+                        {
+                            ApStaClassInstance->TestStats.DuplicateOrOutOfOrderPackets++;
+                        }
+                    }
+                    else
+                    {
+                        ApStaClassInstance->TestStats.FirstSequence = PacketSequence;
+                        ApStaClassInstance->TestStats.LastSequence = PacketSequence;
+                        ApStaClassInstance->TestStats.SequenceValid = true;
+                    }
+
                     if (ApStaClassInstance->StateMutex != nullptr) xSemaphoreGive(ApStaClassInstance->StateMutex);
                 }
             }

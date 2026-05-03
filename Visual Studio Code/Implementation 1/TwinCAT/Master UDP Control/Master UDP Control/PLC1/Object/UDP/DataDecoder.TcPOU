@@ -44,6 +44,7 @@ IF MEMSET(PacketAddress, 0, PacketLength) > 0 THEN
 	IF PacketAddress = _LastPacketAddress THEN
 		
 		_LastPacketAddress := 0;
+		_LastCheckedIndex := 0;
 		
 	END_IF
 	
@@ -145,6 +146,12 @@ IF NOT _Udp.IsConnected() OR ADR(_UdpReceiveBuffer) = 0 THEN
 	
 	RETURN;
 
+END_IF
+
+IF _UdpReceiveBuffer[0] = _StartDelimiter1 AND_THEN _UdpReceiveBuffer[1] = _StartDelimiter2 THEN
+	
+	_LastCheckedIndex := 0;
+	
 END_IF
 
 IF _LastCheckedIndex >= TCPADS_MAXUDP_BUFFSIZE - 1 THEN
